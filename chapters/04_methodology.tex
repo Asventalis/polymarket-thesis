@@ -1,0 +1,145 @@
+\chapter{Methodology}
+\label{ch:models}
+
+% razionale (obiettivo, criteri, regole di inclusione) + famiglie di approcci con pro e contro
+This chapter sets out the rationale of the study (\cref{sec:meth:rationale}) and the
+approaches that were compared, in five families: causal rules on the price, stateless
+learners on hand-made features, sequence models of the order-book stream, graph models,
+and sources of information outside the book.  \todo{each family closes with its
+advantages and limits a priori; a summary table at the end}
+
+\section{Objective, criteria and rules of inclusion}
+\label{sec:meth:rationale}
+
+\subsection{Objective}
+\label{sec:meth:objective}
+
+The object of the study is the direction of the mid price of a Polymarket market over a
+horizon $H$, read as the three-class label of \cref{sec:data:labels}, at every block in
+which the market updated its book, for five horizons from one minute to twelve hours.
+The task is the prediction of the price while the market is open, not of the outcome of
+the event; the measure is balanced accuracy, because the three classes are of very
+unequal size and change size with the horizon; and the unit of every comparison is the
+paired difference between two models on the same samples, with an interval.
+
+\subsection{Criteria of success}
+\label{sec:meth:criteria}
+
+A model is said to read information that another does not when its balanced accuracy
+on the validation day exceeds the other's on the same samples, after the same post-hoc
+calibration, by a margin whose 95\% hour-block bootstrap interval excludes zero.  The
+reference competitor is first the best causal rule found on the data and then, once it
+exists, the best stateless learner on hand-made features.  \todo{ties; the two views of
+the samples (full stream and deduplicated); the locked test period}
+
+\subsection{Rules of inclusion and exclusion}
+\label{sec:meth:rules}
+
+\todo{to expand, one paragraph each:}
+\begin{enumerate}[nosep]
+  \item \textbf{Causal inputs only.}  Everything an approach reads at time $t$ is
+  computed from data strictly before $t$, and every label from data after it.
+  \item \textbf{Public information that the dataset contains}, plus two public external
+  sources that could be aligned to it (the news flow, a pretrained forecaster); no
+  external reference prices.
+  \item \textbf{One model for all markets}, never one model per market.
+  \item \textbf{Every approach is measured against the best simpler one on the same
+  inputs}, and where possible contains it as a special case.
+  \item \textbf{Families that span the questions}: each research question has a paired
+  comparison.  Out of scope: outcome forecasting with language models, trading
+  strategies, per-market models.
+  \item \textbf{A fixed compute budget}: one run per GPU, hours per run; short tests to
+  screen the variants, full-length runs behind every claim.
+\end{enumerate}
+
+\section{Baselines: causal rules on the price}
+\label{sec:models:baselines}
+
+All baselines are causal rules on the mid price of the market itself.  With
+$\Delta^{-}_{L} = \operatorname{mid}(t) - \operatorname{mid}(t-L)$ the change over the
+past lookback $L$:
+\begin{itemize}[nosep]
+  \item \textbf{Constant}: always \textsc{const}; balanced accuracy $1/3$ by construction.
+  \item \textbf{Momentum-$L$}: predict $\operatorname{sign}(\Delta^{-}_{L})$.
+  \item \textbf{Mean Reversion-$L$}: predict $-\operatorname{sign}(\Delta^{-}_{L})$, and
+  \textsc{const} if the price did not move.
+\end{itemize}
+
+\paragraph{Advantages and limits.}  \todo{to write}
+
+\section{Stateless learners on hand-made features}
+\label{sec:models:stateless}
+
+A LightGBM classifier \cite{ke2017lightgbm} on the sixty-one features of
+\cref{sec:prep:features}, trained with class-balanced weights on 7--11 March and
+early-stopped on 12 March, adding one group of features at a time.  On the same table,
+an MLP and a TabM ensemble, trained as tabular models should be (\cref{sec:bg:tabular}),
+to tell whether a difference between the trees and a deep model is the learner or the
+training regime.  \todo{hyper-parameters}
+
+\paragraph{Advantages and limits.}  \todo{to write}
+
+\section{Sequence models of the order-book stream}
+\label{sec:models:sequence}
+
+\subsection{The continuous-time stateful model}
+\label{sec:models:ctdgnn}
+
+The model (CT-DGNN in the code) processes the stream block by block.  At block time $t$
+it receives the markets that updated their book since the previous block, with a window
+of their last $K$ book states, and the transactions of the block as edges between
+wallets and markets; it keeps a state vector for every market and every wallet.
+\todo{one step of the model, with the architecture figure from the old chapter:}
+\begin{itemize}[nosep]
+  \item states and initialisation; continuous-time decay of the states;
+  \item order-book update: the window encoders (space first, or time first);
+  \item hierarchical memory at three rates; global state;
+  \item long-lookback price features and the direct path, which contains the
+  mean-reversion rule as a special case;
+  \item predictor, loss and training (truncated BPTT, one pass through the stream).
+\end{itemize}
+
+\subsection{The stateful model as the residual of the trees}
+\label{sec:models:residual}
+
+\todo{cross-fitted tree log-probabilities added to the output logits; at initialisation
+the model is the tree model, and the number that measures the state is the gain over it}
+
+\subsection{A pretrained forecaster used zero-shot}
+\label{sec:models:zeroshot}
+
+\todo{Chronos-2 on the last 512 mids of the market; three decision rules; the same
+quantiles as features of the stateful model}
+
+\paragraph{Advantages and limits.}  \todo{to write}
+
+\section{Graph models}
+\label{sec:models:graph}
+
+\subsection{Message passing on transactions}
+\label{sec:models:mp}
+
+\todo{edges $(w, m)$ with a 7-dimensional feature; attention over the incident edges
+and a GRU update; the token-orientation feature; the enrichments (wallet skill, placebo
+skill, past behaviour); the ablation without edges}
+
+\subsection{The two graphs}
+\label{sec:models:twographs}
+
+\todo{the wallet--market graph, read by message passing, and the market--market graph
+between the contracts of the same event, measured first through the sibling features}
+
+\paragraph{Advantages and limits.}  \todo{to write}
+
+\section{Information outside the book}
+\label{sec:models:external}
+
+\todo{the foundation-model forecasts, the news flow, the text of the market; each
+measured first in the stateless learner}
+
+\paragraph{Advantages and limits.}  \todo{to write}
+
+\section{The families at a glance}
+\label{sec:models:summary}
+
+\todo{table: family, members, what it reads, where its state lives, reference}

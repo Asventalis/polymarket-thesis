@@ -1,0 +1,46 @@
+\chapter{Introduction}
+\label{ch:intro}
+
+% da scrivere per ultima; la descrizione di Polymarket non va qui ma nel background
+\todo{to be written last, once the other chapters are stable.  Only the outline for now.}
+
+\section{Context}
+\label{sec:intro:object}
+
+Prediction markets as aggregators of dispersed information
+\cite{wolfers2004prediction,arrow2008promise}; a decentralised one, Polymarket, exposes
+the whole order book and every trade with the wallet behind it, at a resolution of about
+two seconds, on tens of thousands of markets at once.  \todo{one page on why this is a
+different object for a data scientist; the mechanics stay in \cref{ch:pm}}
+
+\section{The problem}
+\label{sec:intro:difficulty}
+
+\todo{the task (direction of the mid price over one minute to twelve hours) and why it is
+hard: a price consolidates information; it is bounded and discrete; it is mostly still;
+much of what moves it is outside the data}
+
+\section{Research questions}
+\label{sec:intro:questions}
+
+\begin{enumerate}[nosep,label=\textbf{Q\arabic*},ref=Q\arabic*]
+  \item \label{q:process} What regularities does the price process of a prediction
+  market have, and how is its trading organised?
+  \item \label{q:information} Which publicly observable information predicts the
+  direction of the mid price?
+  \item \label{q:models} Which families of models can read that information, and what
+  is a sequential state or a neighbourhood worth over a stateless learner on the same
+  inputs?
+  \item \label{q:horizon} How do the answers change with the horizon and with the kind
+  of market?
+\end{enumerate}
+
+\section{Contributions}
+\label{sec:intro:contributions}
+
+\todo{list, once the results chapter is in place}
+
+\section{Structure of the thesis}
+\label{sec:intro:structure}
+
+\todo{one paragraph per chapter}

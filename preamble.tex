@@ -1,0 +1,24 @@
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[italian,english]{babel}
+\usepackage{csquotes}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,array}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[margin=2.8cm]{geometry}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage[style=numeric-comp,sorting=none,backend=biber,maxbibnames=8,giveninits=true,doi=false,isbn=false,url=true]{biblatex}
+\usepackage[hidelinks]{hyperref}
+\usepackage{bookmark}
+\usepackage[capitalise,nameinlink]{cleveref}
+\graphicspath{{figures/}}
+% tikz/pgfplots per le figure: da aggiungere quando servono
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+% a tabular that is scaled down only when wider than the text width
+\newsavebox{\fittablebox}
+\newenvironment{fittable}{\begin{lrbox}{\fittablebox}}{\end{lrbox}%
+  \ifdim\wd\fittablebox>\textwidth\resizebox{\textwidth}{!}{\usebox{\fittablebox}}\else\usebox{\fittablebox}\fi}

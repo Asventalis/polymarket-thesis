@@ -1,0 +1,24 @@
+% Struttura concordata con il prof (mail del 29/10): introduzione (da scrivere per ultima),
+% background, dataset, metodologia, esperimenti e risultati, conclusioni.
+\documentclass[11pt,a4paper,twoside,openright]{book}
+\input{preamble}
+\addbibresource{bibliography.bib}
+\begin{document}
+\frontmatter
+\input{frontmatter/titlepage}
+\input{frontmatter/abstract}
+\tableofcontents
+% \listoffigures
+% \listoftables
+\mainmatter
+\input{chapters/01_introduction}
+\input{chapters/02_background}
+\input{chapters/03_dataset}
+\input{chapters/04_methodology}
+\input{chapters/05_experiments}
+\input{chapters/06_conclusions}
+\appendix
+\input{appendices/a_features}
+\backmatter
+\printbibliography[heading=bibintoc]
+\end{document}

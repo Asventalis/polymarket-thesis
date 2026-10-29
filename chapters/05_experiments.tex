@@ -1,0 +1,97 @@
+\chapter{Experiments and Results}
+\label{ch:experiments}
+
+% da riorganizzare per famiglia nell'ordine del cap. 4; finora spostati setup e regole causali
+\todo{the results of the old chapters, reorganised by family in the order of
+\cref{ch:models}; only the setup and the causal rules moved so far}
+
+\section{Experimental setup}
+\label{sec:data:protocol}
+
+Models are trained on 6--12 March and validated on 13 March, with 24--26 March locked
+for the final numbers.  All numbers are balanced accuracies on the validation day,
+reported on all samples and on three subsets: the \emph{deduplicated} samples (at most
+one per market per fifteen minutes), the \emph{extreme} ones (mid outside
+$[0.05, 0.95]$) and the \emph{central} ones.  Differences between models are computed on
+exactly the same samples and carry a 95\% hour-block bootstrap interval.  \todo{the
+three rules that make the comparisons fair: the same samples; the same post-hoc
+calibration (two logit offsets, cross-fitted on the validation hours); full-length runs
+behind every claim.  Compute: one run per GPU, hours per run.}
+
+\section{Rules and stateless learners}
+\label{ch:stateless}
+
+\subsection{Causal rules}
+\label{sec:stateless:rules}
+
+\begin{table}[t]
+\centering
+\caption{Causal rules on the validation day, balanced accuracy, all samples and
+deduplicated samples.  Momentum-$H$ and Mean Reversion-$H$ use the change over the past
+$H$; Momentum last-tick uses the sign of the last mid change.}
+\label{tab:exp:baselines}
+\small
+\begin{fittable}\begin{tabular}{lcccccccccc}
+\toprule
+& \multicolumn{2}{c}{1 min} & \multicolumn{2}{c}{15 min} & \multicolumn{2}{c}{1 h} & \multicolumn{2}{c}{6 h} & \multicolumn{2}{c}{12 h} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+Rule & all & dedup & all & dedup & all & dedup & all & dedup & all & dedup \\
+\midrule
+Constant                  & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 \\
+Momentum last-tick        & --- & --- & --- & --- & 0.375 & 0.387 & 0.365 & 0.374 & 0.362 & 0.370 \\
+Momentum-$H$              & --- & --- & --- & --- & 0.472 & 0.445 & 0.436 & 0.422 & 0.424 & 0.420 \\
+Mean Reversion-$H$        & \textbf{0.536} & \textbf{0.501} & \textbf{0.537} & \textbf{0.525} & \textbf{0.527} & \textbf{0.506} & \textbf{0.501} & \textbf{0.488} & \textbf{0.507} & \textbf{0.500} \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+Mean Reversion-$H$ is above $0.5$ at every horizon and it is the rule to beat
+(\cref{tab:exp:baselines}); Momentum is far below it.  \todo{why mean reversion is
+strong: a bounded, discrete price whose moves are mostly one-tick oscillations that
+revert}
+
+\subsection{Trees on hand-made features: the no-state control}
+\label{sec:stateless:control}
+
+\todo{the table by feature group at one hour; the other horizons; where the information
+is}
+
+\subsection{Neural tabular learners: trees against networks}
+\label{sec:stateless:tabular}
+
+\todo{MLP and TabM against LightGBM, three seeds}
+
+\section{Stateful models}
+\label{ch:stateful}
+
+\todo{from the first models to the last: the retraining on the correct target; loss and
+imbalance variants; memory, direct path and lookbacks; the window encoders; the state
+given the control's inputs; the cost of the online regime; the residual of the trees;
+what the state is worth}
+
+\section{Graph models}
+\label{ch:graph}
+
+\todo{the wallet--market graph at every stage of the design; smart money; the sibling
+contracts; why the graph does not help}
+
+\section{Information outside the book}
+\label{ch:external}
+
+\todo{foundation models zero-shot and as features; news volume; the text of the market}
+
+\section{Across horizons, kinds of market and seeds}
+\label{ch:horizons}
+
+\todo{one and fifteen minutes; one hour; six and twelve hours; the synthesis table; by
+kind of market; robustness (seeds, calibration, short tests against full runs)}
+
+\section{Test set}
+\label{sec:horizons:test}
+
+\todo{final numbers on 24--26 March, produced once at the end}
+
+\section{Discussion}
+\label{sec:horizons:questions}
+
+\todo{the results against the four questions of \cref{sec:intro:questions}}

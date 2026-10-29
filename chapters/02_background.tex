@@ -1,0 +1,185 @@
+\chapter{Background}
+\label{ch:background}
+
+% Polymarket: spostato (in parte) dal vecchio capitolo; i concetti di ML sono da scrivere
+This chapter gives the background that the rest of the thesis assumes: what a prediction
+market is and how Polymarket works (\cref{sec:pm:what,ch:pm}), and the notions of machine
+learning that the methodology uses: time series and sequence models (\cref{sec:bg:ts}),
+graphs and graph neural networks (\cref{sec:bg:graphs}), learners on tables of features
+(\cref{sec:bg:tabular}) and evaluation under class imbalance (\cref{sec:bg:eval}).
+
+\section{Prediction markets}
+\label{sec:pm:what}
+
+A prediction market trades contracts whose value is tied to the outcome of a future
+event.  The simplest contract is the \emph{binary} one: it pays one unit if the event
+happens and nothing otherwise.  If traders are risk-neutral and have no budget
+constraints, the price of such a contract equals the market's aggregate probability of
+the event; under weaker assumptions the price is still close to the mean belief of the
+traders \cite{wolfers2004prediction,manski2006interpreting}.  Surveys of the empirical
+literature find that market prices are well calibrated and competitive with polls and
+expert forecasts, and that they react to news within minutes
+\cite{wolfers2004prediction,snowberg2012prediction,arrow2008promise}.
+
+\todo{the favourite--longshot bias \cite{page2013calibrated} and its Polymarket version;
+the concentration of profits in a few accounts}
+
+\section{Polymarket}
+\label{ch:pm}
+
+\subsection{How Polymarket works}
+\label{sec:pm:mechanics}
+
+Polymarket is a decentralised prediction market built on the Polygon blockchain, with
+the stablecoin USDC as collateral.  Every market is a question with two outcomes:
+``Yes'' and ``No'' for a binary question, ``Up'' and ``Down'' for a price interval, the
+two teams of a game, ``Over'' and ``Under'' for a total.  Each outcome is a conditional
+token: one dollar of collateral can at any time be \emph{split} into one Yes token and
+one No token, a pair can be \emph{merged} back into one dollar, and after resolution the
+winning token is \emph{redeemed} for one dollar and the losing one for nothing.  The two
+prices therefore sum to about one dollar, and a trader who wants to sell Yes at price $p$
+is indistinguishable, for the matching engine, from one who wants to buy No at $1 - p$.
+
+Trading takes place on a central limit order book that is \emph{hybrid}.  Orders are
+signed messages that the trader submits to an off-chain operator, which keeps the book,
+publishes every change to it and matches crossing orders; a match is then settled
+on-chain by the exchange contract, which transfers tokens and collateral and emits a fill
+event with the maker, the taker, the token, the side, the quantity, the price and the
+fee.  The book is thus observable as a stream of price-level updates, and the trades as
+on-chain records attributed to wallet addresses.
+
+\todo{multi-outcome events (the candidates of an election, the strikes of a ladder) and
+the bounds between the prices of sibling contracts \cite{gebele2026arbitrage}}
+
+\subsection{Tokens, contracts and transactions: the blockchain layer}
+\label{sec:pm:chain}
+
+Polygon produces a block roughly every two seconds; every fill is a transaction in one
+of its blocks and carries the block number, the transaction hash and the wallet
+addresses of the maker and the taker.  Because settlement is on-chain, every trade is
+attributed to a wallet that persists across markets and across time, which makes it
+possible to build a bipartite graph between wallets and markets.  \todo{what wallet-level
+data has been used for on Polymarket; the block as the time step of the models}
+
+\subsection{The limit order book}
+\label{sec:pm:lob}
+
+A limit order book \cite{gould2013limit} is, for one token, two sorted lists of resting
+limit orders, bids and asks, each with the total size resting at that price.  The highest
+bid and the lowest ask are the best quotes, their average is the \emph{mid price} and
+their difference the \emph{spread}; the size at the first levels on each side is the
+\emph{depth}.  Prices on Polymarket live in $[0, 1]$ with a tick of $0.001$ on most
+markets, so a contract that is almost certain trades at $0.99$ or above and its price can
+only move by a few ticks.  Because the Yes and No books mirror each other, the book of one
+side describes the market, and this thesis reads the Yes side.  An \emph{order-book event}
+is a change of the size resting at one price on one side; most events do not touch the
+best quotes.
+
+\todo{the two consequences that recur in every result: a bounded, discrete price whose
+changes are mostly one-tick oscillations that revert, and dynamics that depend on the
+price level.  The microstructure study of \textcite{dubach2026anatomy}.}
+
+\subsection{The life of a market}
+\label{sec:pm:life}
+
+\todo{creation and metadata (known in advance), trading, the end date; the crypto
+interval markets that live five or fifteen minutes, sports before and during the game,
+political questions for months; resolution through UMA's optimistic oracle
+\cite{polymarket2026resolution}, which happens after the end date and is never an input}
+
+\subsection{What is known about Polymarket}
+\label{sec:pm:related}
+
+\todo{related work: outcome forecasting with language models and news; dataset papers;
+the economics of the platform.  The closest work is \textcite{young2026openmarket} on the
+15-minute Bitcoin markets.  This thesis predicts the price while the market is open, not
+the outcome.  Move the citations from the old related-work section.}
+
+\section{Time series, order books and sequence models}
+\label{sec:bg:ts}
+
+\subsection{Concepts}
+\label{sec:bg:ts:concepts}
+
+\todo{to write.  Outline:}
+\begin{itemize}[nosep]
+  \item time series; the order-book and transaction streams are sequences of timed
+  \emph{events}, not series sampled on a regular grid;
+  \item two ways of reading a stream: a fixed summary of the past handed to a learner
+  without memory (\emph{stateless}), or a \emph{state} per market updated at every event
+  (\emph{stateful}, recurrent); what each can see, how each is trained, how each handles
+  irregular time;
+  \item the task: the direction of the change over a horizon $H$, three classes
+  (\textsc{down}, \textsc{const}, \textsc{up}); the random walk as the null model.
+\end{itemize}
+
+\subsection{Price predictability and limit order books}
+\label{sec:bg:lob}
+
+The efficient-market hypothesis in its weak form states that past prices carry no
+information about future prices \cite{fama1970efficient}.  At short horizons this is only
+approximately true: the stylised facts of high-frequency returns \cite{cont2001empirical}
+include a negative autocorrelation at the shortest lags, produced by the bid--ask bounce
+and by the discreteness of prices, and in a limit order book the next move of the mid is
+related to the order-flow imbalance at the best quotes \cite{cont2014price}.
+\todo{deep learning on limit order books, from DeepLOB \cite{zhang2019deeplob} on;
+predictability depends on the microstructure more than on the architecture
+\cite{briola2024deep}; one model pooled over many assets \cite{sirignano2019universal};
+the warning about linear baselines \cite{zeng2023transformers}}
+
+\subsection{Recurrent networks and multi-rate memories}
+\label{sec:bg:rnn}
+
+\todo{GRU \cite{cho2014gru} and truncated backpropagation through time; the clockwork RNN
+\cite{koutnik2014clockwork} and GRU-D \cite{che2018grud} as the references of the
+hierarchical memory and of the continuous-time decay}
+
+\subsection{Time-series foundation models}
+\label{sec:bg:tsfm}
+
+\todo{Chronos and Chronos-2 \cite{ansari2024chronos,ansari2025chronos2}; the evidence in
+finance, close to a random walk}
+
+\section{Graphs and graph neural networks}
+\label{sec:bg:graphs}
+
+\subsection{Concepts}
+\label{sec:bg:graphs:concepts}
+
+\todo{to write.  Outline:}
+\begin{itemize}[nosep]
+  \item graphs; the bipartite graph between wallets and markets; degree, components,
+  $k$-cores;
+  \item dynamic graphs: a sequence of snapshots or a stream of timed events;
+  \item message passing; on a bipartite dynamic graph, from wallets to the markets they
+  trade and back.
+\end{itemize}
+
+\subsection{Graph neural networks}
+\label{sec:bg:gnn}
+
+\todo{message passing \cite{scarselli2009gnn,micheli2009nn4g,gilmer2017mpnn,bacciu2020gentle};
+neighbourhood sampling and attention over the neighbours; a GRU as the node update
+\cite{li2016ggnn}}
+
+\subsection{Dynamic graphs}
+\label{sec:bg:dyn}
+
+\todo{continuous-time dynamic graphs \cite{kazemi2020survey,gravina2024dynamic}; the
+memory-based models up to Temporal Graph Networks \cite{rossi2020tgn}; a model should
+contain the strong heuristic as a special case \cite{feldman2026navis}}
+
+\section{Gradient boosting and neural tabular learners}
+\label{sec:bg:tabular}
+
+\todo{LightGBM \cite{ke2017lightgbm} as the reference on tables of features; how a
+neural tabular model has to be trained to compete
+\cite{gorishniy2022embeddings,holzmuller2024betterbydefault}; TabM
+\cite{gorishniy2025tabm}; logit adjustment under class imbalance
+\cite{menon2021logitadjustment}}
+
+\section{Evaluation under imbalance and dependence}
+\label{sec:bg:eval}
+
+\todo{balanced accuracy \cite{brodersen2010balanced}; dependent samples and the
+hour-block bootstrap \cite{kunsch1989jackknife}; the focal loss \cite{lin2017focal}}
