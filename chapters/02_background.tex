@@ -1,7 +1,7 @@
 \chapter{Background}
 \label{ch:background}
 
-% Polymarket: spostato (in parte) dal vecchio capitolo; i concetti di ML sono da scrivere
+% Polymarket: spostato dal vecchio capitolo e completato; i concetti di ML sono da scrivere
 This chapter gives the background that the rest of the thesis assumes: what a prediction
 market is and how Polymarket works (\cref{sec:pm:what,ch:pm}), and the notions of machine
 learning that the methodology uses: time series and sequence models (\cref{sec:bg:ts}),
@@ -19,10 +19,12 @@ the event; under weaker assumptions the price is still close to the mean belief 
 traders \cite{wolfers2004prediction,manski2006interpreting}.  Surveys of the empirical
 literature find that market prices are well calibrated and competitive with polls and
 expert forecasts, and that they react to news within minutes
-\cite{wolfers2004prediction,snowberg2012prediction,arrow2008promise}.
-
-\todo{the favourite--longshot bias \cite{page2013calibrated} and its Polymarket version;
-the concentration of profits in a few accounts}
+\cite{wolfers2004prediction,snowberg2012prediction,arrow2008promise}.  Two
+systematic deviations are documented: a favourite--longshot bias, where unlikely events
+are over-priced and likely events under-priced, which grows with the time to expiration
+\cite{page2013calibrated}; and, on Polymarket itself, the same bias
+\cite{cardozo2026favorite} together with a concentration of trading profits in a very
+small set of accounts \cite{akey2026whowins}.
 
 \section{Polymarket}
 \label{ch:pm}
@@ -46,10 +48,15 @@ publishes every change to it and matches crossing orders; a match is then settle
 on-chain by the exchange contract, which transfers tokens and collateral and emits a fill
 event with the maker, the taker, the token, the side, the quantity, the price and the
 fee.  The book is thus observable as a stream of price-level updates, and the trades as
-on-chain records attributed to wallet addresses.
+on-chain records attributed to wallet addresses.  The two streams are not the same
+thing: most book events are orders placed or cancelled away from the best quotes and never
+trade; a fill is a book event that found a counterparty.
 
-\todo{multi-outcome events (the candidates of an election, the strikes of a ladder) and
-the bounds between the prices of sibling contracts \cite{gebele2026arbitrage}}
+Multi-outcome events, the candidates of an election or the strikes of a ``Bitcoin above
+$x$'' ladder, are sets of binary markets whose prices are linked by the payoff structure
+(exactly one candidate wins), with a ``negative risk'' conversion that lets a trader hold
+the No side of every candidate as one position.  The prices of such siblings must respect
+bounds that the market does not always enforce \cite{gebele2026arbitrage}.
 
 \subsection{Tokens, contracts and transactions: the blockchain layer}
 \label{sec:pm:chain}
@@ -58,8 +65,16 @@ Polygon produces a block roughly every two seconds; every fill is a transaction 
 of its blocks and carries the block number, the transaction hash and the wallet
 addresses of the maker and the taker.  Because settlement is on-chain, every trade is
 attributed to a wallet that persists across markets and across time, which makes it
-possible to build a bipartite graph between wallets and markets.  \todo{what wallet-level
-data has been used for on Polymarket; the block as the time step of the models}
+possible to build a bipartite graph between wallets and markets, and to ask whether the
+history of a wallet (its activity, its past accuracy, the other markets it trades) is
+informative about the price of the markets it trades now.  Works on Polymarket have used
+wallet-level data to study who wins and who loses \cite{akey2026whowins}, insider trading
+and informed flow \cite{bsic2026polymarket}, and arbitrage between related markets
+\cite{saguillo2025unravelling}; none of them, to our knowledge, has used the wallet--market
+graph as the input of a forecasting model, which is one of the questions of this thesis
+(\cref{ch:graph}).  The block is also the natural time step of the on-chain stream, and it
+is the time step of every stateful model in the thesis (\cref{sec:data:blocks}); the graph
+itself is described in \cref{sec:expl:graph}.
 
 \subsection{The limit order book}
 \label{sec:pm:lob}
@@ -73,27 +88,58 @@ markets, so a contract that is almost certain trades at $0.99$ or above and its 
 only move by a few ticks.  Because the Yes and No books mirror each other, the book of one
 side describes the market, and this thesis reads the Yes side.  An \emph{order-book event}
 is a change of the size resting at one price on one side; most events do not touch the
-best quotes.
+best quotes.  A \emph{snapshot} is the full state of the book at one moment.
 
-\todo{the two consequences that recur in every result: a bounded, discrete price whose
-changes are mostly one-tick oscillations that revert, and dynamics that depend on the
-price level.  The microstructure study of \textcite{dubach2026anatomy}.}
+Two consequences of this structure recur in every result of the thesis.  A mid price is a
+bounded, discrete process observed through a thin book, so most of its changes are
+one-tick oscillations produced by an order arriving at or leaving the best quote, which
+are not information and which revert; and the dynamics depend on the price level, since a
+market at $0.98$ has two ticks of room on one side and a hundred on the other.
+\textcite{dubach2026anatomy} document the resulting microstructure on a 52-day sample:
+depth depends on the market's duration, price level and volume and is spread over hundreds
+of levels rather than concentrated at the top, and the trade direction inferred from the
+public book matches the on-chain record only about 60\% of the time.  This is why the
+thesis takes the direction of a trade from the on-chain fill and not from the book.
 
 \subsection{The life of a market}
 \label{sec:pm:life}
 
-\todo{creation and metadata (known in advance), trading, the end date; the crypto
-interval markets that live five or fifteen minutes, sports before and during the game,
-political questions for months; resolution through UMA's optimistic oracle
-\cite{polymarket2026resolution}, which happens after the end date and is never an input}
+A market is created with its question, its resolution rules, its two outcomes and an end
+date; its contract is deployed on-chain and it starts accepting orders at known times, both
+recorded in the market's metadata and both known in advance.  It then trades until the
+event is decided.  Some markets are born and die within minutes: the crypto interval
+markets ask whether the price of Bitcoin, Ethereum or Solana will be above its starting
+value at the end of a five- or fifteen-minute interval, and a new one opens as the previous
+one closes; their prices follow an external reference, the spot price on a centralised
+exchange, with a lag of a few hundred milliseconds \cite{young2026openmarket}.  Sports
+markets trade before and during the game, with a recorded start time; political, economic
+and cultural questions trade for weeks or months; daily temperature and weather questions
+resolve every day.
+
+Resolution is not decided by Polymarket.  When the event is over, a user proposes the
+outcome to UMA's optimistic oracle and posts a bond in collateral; the proposal stands if
+nobody disputes it within a two-hour challenge window, a wrong or premature proposal
+forfeits the bond, and a disputed proposal goes through the oracle's dispute-resolution
+process \cite{polymarket2026resolution}.  Resolution is therefore an event that happens
+after the end date, sometimes well after it.  The thesis never uses the outcome or the
+resolution time as an input: it predicts the price while the market is still open.
+\todo{numbers on how many markets exist and how many are active per day, from
+\cref{ch:data}}
 
 \subsection{What is known about Polymarket}
 \label{sec:pm:related}
 
-\todo{related work: outcome forecasting with language models and news; dataset papers;
-the economics of the platform.  The closest work is \textcite{young2026openmarket} on the
-15-minute Bitcoin markets.  This thesis predicts the price while the market is open, not
-the outcome.  Move the citations from the old related-work section.}
+Machine-learning work on Polymarket has so far concentrated on \emph{outcome}
+forecasting with language models and news \cite{cheng2026polybench,barot2026polyswarm},
+on dataset construction \cite{jia2026unlocking,young2026openmarket} and on the economics
+of the platform \cite{reichenbach2025exploring,tsang2026anatomy}.
+\textcite{young2026openmarket} is the closest in spirit: a logistic model on 43
+order-flow features does not beat the Polymarket mid price itself as a predictor of the
+outcome of the 15-minute Bitcoin markets.  The present thesis predicts the \emph{price},
+not the outcome, over horizons at which the market is still open; the natural references
+are therefore the limit-order-book forecasting literature (\cref{sec:bg:lob}) and the
+literature on dynamic graphs (\cref{sec:bg:dyn}).  \todo{check whether anything else
+came out on price (not outcome) forecasting}
 
 \section{Time series, order books and sequence models}
 \label{sec:bg:ts}
