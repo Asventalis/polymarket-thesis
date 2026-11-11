@@ -1,0 +1,227 @@
+\section{Rules and stateless learners}
+\label{ch:stateless}
+
+The families without state come first: a causal rule on the market's own price, or a learner that
+reads a few dozen numbers computed from the clean data at the sample time and nothing else.
+It is the family that tells where the information is.
+
+\subsection{Causal rules}
+\label{sec:stateless:rules}
+
+
+\begin{table}[t]
+\centering
+\caption{Causal rules on the validation day, balanced accuracy, all samples and
+deduplicated samples (one per market per ten minutes).  Momentum-$H$ and Mean
+Reversion-$H$ use the change over the past $H$; Momentum last-tick uses the sign of the
+last mid change.  At 1 min and 15 min only Mean Reversion was evaluated, on the samples of
+the short-horizon runs.}
+\label{tab:exp:baselines}
+\small
+\begin{fittable}\begin{tabular}{lcccccccccc}
+\toprule
+& \multicolumn{2}{c}{1 min} & \multicolumn{2}{c}{15 min} & \multicolumn{2}{c}{1 h} & \multicolumn{2}{c}{6 h} & \multicolumn{2}{c}{12 h} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+Rule & all & dedup & all & dedup & all & dedup & all & dedup & all & dedup \\
+\midrule
+Constant, prior, uniform  & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 & 0.333 \\
+Momentum last-tick        & --- & --- & --- & --- & 0.375 & 0.387 & 0.365 & 0.374 & 0.362 & 0.370 \\
+Momentum-$H$              & --- & --- & --- & --- & 0.472 & 0.445 & 0.436 & 0.422 & 0.424 & 0.420 \\
+Mean Reversion-$H$        & \textbf{0.536} & \textbf{0.501} & \textbf{0.537} & \textbf{0.525} & \textbf{0.527} & \textbf{0.506} & \textbf{0.501} & \textbf{0.488} & \textbf{0.507} & \textbf{0.500} \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+Mean Reversion is above $0.5$ at every horizon and it is the rule to beat
+(\cref{tab:exp:baselines}).  Momentum is far below it and, on the sign of the last tick,
+close to the constant rule: on this data the sign of the last move is \emph{anti}-informative,
+and the whole of the simple predictability is a reversal.  The Mean Reversion values quoted
+in later sections differ in the third decimal from these because every comparison is made on
+the samples of the run it belongs to (\cref{sec:models:protocol}).
+
+\subsubsection{Why mean reversion is strong}
+\label{sec:analysis:extreme}
+
+
+A Polymarket mid price is a bounded, discrete process observed through a thin book.
+Most of its changes are one-tick moves produced by an order arriving at or leaving the
+best quote; they are not information and they revert.  A market that has not moved in
+the last hour is usually illiquid or settled near a boundary and will not move in the
+next hour either.  Mean Reversion-$H$ encodes exactly these two regularities, and it is why a
+rule that uses one number is above $0.5$ balanced accuracy.  Its strength is largest at
+extreme prices (below $0.05$ or above $0.95$), where the process is almost purely a
+one-tick oscillation, and it is there that every learned model is weakest relative to it.
+
+\subsection{Trees on hand-made features: the no-state control}
+\label{sec:stateless:control}
+\label{sec:exp:nostate}
+
+The sixty-one features of \cref{sec:prep:features} were given to LightGBM one group at a
+time, on the validation samples of the best one-hour stateful model (the time-first model
+of \cref{sec:stateful:encoders}), so that the two can be compared on the same samples.
+\begin{table}[t]
+\centering
+\caption{Gradient boosting without state against the deep models, 1h, on the same
+validation samples (balanced accuracy; last column: difference from the time-first model
+in points with 95\% hour-block bootstrap intervals).}
+\label{tab:exp:nostate}
+\small
+\begin{fittable}\begin{tabular}{lrccccc}
+\toprule
+Model & \# & All & Dedup. & Extreme & Central & $\Delta$ vs time-first \\
+\midrule
+Mean Reversion                 &    & 0.5311 & 0.5180 & 0.5230 & 0.5348 & $-3.32$ \\
+GRU $K{=}10$ model             &    & 0.5547 & 0.5382 & 0.5385 & 0.5602 & $-0.97$ [$-1.28$, $-0.63$] \\
+Time-first $K{=}64$ model      &    & 0.5643 & 0.5410 & 0.5377 & 0.5748 & \\
+\midrule
+G1 price history               & 12 & 0.5617 & 0.5509 & 0.5449 & 0.5685 & $-0.26$ [$-0.67$, $+0.17$] \\
+G2 + book shape                & 26 & 0.5831 & 0.5718 & 0.5620 & 0.5918 & $+1.87$ [$+1.55$, $+2.19$] \\
+G3 + activity and clock        & 47 & 0.5929 & 0.5757 & 0.5722 & 0.6015 & $+2.86$ [$+2.54$, $+3.16$] \\
+G4 + on-chain trades           & 56 & 0.5997 & 0.5812 & 0.5788 & 0.6083 & $+3.54$ [$+3.22$, $+3.88$] \\
+G5 + static fields             & 61 & \textbf{0.6015} & \textbf{0.5827} & \textbf{0.5804} & \textbf{0.6107} & $+3.72$ [$+3.33$, $+4.12$] \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+Price history alone reproduces the deep model.  The book shape adds two points, the
+activity clock one more, the trades two thirds of a point and the static fields a fifth;
+the full model is $3.7$ points above the best deep model on the full stream, $4.2$ on the
+deduplicated samples, and ahead in every one of the 24 validation hours and in every
+market category.  The gain importance is dominated by the time since the last mid change
+(32\%), the number of mid changes in the last hour (14\%) and the realised volatility
+(10\%); the level-1 imbalance and the category get 1\% each and every order-flow
+accumulator of the tensor less than that.  Univariately, on the samples that moved, the
+sign of ``mid minus its one-hour mean'' gives the direction 57.3\% of the time, the
+level-1 imbalance 55.7\%, the microprice 55.5\%, the on-chain flow 52.6\% (on the fifth
+of the samples with trades), the 10-level imbalance 50.8\% and the tensor's all-level
+order-flow imbalance 50.0--50.5\%; for separating \textsc{const} from a move, the time
+since the last mid change has an AUC of 0.85.
+
+\subsubsection{The other horizons}
+\label{sec:stateless:horizons}
+
+\begin{figure}[t]
+\centering
+\input{figures/fig_groups}
+\caption{The stateless control by feature group at every horizon, against Mean Reversion
+(all samples).  Price history alone (G1) is below the rule at one minute and above the
+stateful model at six and twelve hours; the activity clock (G3) carries most of the gain at
+the short horizons.}
+\label{fig:stateless:groups}
+\end{figure}
+
+The same control was run at the other horizons (\cref{tab:exp:nostate:horizons,fig:stateless:groups}): at
+6h and 12h on the exact validation samples of the deep models, at 1 minute, where no deep
+model has saved predictions, on one tensor row in twenty of the validation day labelled
+like the training rows, against Mean Reversion alone.  At 6h and 12h the full model is
+$6.4$--$6.5$ points above the rule: $3.2$ above the time-first model at 6h and $8.0$ above
+the reference at 12h, where the deep model is below the rule.  Unlike at 1h, price history
+alone is already clearly above the deep model at these horizons ($+1.7$ at 6h, $+5.3$ at
+12h): the five returns read by trees together with the price level carry most of the
+long-horizon signal, and the 12h return is the strongest single feature (reversal sign,
+$57.9\%$ directional hit).  The activity clock keeps a third of the gain importance, and
+the time to the end of the market, its age and its duration rise to about $9\%$ together.
+At 1 minute the direction of a move is nearly unpredictable (the best univariate hit
+rate is $54.1\%$, the level-1 imbalance), and the whole gain is in \emph{whether} the mid
+will move: the number of mid changes in the last hour separates \textsc{const} from a
+move with an AUC of $0.94$, the time since the last change $0.91$, the event count of the
+last minute $0.89$, and the activity group alone is $7.2$ points above the rule.  Price
+history alone is in fact \emph{below} the rule at 1 minute on the deduplicated ($-6.1$)
+and extreme ($-7.1$) samples: trees on returns learn the move-or-not prior of the full
+stream, which is wrong on independent samples.  The ordering of the groups is the same
+at every horizon, activity clock first, then book shape, then price history, with trades
+and static fields marginal; the tensor's order-flow accumulators stay below $1\%$ of the
+importance everywhere.
+
+\begin{table}[t]
+\centering
+\caption{The no-state control at the other horizons, all samples and deduplicated samples
+(balanced accuracy; $\Delta$ in points with 95\% hour-block bootstrap intervals).  At 1
+minute the samples are one tensor row in twenty of the validation day and the only
+comparator is Mean Reversion.}
+\label{tab:exp:nostate:horizons}
+\small
+\begin{fittable}\begin{tabular}{llcccccc}
+\toprule
+Horizon & Subset & MR & Best deep & G1 & G3 & G5 & $\Delta$ G5 $-$ MR [95\% CI] \\
+\midrule
+6h    & All   & 0.5069 & 0.5396 (TF) & 0.5380 & 0.5606 & \textbf{0.5716} & $+6.47$ [$+6.02$, $+6.91$] \\
+      & Dedup & 0.5002 & 0.5370 (TF) & 0.5360 & 0.5588 & \textbf{0.5665} & $+6.63$ \\
+12h   & All   & 0.5071 & 0.4914 (GRU) & 0.5446 & 0.5616 & \textbf{0.5715} & $+6.44$ [$+5.53$, $+7.33$] \\
+      & Dedup & 0.4995 & 0.5168 (GRU) & 0.5427 & 0.5598 & \textbf{0.5680} & $+6.85$ \\
+1 min & All   & 0.5862 & --- & 0.5901 & 0.6579 & \textbf{0.6594} & $+7.32$ [$+6.22$, $+8.65$] \\
+      & Dedup & 0.5244 & --- & 0.4636 & 0.5604 & \textbf{0.5610} & $+3.67$ \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+Two caveats.  The boosted model optimises balanced accuracy directly through its class
+weights, whereas the deep model is trained with the focal loss and predicts \textsc{up}
+for 15\% of the samples against 21.5\% in the labels, so part of the gap may be
+calibration (the deep model's probabilities were not saved, so a prior correction could not
+be tried).  And the control was trained on a tenth of five days; the deep model on seven
+full days.  Neither caveat is large enough to change the sign.
+
+\subsubsection{Where the information is}
+\label{sec:analysis:nostate}
+
+The control of \cref{sec:exp:nostate} is the most informative negative result of the
+thesis.  A model with no memory, reading a few dozen numbers that anyone would compute
+from the clean data, beats the best recurrent model by almost four points.  Three things
+follow.  First, the recurrent state is not where the information lives: the price history
+alone (five returns, the mid and the hour, fed to trees instead of to a linear direct path)
+already matches the deep model, so what the state adds on top of the heuristic is small.
+Second, the information the deep model misses is not hidden in the order book; it is the
+\emph{activity clock}.  The single best predictor of whether a price will move in the
+next hour is how long ago it last moved, followed by how many times it moved in the last
+hour; neither is a column of the tensor, and the event-clock window (\cref{sec:data:tensors})
+hides them, because a window of twenty events can be ten seconds or ten minutes old and
+the model is never told which.  Third, the way the book is compressed matters more than
+the architecture that reads it, which is the lesson of \textcite{kolm2023dofi} and
+\textcite{lucchese2024predictability} reproduced here: the direction is in the first
+level (imbalance, microprice) and in the position of the mid relative to its recent mean,
+not in ten levels of depth nor in an order-flow accumulator that sums changes at levels the
+mid will never reach.
+
+The other horizons sharpen the picture rather than change it.  At 6h and 12h the
+control is six and a half points above the rule and the price history alone already
+beats the deep model, so the long-horizon signal is a slow reversal of the 6h and 12h
+returns, modulated by the price level and by where the market is in its life (time to
+the end, age), which trees read directly and the direct path, linear in the returns,
+cannot bend to the level.  At 1 minute nothing predicts the direction, every feature is
+within four points of a coin toss on the samples that moved, and the whole task is to
+predict \emph{activity}: the gain of the control is the activity clock alone, and
+returns without it are worse than the rule on independent samples.  The horizon thus
+changes what the task is, from ``will the price move in the next minute'' to ``which
+way will it revert over the next half day'', and the same architecture cannot be the
+right one at both ends.
+
+\subsection{Neural tabular learners: trees against networks}
+\label{sec:stateless:tabular}
+
+Whether a gap between the trees and a deep model is the learner or the training regime can be
+settled on the control's table alone.  A wider tabular network (three layers of 512 units on the piecewise-linear encoding,
+shuffled mini-batches, a one-cycle schedule over sixteen epochs with early stopping) reaches
+0.5983 with a single seed and 0.5991 with three; the parameter-efficient ensemble TabM
+\cite{gorishniy2025tabm}, sixteen members sharing one backbone, reaches 0.6012, 0.6015 and 0.5996
+with three seeds, indistinguishable from LightGBM ($-0.04$ [$-0.21$, +0.11] for the seed average),
+and its combination with the trees adds nothing (+0.07): the two learners know the same things.
+The claim that trees beat networks on this table does not survive a properly trained network; the
+claim that the online, time-ordered regime of the stateful model costs between one and a half and
+two points does (one pass 0.5842, two passes 0.5907, tabular 0.6011; \cref{sec:stateful:regime}).
+
+At the short horizons the same learner on the same table gives the same answer
+(\cref{ch:horizons}): TabM is $+0.33$ over the calibrated trees at one minute and $+0.22$ at
+fifteen, and their combination adds nothing beyond TabM at either.  Trees and a properly
+trained network know the same things on this table.
+
+\subsection{What a stateless model cannot see}
+\label{sec:stateless:limits}
+
+A stateless learner reads a summary of the past at the sample time: how long since the last
+move, how many moves in the last hour, the shape of the book now, the returns over fixed
+lookbacks.  What it cannot read is the \emph{sequence} of book events, the order in which
+depth appeared and disappeared, the pattern of the last sixty seconds of a quiet market.
+Whether that sequence carries information beyond its summary is exactly what the stateful
+family measures, and the answer of \cref{ch:stateful,ch:horizons} is: not at one hour,
+where the summary is complete, and a little at one minute, where it is not.
+

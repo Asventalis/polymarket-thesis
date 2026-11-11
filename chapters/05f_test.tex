@@ -1,0 +1,283 @@
+\section{Test set}
+\label{sec:horizons:test}
+
+The locked period of 24--26 March was evaluated once, after every choice of the preceding
+sections had been made, with the protocol below.  The numbers of this section are the final
+ones of the thesis; where they differ from the validation day, the discussion of
+\cref{sec:horizons:questions} follows them.
+
+\paragraph{Protocol.}  The stateful models are the saved checkpoints of the validated runs,
+weights only, run over the test stream in evaluation mode with no learning: three warm-up
+days, 21--23 March, rebuild the per-market states, the hierarchical memory and the book
+buffers that a checkpoint does not hold, and the three days that follow are recorded.  The
+evaluation mode was checked on the validation day first.  Re-run on 13 March after a two-day
+warm-up, the one-hour reference checkpoint reproduces the hard predictions of its original
+validation file on 99.1\% of the samples and its balanced accuracy to the third decimal
+($0.5547$ against $0.5551$); the two-pass residual model reproduces them on 99.99\% of the
+samples, with a mean absolute difference in probability of $10^{-4}$; the fourteen other
+checkpoints of the battery agree with their original files on 94.9 to 99.4\% of the samples.
+The agreement is lowest at six and twelve hours, where the state lives longest, rises
+through the day in every run, and a seven-day warm-up moves it by less than one point: the
+residual disagreement comes from the original validation states, which were built while the
+weights were still changing, not from the length of the warm-up.  The same re-runs supply the
+validation probabilities of the older runs, which had not saved them, so that at six and
+twelve hours the comparison is calibrated against calibrated here, as at the shorter
+horizons.  Every model receives two logit offsets (on \textsc{down} and \textsc{up}) chosen
+once on the whole validation day, on the grid of $\pm 2$ in steps of $0.1$, and applied
+unchanged to the test days: unlike the cross-fitted offsets of \cref{sec:models:protocol},
+this is a calibration fixed on one day and used eleven days later, and how well it transfers
+is itself one of the results.  The stateless control is LightGBM G5 refitted exactly as in
+validation (fit rows of 7--11 March, early stopping on 12 March, seed 0) and evaluated on the
+samples of the stateful test run of the same horizon, so that every comparison is paired;
+the tabular networks are trained on the same table; Mean Reversion is computed on the same
+samples; the intervals are 95\% hour-block bootstraps over the test hours (2{,}000
+resamples).  The samples are the 17.1 million of the one-minute run and the 17.0 million of
+the fifteen-minute run (72 hours), 16.7 million at one hour (71 hours), 14.1 million at six
+(66 hours) and 12.5 million at twelve (60 hours, the last twelve of 26 March having no
+label).  The zero-shot forecaster is evaluated as in \cref{sec:external:tsfm}, on 60{,}000
+random samples of the deep test run of each horizon.  Last, a second seed of each of the two
+one-minute stateful models, alone and as the residual of the trees, trained after this
+evaluation with the recipe of the validated runs unchanged and evaluated the same way,
+measures the seed noise of the one-minute results; nothing in them was chosen on the test
+days.
+
+\paragraph{Coverage of the test days.}  The three days are not three ordinary days.  The
+collector holds 14.1, 12.5 and 6.6 million order-book snapshots for 24, 25 and 26 March (and
+6.8 million for 23 March, a warm-up day), against 6.6 to 19.7 million per day over the whole
+window and 12.0 million on the validation day.  Every hour of 26 March is present, but each
+holds about 40\% of the usual rows.  Whether the gap is the collector's or the exchange's
+could not be established; the results are therefore given per day as well as pooled, and
+\cref{tab:test:days} shows that the sparse day changes no ordering.
+
+\paragraph{Results.}  \Cref{tab:test:main} gives the test numbers in the shape of
+\cref{tab:horizons:synthesis}; \cref{tab:test:1h} every one-hour model of the study;
+\cref{tab:test:days} the main models by day; \cref{tab:test:zeroshot} the zero-shot
+forecaster.
+
+\begin{table}[t]
+\centering
+\caption{Test days 24--26 March: the best model of each family at each horizon, all samples
+and deduplicated samples (balanced accuracy), every model with its two logit offsets chosen
+once on the validation day and applied unchanged.  ``Stateless'' is LightGBM G5 refitted as in
+validation and evaluated on the test samples of the stateful run; ``stateful'' is the best
+validated run without trees (two passes with the hand features at 1 min, 15 min and 1 h, the
+time-first encoder at 6 h, the reference model, seed 0, at 12 h); ``residual'' is the two-pass
+stateful model on the cross-fitted trees.  $\Delta$ in points against the stateless control,
+95\% hour-block bootstrap intervals over the test hours.  TabM, not shown, is $+0.27$
+[$+0.21$, $+0.34$] at 1 min, $+0.15$ [$+0.02$, $+0.27$] at 15 min and $-0.08$ [$-0.25$,
+$+0.09$] at 1 h; a second seed of the one-minute stateful model is $+0.39$ [$+0.24$, $+0.57$]
+on all samples and $+1.52$ [$+1.22$, $+1.83$] on the deduplicated ones, and a second seed
+of the one-minute residual model $+0.96$ [$+0.85$, $+1.08$] and $+1.82$ [$+1.61$, $+2.02$].}
+\label{tab:test:main}
+\small
+\begin{fittable}\begin{tabular}{llcccccc}
+\toprule
+Horizon & Subset & MR & Stateless & Stateful & $\Delta$ & Residual & $\Delta$ \\
+\midrule
+1 min  & All   & 0.5637 & 0.6496 & 0.6572 & $+0.76$ [$+0.60$, $+0.93$] & \textbf{0.6586} & $+0.90$ [$+0.78$, $+1.03$] \\
+       & Dedup & 0.5342 & 0.6336 & 0.6443 & $+1.07$ [$+0.80$, $+1.34$] & \textbf{0.6539} & $+2.03$ [$+1.79$, $+2.26$] \\
+15 min & All   & 0.5471 & \textbf{0.6088} & 0.6064 & $-0.25$ [$-0.44$, $-0.05$] & --- & \\
+       & Dedup & 0.5301 & \textbf{0.6167} & 0.6090 & $-0.77$ [$-0.93$, $-0.60$] & --- & \\
+1 h    & All   & 0.5268 & \textbf{0.5944} & 0.5806 & $-1.38$ [$-1.69$, $-1.07$] & 0.5933 & $-0.11$ [$-0.26$, $+0.03$] \\
+       & Dedup & 0.5125 & 0.5887 & 0.5704 & $-1.83$ [$-1.96$, $-1.70$] & \textbf{0.5895} & $+0.08$ [$-0.02$, $+0.17$] \\
+6 h    & All   & 0.5049 & \textbf{0.5851} & 0.5468 & $-3.83$ [$-4.11$, $-3.53$] & --- & \\
+       & Dedup & 0.5025 & \textbf{0.5745} & 0.5323 & $-4.22$ [$-4.43$, $-4.00$] & --- & \\
+12 h   & All   & 0.4724 & \textbf{0.5853} & 0.5353 & $-5.00$ [$-5.34$, $-4.64$] & --- & \\
+       & Dedup & 0.4766 & \textbf{0.5749} & 0.5258 & $-4.91$ [$-5.19$, $-4.60$] & --- & \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Every one-hour model of the study on the test days (balanced accuracy, all samples
+and deduplicated samples, each model with its validation-day offsets; the validation column
+is the validation day with the same offsets).  $\Delta$ in points against the calibrated
+control, 95\% hour-block bootstrap intervals.}
+\label{tab:test:1h}
+\footnotesize
+\begin{fittable}\begin{tabular}{lccccc}
+\toprule
+Model & Validation & Test & $\Delta$ [95\% CI] & Dedup. & $\Delta$ \\
+\midrule
+LightGBM G5 (control)                        & 0.6044 & \textbf{0.5944} & --- & 0.5887 & --- \\
+TabM, 3 seeds                                & 0.6036 & 0.5936 & $-0.08$ [$-0.25$, $+0.09$] & 0.5865 & $-0.22$ \\
+MLP, 3 seeds                                 & 0.6002 & 0.5923 & $-0.22$ [$-0.40$, $-0.03$] & 0.5834 & $-0.54$ \\
+Stateful, 2 passes, residual of the trees    & 0.6048 & 0.5933 & $-0.11$ [$-0.26$, $+0.03$] & \textbf{0.5895} & $+0.08$ \\
+Stateful, 2 passes                           & 0.5907 & 0.5806 & $-1.38$ [$-1.69$, $-1.07$] & 0.5704 & $-1.83$ \\
+Stateful, 1 pass, weight averaging           & 0.5879 & 0.5782 & $-1.62$ [$-1.97$, $-1.29$] & 0.5715 & $-1.72$ \\
+Stateful, 1 pass                             & 0.5842 & 0.5738 & $-2.07$ [$-2.40$, $-1.73$] & 0.5667 & $-2.20$ \\
+Time-first, no hand features, seed 0         & 0.5718 & 0.5634 & $-3.11$ [$-3.48$, $-2.73$] & 0.5502 & $-3.85$ \\
+Time-first, no hand features, seed 1         & 0.5689 & 0.5604 & $-3.40$ [$-3.78$, $-3.03$] & 0.5483 & $-4.05$ \\
+GRU reference + Chronos-2 features, seed 0   & 0.5598 & 0.5492 & $-4.52$ [$-4.92$, $-4.15$] & 0.5357 & $-5.30$ \\
+GRU reference + Chronos-2 features, seed 1   & 0.5623 & 0.5511 & $-4.33$ [$-4.71$, $-3.95$] & 0.5350 & $-5.38$ \\
+GRU reference, seed 0                        & 0.5569 & 0.5487 & $-4.57$ [$-5.00$, $-4.18$] & 0.5326 & $-5.61$ \\
+GRU reference, seed 1                        & 0.5557 & 0.5480 & $-4.65$ [$-5.04$, $-4.26$] & 0.5314 & $-5.73$ \\
+GRU reference, seed 2                        & 0.5561 & 0.5461 & $-4.83$ [$-5.23$, $-4.42$] & 0.5253 & $-6.34$ \\
+GRU reference with the transaction graph     & 0.5543 & 0.5447 & $-4.97$ [$-5.39$, $-4.56$] & 0.5268 & $-6.19$ \\
+Mean Reversion                               & 0.5311 & 0.5268 & $-6.76$ [$-7.23$, $-6.31$] & 0.5125 & $-7.62$ \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{The main models by test day (balanced accuracy on all samples, calibrated as in
+\cref{tab:test:main}).}
+\label{tab:test:days}
+\small
+\begin{fittable}\begin{tabular}{llccc}
+\toprule
+Horizon & Model & 24 March & 25 March & 26 March \\
+\midrule
+1 min  & Mean Reversion & 0.5596 & 0.5675 & 0.5647 \\
+       & Stateless      & 0.6449 & 0.6479 & 0.6643 \\
+       & TabM           & 0.6477 & 0.6503 & 0.6678 \\
+       & Stateful, seed 0 & 0.6522 & 0.6547 & 0.6743 \\
+       & Stateful, seed 1 & 0.6485 & 0.6505 & 0.6720 \\
+       & Residual, seed 0 & 0.6536 & 0.6562 & 0.6754 \\
+       & Residual, seed 1 & 0.6545 & 0.6563 & 0.6765 \\
+\midrule
+15 min & Mean Reversion & 0.5469 & 0.5483 & 0.5437 \\
+       & Stateless      & 0.6048 & 0.6083 & 0.6171 \\
+       & TabM           & 0.6065 & 0.6092 & 0.6195 \\
+       & Stateful       & 0.6036 & 0.6036 & 0.6186 \\
+\midrule
+1 h    & Mean Reversion & 0.5297 & 0.5237 & 0.5251 \\
+       & Stateless      & 0.5971 & 0.5895 & 0.5945 \\
+       & TabM           & 0.5958 & 0.5900 & 0.5917 \\
+       & Stateful       & 0.5797 & 0.5808 & 0.5797 \\
+       & Residual       & 0.5948 & 0.5891 & 0.5945 \\
+\midrule
+6 h    & Mean Reversion & 0.5088 & 0.4989 & 0.5108 \\
+       & Stateless      & 0.5923 & 0.5785 & 0.5754 \\
+       & Stateful       & 0.5558 & 0.5403 & 0.5387 \\
+\midrule
+12 h   & Mean Reversion & 0.4730 & 0.4699 & 0.4842 \\
+       & Stateless      & 0.5990 & 0.5691 & 0.5863 \\
+       & Stateful, seed 0 & 0.5506 & 0.5199 & 0.5301 \\
+       & Stateful, seed 1 & 0.5449 & 0.5152 & 0.5390 \\
+       & Stateful, seed 2 & 0.5415 & 0.5140 & 0.5402 \\
+       & Graph          & 0.5481 & 0.5157 & 0.5417 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Zero-shot Chronos-2 on 60{,}000 random test samples per horizon, as in
+\cref{tab:exp:tsfm} (raw decisions, no offsets): balanced accuracy of Mean Reversion-$H$, of
+the sign of the forecast median and of the median with a half-tick dead zone, the
+difference of the latter from the rule with its 95\% hour-block interval, the share of the
+rule's directional calls on which the forecaster agrees with it, and the share of the
+disagreements, on samples whose price then moved, in which the forecaster was right.}
+\label{tab:test:zeroshot}
+\small
+\begin{fittable}\begin{tabular}{lcccccc}
+\toprule
+Horizon & MR & Median & Dead zone & $\Delta$ dead zone $-$ MR & agrees with MR & right when they disagree \\
+\midrule
+1 min  & 0.5646 & 0.4145 & 0.5364 & $-2.82$ [$-3.70$, $-1.92$] & 60\% & 48\% \\
+15 min & 0.5485 & 0.4280 & 0.5249 & $-2.36$ [$-3.08$, $-1.64$] & 62\% & 52\% \\
+1 h    & 0.5267 & 0.4205 & 0.5133 & $-1.35$ [$-2.01$, $-0.73$] & 66\% & 51\% \\
+6 h    & 0.5072 & 0.3957 & 0.5028 & $-0.44$ [$-1.05$, $+0.11$] & 63\% & 51\% \\
+12 h   & 0.4710 & 0.3969 & 0.5077 & $+3.67$ [$+2.75$, $+4.46$] & 67\% & 53\% \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+Three things carry over from the validation day to the test days, and one does not.
+
+\emph{The ordering of the families, and the whole one-hour chain.}  At every horizon the
+calibrated control is the best model or within its interval of the best, every learned
+model stands where it stood on 13 March, and the sparse day moves no sign.  At one hour
+(\cref{tab:test:1h}) the twelve runs of the study keep the order of
+\cref{ch:stateful,ch:graph,ch:external} to the last step, and every gap is within a few
+tenths of its validation value: the two-pass residual model ties the control ($-0.11$
+[$-0.26$, $+0.03$] on all samples, $+0.08$ [$-0.02$, $+0.17$] on the deduplicated ones;
+$+0.04$ and $-0.10$ in validation), TabM ties it ($-0.08$ [$-0.25$, $+0.09$]; $-0.11$ in
+validation), the two-pass model without trees is $-1.38$ [$-1.69$, $-1.07$] ($-1.42$), the
+time-first encoder is $1.5$ points above the GRU reference ($1.5$ calibrated against
+calibrated in validation), the forecast features add $+0.05$ and $+0.3$ on the two seeds
+($+0.3$ and $+0.6$), the transaction graph is $0.4$ below the reference ($0.3$), and the three
+seeds of the reference are within $0.26$ points of one another.  At fifteen minutes TabM is
+$+0.15$ [$+0.02$, $+0.27$] above the control ($+0.22$ in validation) and the two-pass
+stateful model $-0.25$ [$-0.44$, $-0.05$] below it (a tie, $-0.07$, in validation), $-0.77$
+[$-0.93$, $-0.60$] on the deduplicated samples ($-0.39$); 26 March is the one day on which it
+is above the control ($0.6186$ against $0.6171$).  At one minute the gain of the sequential
+state is confirmed: the two-pass stateful model is $+0.76$ [$+0.60$, $+0.93$] above the
+calibrated control on all samples ($+0.62$ [$+0.46$, $+0.82$] in validation) and $+1.07$
+[$+0.80$, $+1.34$] on the deduplicated ones ($+1.74$), with the same sign on each of the
+three days ($+0.7$, $+0.7$, $+1.0$ points).  A second seed of the same model, trained after
+this evaluation and within a tenth of a point of the first on the validation day, is $+0.39$
+[$+0.24$, $+0.57$] on all samples and $+1.52$ [$+1.22$, $+1.83$] on the deduplicated ones
+($+0.4$, $+0.3$ and $+0.8$ by day): the sign and the exclusion of zero hold on every subset
+and every day for both seeds, and the size moves by four tenths of a point from one seed to
+the other, in opposite directions on the two subsets, more than either interval, which is the
+measure of the seed noise at this horizon.  The residual model, the same stateful model on
+the cross-fitted trees, is $+0.90$ [$+0.78$, $+1.03$] above the control on all samples
+($+1.37$ [$+1.16$, $+1.58$] in validation) and $+2.03$ [$+1.79$, $+2.26$] on the
+deduplicated ones ($+2.04$), $+0.9$, $+0.8$ and $+1.1$ points by day, and its margin over
+the stateful model alone, $0.8$ points in validation, is $0.1$ on all test samples and
+$1.0$ on the deduplicated ones.  A second seed of the residual model, within a tenth of a
+point of the first on the validation day ($0.6764$ against $0.6770$), is $+0.96$ [$+0.85$,
+$+1.08$] on all samples and $+1.82$ [$+1.61$, $+2.02$] on the deduplicated ones ($+1.0$,
+$+0.8$ and $+1.2$ by day): the seed moves the residual model by a tenth of a point on all
+samples and by two tenths on the deduplicated ones, against four tenths for the stateful
+model alone, and its margin over the stateful model of the same seed is $0.1$ and $0.6$ on
+all samples and $1.0$ and $0.3$ on the deduplicated ones.  TabM, the best stateless model at one minute, is $+0.27$
+[$+0.21$, $+0.34$] above the control ($+0.33$ in validation) and $+0.58$ [$+0.43$, $+0.73$]
+on the deduplicated samples ($-0.10$), between the control and the stateful models on
+every day: at one minute the stateful models beat the strongest learner on the summary
+features, not only the trees.  At six hours the time-first model is $-3.83$
+[$-4.11$, $-3.53$] ($-3.0$ in validation) and at twelve the reference model is $-5.00$
+[$-5.34$, $-4.64$] ($-3.3$), its three seeds $-5.00$, $-5.41$ and $-5.63$, within six
+tenths of a point and in the same order on every day: the long-horizon gaps widen by $0.8$
+and $1.7$ points on the test days, in the control's favour.  The graph models stand where
+\cref{ch:graph} put them, $0.4$ below the LOB-only reference at one hour, $1.4$ below the
+time-first model at six hours and between the seeds of the reference at twelve ($-5.23$
+[$-5.62$, $-4.79$] against the control).
+
+\emph{The control.}  Its balanced accuracy is within $1.4$ points of the validation value at
+every horizon: $0.6496$ at one minute, $0.6088$ at fifteen minutes and $0.5944$ at one hour
+($0.6627$, $0.6214$ and $0.6044$ on 13 March), $0.5851$ at six hours and $0.5853$ at twelve
+($0.5720$ and $0.5717$); at the long horizons it is higher on the test days than on the
+validation day.
+
+\emph{The rule.}  Mean Reversion is $0.5637$, $0.5471$, $0.5268$, $0.5049$ and $0.4724$ at
+the five horizons ($0.5363$, $0.5373$, $0.5311$, $0.5069$ and $0.5071$ in validation): the
+one-minute reversal is almost three points stronger on the test days, the twelve-hour one
+falls below $0.5$, and the control's margin over the rule runs from $+6.2$ points at fifteen
+minutes to $+11.3$ at twelve hours.  The zero-shot forecaster (\cref{tab:test:zeroshot})
+behaves as on the validation day: the sign of its median is 7 to 15 points below the rule
+at every horizon, because it almost never predicts \textsc{const}; with the half-tick dead
+zone it is $1.4$ to $2.8$ points below the rule from one minute to one hour, ties it at six
+hours and is $3.7$ points above it at twelve, where the rule itself fell and the forecaster
+kept its validation value ($0.504$ there, $0.508$ here); it agrees with the rule's directional
+calls 60 to 67\% of the time and, where the two disagree and the price moves, it is right
+48 to 53\% of the time.  It re-discovers the reversal, reads it a little more robustly than
+the rule on days when the twelve-hour reversal weakens, and stays far below every learned
+model.
+
+What does not carry over is the \emph{calibration}.  The offsets chosen on 13 March, worth
+$+0.5$ and $+0.3$ points to the control there, cost it $0.4$ and $0.3$ on the test days at
+fifteen minutes and one hour ($0.6131 \to 0.6088$, $0.5972 \to 0.5944$), are worth $+0.2$
+and $+0.4$ at six and twelve hours, and at one minute, where they were worth $+5.4$ in
+validation, they are worth $+2.0$ ($0.6300 \to 0.6496$), and $+1.8$ to the tabular network
+($+5.5$ in validation).  For the stateful models the same
+frozen offsets help at every horizon, and most where the model is worst calibrated: $+4.8$
+points at twelve hours ($0.4874 \to 0.5353$, offsets of $-0.8$ on both classes; $-0.9$ to
+$-1.2$ for the other seeds), $+1.6$ at six hours for the reference model and $+0.1$ for the
+time-first one, $+2.5$ at one minute ($0.6319 \to 0.6572$; $+5.8$ in validation) and $+2.1$
+for the one-minute residual model ($0.6380 \to 0.6586$; $+5.9$; $+2.4$ for its second seed),
+$+0.2$ at fifteen minutes
+and one hour.  A decision threshold fitted on one day is thus worth a few
+tenths of a point on another day, in either direction, for a learner whose class mix is
+already right, and several points for a model whose class mix is wrong; the comparisons of
+\cref{tab:test:main,tab:test:1h} are calibrated against calibrated and do not depend on it,
+but any single raw number does, and the one-minute numbers most of all.
+
+The test days therefore confirm the three regimes of \cref{sec:horizons:synthesis} on data
+that no choice of the thesis had seen: at one minute the sequence beats the summary, at
+fifteen minutes and one hour the stateless learner, the tabular network and the stateful
+model on the trees tie, and at six and twelve hours the stateless learner is alone.

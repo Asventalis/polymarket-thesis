@@ -1,0 +1,82 @@
+\chapter{Reproduction}
+\label{app:reproduction}
+
+\paragraph{Data and code availability.}  The raw sources are public
+(\cref{sec:data:collection}): the order-book archive on Kaggle, the Polygon blockchain and
+the Polymarket metadata API.  Rebuilding every derived dataset from them is possible but
+long, so the datasets that the models read are deposited as they are: the market table
+(175{,}292 rows), the hourly transaction partitions with the market and the token
+orientation of every fill (11~GB), the order-book tensors (27~GB), the hand-made features
+(7.7~GB), the cross-fitted tree log-probabilities (6.6~GB), the foundation-model forecasts
+(0.7~GB), the news and sibling features and the identifier mappings, about 55~GB in all,
+together with the trained checkpoints and the reports from which every table is taken
+\todo{URL of the data repository once chosen}.  With them, every model of the thesis can be
+retrained and evaluated on the same inputs without touching the raw streams.  The code is
+a Python package (\path{polymarket_gnn}) managed with \path{uv}, with the data pipeline in
+DuckDB and NumPy and the models in PyTorch \todo{URL of the code repository}; the raw data
+under \path{data/raw/} are never modified and every derived dataset lives under
+\path{data/derived/}.
+
+\paragraph{Steps.}  The steps that produce the numbers of the thesis are, in order:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Collection.}  \path{scripts/preprocessing/00_legacy_raw_downloads/}: the
+  Gamma API pager for the markets, the markets-by-token completion, and the Polygon block
+  reader for the fills, a modified \path{poly-trade-scan} \cite{martkir2026polytradescan}
+  (\cref{sec:data:collection}).
+  \item \textbf{Market tables.}  \path{sql/markets/00}--\path{09} run by
+  \path{scripts/preprocessing/00_build_markets_tables.py}: the Gamma rows flattened into
+  one table per market, every fill joined to its market through the two outcome tokens,
+  the union of the market identifiers seen in the five sources and the completion of the
+  missing ones by condition identifier, with the three API scrapers that run between the
+  steps and the expected row counts in \path{sql/markets/README.md}.
+  \item \textbf{Preprocessing.}  \path{scripts/preprocessing/01}--\path{06}: multi-day
+  aggregates, hourly order-book partitions with the 52-feature vectors, deltas, text
+  embeddings, node features, wallet features; \path{precompute_tensors.py} for the
+  per-block tensors read by the stateful model.
+  \item \textbf{Causal baselines.}  \path{causal_baselines.py} \path{--horizon} \path{H} writes
+  \path{baseline_results_<H>.json} with every rule on all and deduplicated samples.
+  \item \textbf{Stateful runs.}  \path{run_hand_runs_v4.sh} \path{<device>} \path{<H>} with the
+  environment variables of \cref{app:runs} (\path{EPOCHS}, \path{TREE_DIR},
+  \path{TREE_OFFSET}, \path{ENC}, \path{W}, \path{SEED}); each run writes its
+  validation predictions.
+  \item \textbf{Hand features and the control.}  \path{hand_features.py} builds the 61
+  features for every tensor row; \path{scripts/data_audit/feature_audit.py} \path{H} \path{<label>
+} \path{} \path{<label>} \path{10} \path{<out-dir>} builds the control on the samples of the run \path{<label>}, group
+  by group, with the univariate diagnostics and the importances;
+  \path{control_proba.py} \path{--horizon} refits G5 for the class probabilities.
+  \item \textbf{Data-mining study.}  \path{scripts/data_audit/datamining.py} \path{--horizon}
+  \path{H} reads the feature parquets of the previous step and writes, per horizon, the PCA,
+  correlation, random-projection, MDS, UMAP and t-SNE outputs, the LDA, logistic, kNN, tree
+  and mutual-information results and the market clustering of \cref{ch:structure}, with a
+  \path{report.md}; CPU only, about twenty-five minutes per horizon.
+  \item \textbf{Transaction graph.}  \path{scripts/data_audit/graph_animation.py}
+  \path{--stage} \path{E,S} builds the edge events and the statistics of \cref{sec:expl:graph}
+  (degree distributions, components, $k$-cores, hourly and daily series);
+  \path{graph_layout_anchor.py} (with \path{--cat-weight 0.5} for the second map) computes
+  the SVD and UMAP layout, \path{graph_islands.py} the HDBSCAN islands, \path{--stage F,V} the
+  frames and the video, and \path{graph_summary_plots.py} the summary figure; CPU only.
+  \item \textbf{Cross-fitted trees and the residual model.}  \path{tree_features.py}
+  writes the day-cross-fitted log-probabilities; the residual run is step 4 with
+  \path{TREE_DIR} and \path{TREE_OFFSET=1}.
+  \item \textbf{Tabular networks.}  \path{scripts/data_audit/tabular_net.py} \path{--horizon
+} \path{} \path{--variants} \path{tabm} \path{--seeds} \path{0,1,2}.
+  \item \textbf{Comparisons.}  \path{hand_vs_lgb_report.py} \path{<label>} \path{--horizon} \path{--prior
+} \path{} \path{--crossfit} (raw, prior-corrected and one-sided offsets, by subset and category);
+  \path{scripts/data_audit/offset_fair.py} \path{--horizon} \path{--deep} \path{<labels>} \path{--tab} \path{<probas>
+} \path{} \path{--grid-max} \path{2.0} \path{--grid-step} \path{0.2} (the same calibration for every model);
+  \path{analyze_predictions.py} (per-market breakdown);
+  \path{scripts/data_audit/leadlag.py} (sibling lead--lag);
+  \path{news_features.py}, \path{sibling_features.py} and
+  \path{scripts/data_audit/news_audit.py} (external features in the control).
+  \item \textbf{Reports.}  Every table of the thesis is in
+  \path{reports/experiments/<study>/}, with the run labels in the file names; the
+  development log (\path{DEVELOPMENT_LOG.md}) records every run with its date, device
+  and duration.
+\end{enumerate}
+
+Unit tests cover the label construction, the mid-price index, the hand-feature index and
+the news index (\path{tests/}).  The thesis is built with \path{latexmk} from the
+\path{thesis/} directory; the bibliography is tagged by the kind of verification of each
+entry (\path{[L]} a PDF in \path{literature/}, \path{[V]} checked online, \path{[A]}
+abstract only).

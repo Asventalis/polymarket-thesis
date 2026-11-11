@@ -1,0 +1,11 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, ybar stacked, bar width=22pt, ymin=0, ymax=1.02, ylabel={share of the labelled samples},
+  symbolic x coords={1 min, 15 min, 1 h, 6 h, 12 h}, xtick=data, enlarge x limits=0.14,
+  legend columns=3, legend style={at={(0.5,1.03)}, anchor=south},
+  nodes near coords, every node near coord/.append style={font=\scriptsize, color=white}, point meta=explicit symbolic]
+\addplot[fill=vizA, draw=white, line width=0.6pt] coordinates {(1 min,0.057)[] (15 min,0.164)[0.16] (1 h,0.236)[0.24] (6 h,0.335)[0.34] (12 h,0.377)[0.38]};
+\addplot[fill=vizB, draw=white, line width=0.6pt] coordinates {(1 min,0.891)[0.89] (15 min,0.690)[0.69] (1 h,0.549)[0.55] (6 h,0.354)[0.35] (12 h,0.275)[0.28]};
+\addplot[fill=vizC, draw=white, line width=0.6pt] coordinates {(1 min,0.052)[] (15 min,0.146)[0.15] (1 h,0.215)[0.22] (6 h,0.312)[0.31] (12 h,0.348)[0.35]};
+\legend{\textsc{down}, \textsc{const}, \textsc{up}}
+\end{axis}
+\end{tikzpicture}

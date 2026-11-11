@@ -1,13 +1,15 @@
-\chapter{The Dataset: Collection, Preparation and Exploration}
+\chapter[The Dataset]{The Dataset: Collection, Preparation and Exploration}
 \label{ch:data}
 
-% un unico capitolo: raccolta -> preprocessing -> dataset finale -> analisi esplorativa in chiusura
-This chapter follows the data from their three sources to the objects the models read:
-what was collected and from where (\cref{sec:data:sources,sec:data:collection}), how
-large and how reliable it is (\cref{sec:data:scale,sec:data:quality}), how the raw
-streams were preprocessed (\cref{ch:prep}) and how the final dataset was defined
+This chapter follows the data from their three sources to the objects the models read, in
+the order of the pipeline: what was collected and from where (\cref{sec:data:sources,sec:data:collection}),
+how large and how reliable it is (\cref{sec:data:scale,sec:data:quality}), how the raw
+streams were preprocessed into a common time axis and per-block tensors (\cref{ch:prep}),
+and how the final dataset, its labels, samples, features and periods, was defined
 (\cref{sec:data:final}).  It closes with an exploratory and statistical analysis of the
-data (\cref{ch:exploration}).
+data (\cref{ch:exploration}): the price process, the transaction graph and the feature
+space, read with the tools of exploratory analysis and classical data mining before any
+model is trained.
 
 \section{The four tables}
 \label{sec:data:sources}
@@ -17,14 +19,15 @@ four tables (\cref{tab:data:sources}).  The \emph{markets} table describes every
 that existed in the period: question text, tags, the two outcome tokens, creation and
 end dates, and the final outcome.  The \emph{order book} table is the stream of
 price-level updates of the ``Yes'' side of every market's book: each row carries the
-best bid and ask, the changed price level, size and side, and the mid price.  The
-\emph{snapshots} table holds full order-book states.  The \emph{transactions} table is
-the on-chain record of every fill: block number, timestamp, transaction hash, wallet,
-role (maker or taker), token, side, quantity, price and fee.
+best bid and ask, the changed price level, size and side, and the mid price, with two
+timestamps (creation and reception).  The \emph{snapshots} table holds full order-book
+states.  The \emph{transactions} table is the on-chain record of every fill: block
+number, timestamp, transaction hash, wallet, role (maker or taker), token, side, quantity,
+price and fee.
 
 \begin{table}[t]
 \centering
-\caption{Data sources.  Row counts from the DuckDB database.}
+\caption{Data sources.  Row counts of the DuckDB database.}
 \label{tab:data:sources}
 \begin{tabular}{lrl}
 \toprule
@@ -38,182 +41,439 @@ transactions & 218{,}882{,}492      & on-chain fills with wallet, token, side, s
 \end{tabular}
 \end{table}
 
+The order book is a stream of \emph{intentions} (orders placed and cancelled); the
+transactions are the subset that found a counterparty, recorded one block later.  The two
+streams are collected by different clocks, and \cref{sec:data:blocks} says how they are
+aligned.
+
+\paragraph{What a row looks like.}  \Cref{tab:data:rows:markets,tab:data:rows:book,tab:data:rows:tx}
+list the columns of the three tables that the models read, with the meaning of each column
+and three real rows, written one row per column so that they fit the page.  The snapshots table has the same two timestamps and the same market
+identifier as the order book, and one text column with the whole book as JSON: the token
+the book refers to, the best quotes, and two lists of (price, size) pairs, the bids in
+increasing price up to the best bid and the asks in decreasing price down to the best ask.
+One snapshot of 10 March 2026 at 14:00:00 reads, with the long lists cut short:
+\par\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[style=json]
+{
+  "market_id": "0x0245263b...",
+  "token_id":  "82153428...",
+  "side":      "YES",
+  "best_bid":  "0.28",
+  "best_ask":  "0.5",
+  "bids": [["0.01", "1923.79"], ["0.02", "1007.14"], ...,
+           ["0.25", "15.3"],    ["0.28", "205.04"]],
+  "asks": [["0.99", "1409.85"], ["0.98", "6215.4"],  ...]
+}
+\end{lstlisting}
+\end{minipage}\par\noindent
+that is, a market whose Yes token has a best bid of $0.28$ with $205$ tokens resting there
+and a best ask of $0.50$, with most of the resting size far from the best quotes.
+
+\begin{table}[p]
+\centering
+\caption{The \emph{markets} table: its columns, their meaning and three real rows (a
+one-hour Bitcoin market of 7 March 2026, a tennis match of 9 March and a long-dated
+question on the Fed), one row per column.  Identifiers are cut short; times are UTC.}
+\label{tab:data:rows:markets}
+\footnotesize
+\begin{fittable}\begin{tabular}{p{3.0cm}p{3.2cm}p{2.8cm}p{2.8cm}p{2.8cm}}
+\toprule
+Column & Meaning & Row 1 & Row 2 & Row 3 \\
+\midrule
+\path{market_id} & the on-chain identifier of the market (its \emph{condition id}) & \path{0x6b03a4da}\ldots\path{1a91} & \path{0x020c64e6}\ldots\path{d0c7} & \path{0xd4e77ba6}\ldots\path{8527} \\
+\path{question} & the question text & Bitcoin Up or Down - March 7, 7PM ET & Austin: Caty McNally vs Yulia Starodubtseva & Will no Fed rate cuts happen in 2026? \\
+\path{slug} & the name of the market in its web address & \path{bitcoin-up-or-down-march-7-7pm-et} & \path{wta-mcnally-starodu-2026-03-09} & \path{will-no-fed-rate-cuts-happen-in-2026} \\
+\path{tags} & the tags attached by Polymarket; the category of \cref{sec:data:collection} is derived from them & 1H, bitcoin, crypto, crypto-prices, hide-from-new, recurring, up-or-down & games, sports, tennis & business, economic-policy, economy, fed, fed-rates, finance, jerome-powell, rewards-200-4pt5-50 \\
+\path{outcome_1},\newline \path{outcome_2} & the names of the two outcomes & Up, Down & Caty McNally, Yulia Starodubtseva & Yes, No \\
+\path{token_id_1},\newline \path{token_id_2} & the identifiers of the two outcome tokens, the key that joins the order book and the transactions to the market & \path{7094783845}\ldots, \path{3450397751}\ldots & \path{7364199465}\ldots, \path{4686906466}\ldots & \path{1240360292}\ldots, \path{2129459220}\ldots \\
+\path{outcome_price_1},\newline \path{outcome_price_2} & the final prices after resolution, one and zero; for an open market, the last prices & 0.0, 1.0 (Down won) & 1.0, 0.0 (McNally won) & 0.8135, 0.1865 (open) \\
+\path{deploying_timestamp} & when the market's contract was deployed on-chain & 2026-03-06 00:00:06 & 2026-03-09 15:07:57 & 2025-09-29 22:08:49 \\
+\path{accepting_orders_timestamp} & when the book started accepting orders & 2026-03-06 00:01:21 & 2026-03-09 15:09:21 & 2025-09-29 22:24:25 \\
+\path{start_date},\newline \path{end_date} & the nominal start and end of the question & 2026-03-06 00:02:27, 2026-03-08 01:00:00 & 2026-03-09 15:10:27, 2026-03-16 19:00:00 & 2025-09-29 22:24:45, 2026-12-31 00:00:00 \\
+\path{closed_time} & when trading closed; empty while the market is open & 2026-03-08 02:34:13 & 2026-03-10 02:22:47 & (open) \\
+\path{resolution_source} & the source named for resolution & binance.com, BTC/USDT & wtatennis.com/scores & (none given) \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[p]
+\centering
+\caption{The \emph{order book} table: columns, meaning and three consecutive rows of one
+market (a tennis match, 10 March 2026, the first milliseconds after midnight UTC), one row
+per column.  Every row is one change of one price level: the first trims the size resting
+at the best ask, the second empties the level just behind it, the third posts a new ask
+inside the spread, and the best ask and the mid move with it.}
+\label{tab:data:rows:book}
+\footnotesize
+\begin{fittable}\begin{tabular}{p{2.8cm}p{3.9cm}p{2.75cm}p{2.75cm}p{2.75cm}}
+\toprule
+Column & Meaning & Row 1 & Row 2 & Row 3 \\
+\midrule
+\path{timestamp_created_at} & when the operator created the message; the time of the event in the thesis & 2026-03-10 00:00:00.069 & 2026-03-10 00:00:00.069 & 2026-03-10 00:00:00.069 \\
+\path{timestamp_received} & when the archive's collector received it; used only to check latency & 2026-03-10 00:00:00.010 & 2026-03-10 00:00:00.011 & 2026-03-10 00:00:00.015 \\
+\path{market_id} & the market & \path{0x020c64e6}\ldots\path{d0c7} (Austin: McNally vs Starodubtseva) & same & same \\
+\path{token_id} & the outcome token whose book this is & \path{4686906466}\ldots{} (Starodubtseva) & same & same \\
+\path{change_side} & the side of the book that changed: BUY is the bid side, SELL the ask side & SELL & SELL & SELL \\
+\path{change_price} & the price level that changed & 0.33 & 0.34 & 0.22 \\
+\path{change_size} & the size now resting at that level; zero when the level is emptied & 140.0 & 0.0 & 3000.0 \\
+\path{delta} & the change of that size with respect to the previous state of the level & $-8.0$ & $-36.0$ & $+3000.0$ \\
+\path{best_bid}, \path{best_ask} & the best quotes after the event & 0.20, 0.33 & 0.20, 0.33 & 0.20, 0.22 \\
+\path{spread} & best ask minus best bid & 0.13 & 0.13 & 0.02 \\
+\path{mid_price} & the average of the best quotes; the price whose direction the thesis predicts & 0.265 & 0.265 & 0.21 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[p]
+\centering
+\caption{The \emph{transactions} table: columns, meaning and the three legs of one fill (an
+esports market, 10 March 2026, 14:17:59 UTC, block 84{,}016{,}123), one leg per column.
+A taker buys $1{,}790.02$ tokens of 3DMAX at $0.30$.  Only $9$ of them come from a maker
+selling that token (order 1); the other $1{,}781.02$ are minted: a maker buying the
+opposite outcome at $0.70$ (order 0) and the taker together pay one dollar per token pair,
+and the pair is split between them (\cref{sec:pm:mechanics}).}
+\label{tab:data:rows:tx}
+\footnotesize
+\begin{fittable}\begin{tabular}{p{2.6cm}p{4.0cm}p{2.8cm}p{2.8cm}p{2.8cm}}
+\toprule
+Column & Meaning & Taker & Maker 0 & Maker 1 \\
+\midrule
+\path{block_number} & the Polygon block that settled the fill & 84016123 & 84016123 & 84016123 \\
+\path{timestamp} & the time of the block & 2026-03-10 14:17:59 & 2026-03-10 14:17:59 & 2026-03-10 14:17:59 \\
+\path{tx_hash} & the on-chain transaction; one transaction may contain several legs and several fills & \path{0x82d8545e}\ldots\path{b519} & same & same \\
+\path{order_index} & $-1$ for the taker's order, $0, 1, \ldots$ for the makers' orders matched against it & $-1$ & $0$ & $1$ \\
+\path{wallet} & the address of the trader of this leg & \path{0x7a464614}\ldots\path{ab25} & \path{0xa6fd9229}\ldots\path{30f0} & \path{0x73a293ad}\ldots\path{3b68} \\
+\path{role} & TAKER (the order that crossed the book) or MAKER (a resting order) & TAKER & MAKER & MAKER \\
+\path{token_id} & the outcome token traded & \path{5334097798}\ldots{} (3DMAX) & \path{9786745195}\ldots{} (Natus Vincere) & \path{5334097798}\ldots{} (3DMAX) \\
+\path{token_direction} & $+1$ if the token is the market's first token, $-1$ if the second; the models correct it by the side the book refers to (\cref{sec:data:quality}) & $+1$ & $-1$ & $+1$ \\
+\path{side} & BUY or SELL, from the point of view of this wallet & BUY & BUY & SELL \\
+\path{tokens} & the number of tokens filled & 1790.02 & 1781.02 & 9.0 \\
+\path{price} & the price per token, in dollars & 0.30 & 0.70 & 0.30 \\
+\path{total_usdc} & the collateral paid or received & 537.006 & 1246.714 & 2.7 \\
+\path{fee_rate} & the fee rate charged on the leg & 0.0 & 0.0 & 0.0 \\
+\path{market_id} & the market, obtained from the token through the markets table & \path{0x6bae5e4c}\ldots{} (Counter-Strike: 3DMAX vs Natus Vincere) & same & same \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
 \section{Collection}
 \label{sec:data:collection}
+
+The three streams come from three places.
 
 \subsection{Market metadata: the Gamma API}
 
 The \emph{markets} table was built from Polymarket's public metadata service (the Gamma
-API): the markets closed in the window were paged through its keyset endpoint, and the
-markets that appear in the transactions but not in that listing were completed one by
-one through the markets-by-token endpoint.  The tags are the source of the eight
-categories used throughout the thesis (crypto, sports, esports, politics, weather,
-economy and tech, culture, other).
+API): the markets closed in the window were paged through its keyset endpoint, ordered by
+start date, with the tag list attached, and the markets that appear in the transactions but
+not in that listing (tokens traded in the window on markets created outside it) were
+completed one by one through the order-book operator's markets-by-token endpoint.  The tags
+are the source of the eight categories used throughout the thesis (crypto, sports, esports,
+politics, weather, economy and tech, culture, other), assigned by a fixed mapping from the
+tag list.
 
 \subsection{The order-book archive}
 
 The \emph{order book} and \emph{snapshots} tables come from a public archive of the
-operator's websocket feed published on Kaggle \cite{gozo2026polymarket}: one file per
-day, restricted to the Yes side of every book, with the creation time and the reception
-time of every message.
+operator's websocket feed, the \emph{Polymarket Tick-Level Orderbook Dataset} published on
+Kaggle by Marvin Gozo under a CC~BY-NC~4.0 licence \cite{gozo2026polymarket}: one file per
+day, restricted to the Yes side of every book.  Every row
+of the feed carries two timestamps: the time at which the operator created the message and
+the time at which the archive's collector received it; the thesis uses the creation time as
+the time of the event and keeps the reception time only to check the feed's latency.
 
 \subsection{The on-chain transactions: a blockchain scraper}
 
-The \emph{transactions} table was collected with a modified version of
-\path{poly-trade-scan} \cite{martkir2026polytradescan}, an open-source client that reads
-every Polygon block from a public node, filters the transactions addressed to
-Polymarket's exchange contracts and decodes their \texttt{matchOrders} calls; the
-modified version emits one row per wallet and per fill.  \todo{details of the decoding
-(taker and maker legs, fees), the node, the retries; 219 million rows are fill legs}
+I collected the \emph{transactions} table with a modified version of
+\path{poly-trade-scan} \cite{martkir2026polytradescan}, an open-source Python client that
+connects to a Polygon node over a WebSocket JSON-RPC endpoint, reads every block, filters
+the transactions addressed to Polymarket's exchange contracts and decodes their
+\texttt{matchOrders} calls.  The original tool emits one row per transaction, the taker's
+order with its nominal amounts; my version decodes the whole call, the amounts actually
+filled and received by the taker, the filled amount and the fee of every maker order, and
+emits one row per wallet and per fill (block number, timestamp, transaction hash, order
+index, wallet, role, token, side, quantity, price, total collateral and fee rate), with
+the longer timeouts and the many retries that a free public node requires.  The node was
+the public endpoint of dRPC (\path{wss://polygon.drpc.org}); the token identifier of
+every fill is then mapped to its market through the markets table.  A transaction with one taker and $n$ makers yields $n$ taker rows and $n$
+maker rows, so the 219 million rows are \emph{fill legs}; 79 million of them are taker legs.
 
 \section{Scale, coverage and storage}
 \label{sec:data:scale}
 
 Daily activity is stable over the period: 9.2--11.8 million transaction rows,
 122{,}000--161{,}000 distinct wallets and 15{,}000--21{,}000 active markets per day.
-The data are stored as Parquet files and queried with DuckDB \cite{raasveldt2019duckdb}.
-\todo{storage sizes; a figure of the daily volumes}
+Markets and wallets are mapped to dense indices (175{,}292 markets, 646{,}394 wallets).
+The data were stored as Parquet files and queried with DuckDB
+\cite{raasveldt2019duckdb}; all derived tensors were produced with SQL and NumPy and
+checked by unit tests.  The raw files are never modified and every derived dataset is
+rebuilt from them (\cref{app:reproduction}).
 
 \section{Data quality}
 \label{sec:data:quality}
 
-\todo{the facts about the data that shape every later choice, with the numbers:}
-\begin{itemize}[nosep]
-  \item fabricated mid on one-sided books (the feature builder substitutes $0.49$ or
-  $0.51$ for the missing side);
-  \item token orientation: the book refers to token~1 in Yes/No markets and to token~2
-  in all the others, while the raw trade direction refers to token~1 everywhere;
-  \item about 40\% of the samples have a mid below $0.05$ or above $0.95$;
-  \item one dip in the transaction stream, on 20 March.
-\end{itemize}
+Four properties of the data shape every later decision.
 
-\section{Preprocessing and audit of the pipeline}
+\paragraph{Fabricated mid on one-sided books.}  When one side of the book is empty, the
+feature builder substitutes $0.49$ or $0.51$ for the missing price; 2.4\% of the rows have a
+fabricated mid and 2.1\% a crossed book.  Excluding those samples changes the headline
+metrics by less than $0.2$ points, so they were kept, but the thesis flags them.
+
+\paragraph{Token orientation.}  The order book, and therefore the label, refers to
+token~1 only in Yes/No markets and to token~2 in all other markets (Up/Down, Over/Under,
+team~A/team~B), whereas the raw transaction direction is defined with respect to token~1
+everywhere.  Without a correction, the sign of a buy is wrong relative to the label in 82\%
+of the edges of a typical day (8.5\% of the labelled 1h samples).  Every model reads the
+corrected sign (\cref{sec:models:mp}).
+
+\paragraph{Price level.}  About 40\% of the samples have a mid below $0.05$ or above
+$0.95$ (\cref{tab:expl:classes}); their dynamics are those of a bounded, one-tick process
+and they are where every model struggles most.  Every result is therefore reported
+separately on the extreme and the central samples (\cref{sec:data:protocol}).
+
+\paragraph{Gaps.}  The two streams have one dip in common.  Between 01:00 and 03:00 UTC
+on 20 March the hourly number of book events falls from about nine million to 1.3
+million and the hourly number of fill legs from about 500 thousand to 79 thousand, and
+both recover within three hours (\cref{fig:graph:summary}).  The two streams are
+collected independently, by the archive's collector and by my node scraper, so the dip
+is in the activity of the venue, not in the collection; Polymarket's public status
+history lists no incident for that day.  No model is trained or evaluated on 20 March.
+
+\section{Preprocessing}
 \label{ch:prep}
+
+The data of \cref{sec:data:sources} are three streams on three clocks.  This section turns
+them into the objects the models read: a common time axis and per-block tensors.
 
 \subsection{Time axis: blocks and the synchronisation of the two streams}
 \label{sec:data:blocks}
 
 Polygon produces a block roughly every two seconds, and every transaction carries its
-block number.  The block is the time step of the models: a step is one block, the set
-of transactions in it, and the order-book updates that arrived since the previous
-block.  Because the two streams are collected by different clocks, a model that acts at
-block $t$ sees every book update created strictly before $t$ and the fills of the block
-itself.
+block number.  The block is therefore the natural time step of the on-chain stream and
+it is also the time step of the models: a ``step'' is one block, the set of transactions
+in it, and the order-book updates that arrived since the previous block.  About 1{,}800
+blocks per hour contain Polymarket transactions.  Order-book updates arrive at their own
+times; a model that acts at block $t$ sees every update with a timestamp strictly before
+$t$.  Because the two
+streams are collected by different clocks (\cref{sec:data:sources}), every stateful model
+reads the book updates created strictly before a block time and the fills of the block
+itself; a sample at block $t$ never sees an update created at or after $t$.
 
 \subsection{Derived tensors}
 \label{sec:data:tensors}
 
-\todo{to write:}
-\begin{itemize}[nosep]
-  \item a 52-dimensional feature vector per market and per order-book update (best
-  quotes, five levels per side, spread, mid, imbalances, recent trade statistics),
-  stored in hourly partitions;
-  \item the market lifecycle table: deployment time (known in advance) and last trade
-  (hindsight only, used to define the samples and never as an input);
-  \item static market features: a sentence embedding of the question and a few
-  numeric fields;
-  \item dense indices for markets and wallets.
-\end{itemize}
+\paragraph{Order-book features.}  For every market and every order-book update, a
+52-dimensional feature vector is computed from the book state at that moment: best bid
+and ask, five levels of bid and ask prices and sizes, spread, mid price, volume and
+depth imbalances, recent trade statistics, and rolling statistics of the mid.  The mid
+price is stored in column~40 of the vector; column~0 is the relative deviation of the
+best bid from the mid.  The vectors are stored as hourly Parquet partitions (about
+287{,}000 snapshots per hour, 27~GB in total).  To these, the models append the
+long-lookback price features of \cref{sec:models:lookback}.  The order-flow imbalance
+features follow \textcite{cont2014price}.
 
-\subsection{Audit of the pipeline}
-\label{sec:data:audit}
 
-\todo{the three errors found by the audit and fixed before any result (wrong price
-column; leaky momentum baseline; incomplete label lookup), and what was retrained}
+\paragraph{Market lifecycle.}  A table of 283{,}318 open/close events gives, for every
+market, the time at which its contract was deployed (known in advance, hence causal)
+and the time of its last trade (known only in hindsight).  The deployment time defines
+when a market may enter the model.  The last-trade time is used only to define the
+evaluation sample (a label is not computed when the market stops trading before the
+horizon), never as an input.
+
+\paragraph{Static market features.}  Each market has a 390-dimensional static vector:
+a 384-dimensional sentence embedding of its question text, produced by a frozen
+MiniLM sentence encoder \cite{reimers2019sbert}, and six numerical fields (initial
+prices, creation date).  These features are fixed at market creation, so they are
+leak-free; they initialise the market's state (\cref{sec:models:state}) through a fixed
+random projection.  What the text contributes to prediction is measured in
+\cref{sec:analysis:nostate}.
+
+\paragraph{Identifiers.}  Markets and wallets are mapped to dense indices
+(175{,}292 markets, 646{,}394 wallets) so that their states can live in two matrices on
+the GPU.
 
 \section{The final dataset: labels, samples, features and periods}
 \label{sec:data:final}
 
+This section defines the dataset on which every model of the thesis is trained and
+evaluated: the label and the sample population, the hand-made features and the other
+feature tables, and the split of the twenty-one days into training, validation and test
+periods.
+
 \subsection{Labels}
 \label{sec:data:labels}
 
-The target of a market $m$ at block time $t$ and horizon $H$ is the sign of the change
-of its mid price:
+The target of a market $m$ at block time $t$ and horizon $H$ is the direction of the
+change of its mid price between $t$ and $t + H$ (\cref{sec:bg:notation}):
 \begin{equation}
-  y_{m,t} = \operatorname{sign}\bigl(\operatorname{mid}_m(t+H) - \operatorname{mid}_m(t)\bigr) \in \{\textsc{down}, \textsc{const}, \textsc{up}\},
+  y_{m,t} =
+  \begin{cases}
+    \textsc{up}    & \text{if } \operatorname{mid}_m(t + H) > \operatorname{mid}_m(t), \\
+    \textsc{const} & \text{if } \operatorname{mid}_m(t + H) = \operatorname{mid}_m(t), \\
+    \textsc{down}  & \text{if } \operatorname{mid}_m(t + H) < \operatorname{mid}_m(t),
+  \end{cases}
   \label{eq:label}
 \end{equation}
 where $\operatorname{mid}_m(s)$ is the mid price of the last order-book update of $m$
-strictly before $s$.  Three classes, because over one hour the mid of more than half of
-the samples does not move at all; no dead zone, any move of at least one tick counts;
-when $t + H$ is beyond the loaded data the label is missing.  \todo{samples: one per
-(market, block) with an update; the deduplicated view, one sample per market per
-fifteen minutes}
+strictly before $s$.  A price is \textsc{const} when the two mids are \emph{exactly}
+equal: there is no tolerance band, the mid moves in ticks of $0.001$, and a move of one
+tick or more in either direction is \textsc{up} or \textsc{down}.  Three choices matter:
+
+\begin{itemize}[nosep]
+  \item \textbf{Three classes.}  The price is a step function with ticks of $0.001$;
+  over one hour the mid of more than half of the samples does not move at all
+  (\cref{tab:expl:classes}).  Collapsing ``no change'' into one of the two directions
+  would make the task ill-posed; the three-class formulation keeps it well posed.
+  \item \textbf{The last update before $t+H$, wherever it is.}  The update that defines
+  $\operatorname{mid}_m(t+H)$ can live in any hour between $t$ and $t+H$, so the lookup
+  scans every hour of the interval: a market that moved in between and was quiet
+  afterwards is labelled by that move, not \textsc{const}.
+  \item \textbf{Unknown is unknown.}  If $t+H$ is beyond the loaded data, the label is
+  missing, not ``whatever the last price was''.
+\end{itemize}
+
+
+\paragraph{Samples.}  A sample is a (market, block) pair $(m, t)$ in which the market
+received at least one order-book update in the block (\cref{sec:bg:notation}): a
+prediction is asked whenever something new about a market is observed, and a market whose
+book did not change in a block has nothing new to read.  Every model is asked for a
+prediction at every such pair, so markets that update often contribute many samples.  Because consecutive
+samples of the same market within a few seconds are almost identical, every result is
+also reported on a \emph{deduplicated} subset that keeps at most one sample per market
+per 15 minutes.  At the 6h horizon the validation day has 9.3 million samples, 1.2
+million after deduplication.
 
 \subsection{Feature engineering}
 \label{sec:prep:features}
 
-\todo{to write.  The feature tables:}
-\begin{itemize}[nosep]
-  \item the sixty-one hand-made causal features, in five groups: price history, book
-  shape, activity and clock, on-chain trades, static fields of the market (the full
-  list in \cref{app:features});
-  \item sibling features: the contracts of the same event;
-  \item news features: GDELT counts and tone for the entities named in the question;
-  \item wallet features on the transaction edges;
-  \item forecast features: the quantiles of a zero-shot Chronos-2 forecast.
-\end{itemize}
+\paragraph{The sixty-one hand-made features.}  For every validation sample of the 1h model (same time, market and label), and later for
+every tensor row, 61 causal features were computed from the clean data: the mid, its changes over
+15 minutes and 1, 3, 6 and 12 hours and their signs, and the hour (\emph{price history},
+the inputs of the direct path); the spread, the level-1, 5-level and 10-level depth
+imbalances, the microprice, the sizes and the number of filled levels (\emph{book
+shape}); the order-flow accumulators, event counts in the last 1, 5, 15 and 60 minutes,
+the time since the last snapshot and since the last mid change, the number of mid changes
+and the realised volatility of the last hour, and the position of the mid in its one-hour
+range (\emph{activity and clock}); the signed taker flow of the on-chain trades over 5, 15
+and 60 minutes (\emph{trades}); and the category, the outcome type, the time to the end
+date, the duration and the age of the market (\emph{static}).  The full list, with
+the exact definition of each feature, is in \cref{app:features}.  These features feed the
+stateless learners of \cref{sec:models:stateless} and, from \cref{sec:models:handinputs}
+on, the stateful model as well; \cref{ch:structure} studies their structure before any
+learner is trained on them.
+
+\paragraph{Sibling features.}  The contracts of the same event form a \emph{market--market} graph; its information is
+measured through ten causal \emph{sibling features} computed for every row from
+the last rows of the market's siblings within six hours: how many are active, their mean
+15-minute and 1-hour returns, the largest of the latter, the sum of their mid prices (the
+consistency of the event), the time since the latest sibling move, their net trade flow and
+order-flow sign.  Siblings are the contracts of the same game (from the market's slug) or of
+the same question template and end date (the candidates of one election, the strikes of one
+ladder, the two sides of one seat): 9{,}356 groups of two to sixty markets, covering 74\% of
+the control's rows with about eleven active siblings each.  If the trees find nothing in these
+features, a message-passing layer over the same edges has nothing to carry, and the
+lead--lag statistic of \cref{sec:expl:siblings} says why.
+
+\paragraph{News features.}  The \emph{news flow}: every market is mapped to the entities named in its question and tags
+(proper-noun phrases with generic words removed; 129 thousand of the 175 thousand markets,
+74\% of the validation samples), and the GDELT Global Knowledge Graph files, one every fifteen
+minutes, give for each entity the number of articles naming it and their tone; twelve causal
+features per row follow (counts over one, six and twenty-four hours, bursts against the
+previous seven days, tone and its change, share of the news flow, time since the last
+mention), computed from the files published at least ten minutes before the row.  Like the sibling features, the news features
+are measured in the stateless learner first (\cref{sec:external:news}).
+
+\paragraph{Wallet features.}  For the graph models, every transaction edge carries a
+seven-dimensional feature (side, role, signed size, price, fee, token orientation) and, in
+the enriched variants, a causal record of the wallet's past accuracy at the horizon
+(``skill''), a placebo skill (another wallet's record), and the wallet's past behaviour
+(activity, maker share, one-sidedness, size, breadth); \cref{sec:models:mp} says how they
+enter.
+
+\paragraph{Foundation-model features.}\label{sec:models:tsfm}  Eleven numbers are appended
+to every window row, derived from a zero-shot Chronos-2 forecast \cite{ansari2025chronos2} of the market's one-minute mid series: the
+10\%, 50\% and 90\% quantiles of the forecast at 15, 30 and 60 minutes ahead, expressed
+as scaled differences from the current mid, the sign of the 60-minute median change,
+and an availability flag.  Forecasts are computed on a five-minute grid from the
+512 minutes of history strictly before the grid time, and a sample at time $t$ reads
+the last forecast made at most eight minutes before $t$; relative to the current mid,
+a slightly stale forecast is ``the move still expected from now''.  The features enter
+the GRU and the direct path like the lookback features.
 
 \subsection{Training, validation and test periods}
 \label{sec:data:splits}
 
-The twenty-one days are split by date: models are trained on 6--12 March and every
-design choice is taken on the validation day, 13 March; the period 24--26 March is a
-locked test set, never evaluated and never inspected, reserved for the final numbers.
+The twenty-one days are split by date.  Models are trained on 6--12 March, and every
+design choice, hyper-parameter and number of \cref{ch:experiments} is taken on the
+validation day, 13 March; the period 24--26 March is a locked test set, never evaluated
+and never inspected, reserved for the final numbers of the thesis
+(\cref{sec:horizons:test}).  The exploratory analysis of \cref{ch:exploration} obeys the
+same split: the price process and the feature space are read on the training and
+validation days only, and the one part that uses no label and no model, the description
+of the transaction graph, covers the whole window.  The evaluation protocol that goes with
+the split, the metric, the subsets, the bootstrap intervals and the calibration rule, is
+given with the experimental setup (\cref{sec:data:protocol}).
 
 \section{Exploratory and statistical analysis}
 \label{ch:exploration}
 
-\todo{in closing, as agreed: what the data say before any model is trained, in three
-parts.  Numbers on the training and validation days only.}
+Before any model is trained, the data say a great deal about what can and cannot be
+predicted.  This section reads the three streams with the tools of exploratory analysis
+and classical data mining, in three parts.  The first (\cref{sec:expl:price}) is the
+\emph{price process}: what the stream of book events looks like, how often a price moves
+over each horizon, how the price level bounds the dynamics, how regular the activity of a
+market is, what the kind of contract says, whether the contracts of the same event lead
+one another, and whether the wallets that trade carry information.  The second
+(\cref{sec:expl:graph}) is the \emph{transaction graph}: how large, how dense and how
+connected the bipartite graph between wallets and markets is, how it grows, and how its
+map is organised.  The third (\cref{ch:structure}) is the \emph{feature space}: how many
+quantities the hand-made features of \cref{sec:prep:features} contain, what organises the
+space they span, how much of the label is linear, local or made of thresholds, and which
+families of markets emerge from how they trade.  Every number of the first and third parts
+is computed on the training and validation days of \cref{sec:data:splits}, never on the
+locked test period; the second part is purely descriptive, uses no label, and covers the
+whole window.
 
-\subsection{The price process}
-\label{sec:expl:price}
-
-\todo{outline: the event stream and how uneven it is; how often a price moves at each
-horizon (\cref{tab:expl:classes}); the price level; the activity clock; the direction
-of a move; the kind of contract; the contracts of the same event; the wallets}
-
-\begin{table}[t]
-\centering
-\caption{Share of the three classes among the labelled validation samples, by horizon.}
-\label{tab:expl:classes}
-\begin{tabular}{lccc}
-\toprule
-Horizon & \textsc{down} & \textsc{const} & \textsc{up} \\
-\midrule
-1 min  & 0.057 & 0.891 & 0.052 \\
-15 min & 0.164 & 0.690 & 0.146 \\
-1 h    & 0.236 & 0.549 & 0.215 \\
-6 h    & 0.335 & 0.354 & 0.312 \\
-12 h   & 0.377 & 0.275 & 0.348 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{The transactions as a graph}
-\label{sec:expl:graph}
-
-\todo{size, density and degree distributions; components and $k$-cores; the graph in
-time; a map of the graph (\cref{fig:graph:map:cat}); synchronous publics; what it says
-for the models}
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{figures/graph/graph_map_category.jpg}
-\caption{Three weeks of transactions as a graph: wallets (blue) and markets (orange),
-joined by the trading relations between them, 6--26 March 2026.  \todo{caption}}
-\label{fig:graph:map:cat}
-\end{figure}
-
-\subsection{The structure of the feature space}
-\label{ch:structure}
-
-\todo{data-mining study of the hand-made features: how many quantities they contain
-(PCA, correlation blocks); maps of the samples (UMAP, t-SNE); linear, local and
-threshold separability; families of markets; across the horizons}
+\input{chapters/03a_price_process}
+\input{chapters/03b_graph}
+\input{chapters/03c_feature_space}
 
 \subsection{What the data say before a model is trained}
+\label{sec:structure:agenda}
 \label{sec:expl:agenda}
 
-\todo{summary that sets the agenda of the methodology}
+The findings of this chapter set the agenda of the methodology and the experiments and are, in the terms of
+\cref{sec:intro:questions}, a first answer to the first research question.
+
+\paragraph{The price process.}  Predictability at short horizons is first of all
+\emph{whether} the price moves, and that is written in the market's own recent activity;
+the direction, when it moves, is weakly in the first level of the book and in the reversal
+of the recent change; the price level and the kind of contract condition everything; the
+neighbours of a market, whether the wallets that trade it or the contracts of its event, do
+not carry information that the market's own book does not already show.  A model that reads
+the activity clock, the first level, the long returns together with the price level and the
+contract type has most of what there is; the question for the stateful and graph families
+is whether a state or a neighbourhood adds anything on top, and the answer turns out to
+depend on the horizon.
+
+\paragraph{The graph.}  The transaction graph is one connected component with a dense core
+and a long tail of sparse wallets; its organisation is by category, contract type and date,
+which the market's metadata already encode; a wallet's identity is often a single fill.
+A model with a state per wallet will find most states empty, and a message-passing model
+will find no locality.
+
+\paragraph{The feature space.}  The features are about seventeen quantities read several
+times, so the capacity of a learner is not the issue and redundancy is not a problem for
+trees but is one for distance-based and linear methods.  The space is organised by market
+and by activity, not by the label, which is why a per-market state has material to work
+with and why deduplication is a necessary second view of every result.  The separable part
+of the label is first of all \emph{whether} the price moves, which is linear and local; the
+direction is neither, and it is where the boosted trees earn their margin over every
+simpler learner and where, in \cref{ch:stateful}, the stateful model earns its margin over
+the trees at the shortest horizon.  The information that the label asks of the features
+moves with the horizon, from the activity clock at minutes to the shape of the book at
+hours, and the learner that reads it best moves with it, from thresholds to linear
+directions.  And the families of markets defined by how they trade are not the categories:
+the live-game regime, not the sports category, is the hard case, and any model that is to
+be judged by category should also be judged by regime.

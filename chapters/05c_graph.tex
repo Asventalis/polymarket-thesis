@@ -1,0 +1,99 @@
+\section{Graph models}
+\label{ch:graph}
+
+The graph models read a dynamic graph between the wallets and the markets they trade, by
+message passing at every block.  It is the
+clearest negative result of the thesis, and this section gives the result at every stage of
+the design, the two direct tests of what wallets know, the market--market view, and the
+reasons.
+
+\subsection{The wallet--market graph at every stage}
+\label{sec:graph:stages}
+\label{sec:exp:graph}
+
+
+\Cref{tab:exp:graph} isolates the contribution of the wallet--market edges at every
+stage.  It is never above $+0.3$ at 1h, it changes sign across configurations at 12h,
+and in the best configuration it is $-0.1$ [$-0.2$, $0.0$] at 1h and $-1.0$ [$-1.2$,
+$-0.8$] at 12h; at 6h it is $+0.65$ [$+0.20$, $+1.11$] on all samples but $-0.54$
+[$-0.83$, $-0.27$] on the deduplicated subset.  The edge-orientation fix moves the
+graph effect on the affected (token-2) markets from $-0.6/-0.3$ to $+0.05/+0.4$ points
+at 1h/12h in a paired short test, with no overall gain because those markets are 4--9\%
+of the samples.  Wallet-skill features never beat an activity-matched placebo
+($-0.4$ at 1h, $0.0$ at 12h).  
+\begin{table}[t]
+\centering
+\caption{Graph contribution at each stage (LOB-only / graph, all samples, seed 0).}
+\label{tab:exp:graph}
+\begin{fittable}\begin{tabular}{lcccc}
+\toprule
+Configuration & 1h & $\Delta$ & 12h & $\Delta$ \\
+\midrule
+lookback                      & 0.5038 / 0.5037 & $-0.01$ & 0.4368 / 0.4400 & $+0.32$ \\
++ hierarchical memory         & 0.5161 / 0.5184 & $+0.23$ & 0.4706 / 0.4559 & $-1.47$ \\
++ direct path + global state  & 0.5452 / 0.5461 & $+0.09$ & 0.4727 / 0.4724 & $-0.03$ \\
++ five lookbacks (best)       & 0.5547 / 0.5536 & $-0.11$ [$-0.21$, $0.00$] & 0.4914 / 0.4814 & $-0.99$ [$-1.15$, $-0.81$] \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\subsection{Smart money}
+\label{sec:graph:smartmoney}
+
+A direct test of ``smart money'' outside the model confirms the picture.  For every wallet
+the past hit rate at the horizon, the share of its trades on the side the price then moved
+to, is computed on the training days and compared with the validation day: the Spearman
+correlation is $0.5$--$0.6$, so skill is strongly persistent at the wallet level
+(\cref{sec:expl:wallets}).  As a market-level predictor, the activity-weighted skill of the
+wallets that traded a market in the last hour adds only about one point over an
+identity-free placebo (random wallets with the same activity) and does not beat Mean
+Reversion.  Inside the model, the same record given as an edge feature never beats the
+placebo skill ($-0.4$ at 1h, $0.0$ at 12h), and the wallet's past behaviour (activity, maker
+share, one-sidedness, size, breadth) gives $\pm 0.3$ with no consistent sign.
+
+\subsection{The market--market view: sibling contracts}
+\label{sec:graph:siblings}
+
+The ten sibling features of \cref{sec:prep:features} were added to the control's table.  They lose $-0.10$ [$-0.18$,
+$-0.02$] on all samples and $-0.25$ on the political markets, tie on the sports markets of the
+same game ($-0.06$ [$-0.28$, +0.15]), and the best of them, the sum of the siblings' mids, is the
+twenty-fifth feature by gain.  At one hour, after the market's own returns and activity clock,
+what its siblings did in the last hour does not change the decision.  This is also the answer to
+whether a market-to-market graph would help the deep model at this horizon: the information
+such edges would carry is the information these features carry, and the trees found none; and
+the lead--lag statistic of \cref{sec:expl:siblings} shows that at the minute scale, where the
+siblings of a game might move first, they do not: the common cause reaches both books within
+the same minute.
+
+\subsection{Why the graph does not help}
+\label{sec:graph:why}
+
+The bipartite transaction graph is the clearest negative result of the thesis.  Four
+observations explain it.
+\begin{enumerate}[nosep]
+  \item \textbf{The temporal signal dominates.}  Every improvement in
+  \cref{sec:stateful:chain} came from temporal components, and once they are strong the
+  graph's small positive effects at 12h in weaker configurations disappear.
+  \item \textbf{Wallet memory is short.}  The decay is shared by wallets and markets, so
+  a wallet state is erased within a minute of its last trade; most wallets trade far
+  less often than that, and their state carries no history when they reappear.  A
+  separate slow decay for wallets was proposed and not tested; the smart-money test
+  suggests it would not change the conclusion.
+  \item \textbf{Wallet skill is real but not market-level information.}  Past accuracy
+  persists strongly at the wallet level, but a market is traded by many wallets and
+  their aggregate is close to the placebo of random wallets with the same activity.
+  \item \textbf{Most of the signal a wallet brings is already in the book.}  A trade is
+  a book event; the order-flow features see it before the edge does.
+\end{enumerate}
+In sum, the temporal component weighs far more than the graph on this data.  The same conclusion emerges
+from the literature on spatiotemporal benchmarks \cite{martin2026audit}: per-node
+baselines are hard to beat and a graph must prove its value against them.
+
+What would have to be different for a graph to help is also clear from the data.  A wallet
+memory at a time scale of days rather than seconds, so that a wallet's state survives
+between its trades; an edge feature that is not already a book event; or a market--market
+graph on a question where the common cause reaches one book before the other, which the
+lead--lag statistic did not find at the minute scale in this data.  A learned, sparse
+market--market graph restricted to the markets of the same event, in the spirit of
+\textcite{cini2023sparse}, remains the version of the idea worth testing.
+

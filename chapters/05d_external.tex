@@ -1,0 +1,144 @@
+\section{Information outside the book}
+\label{ch:external}
+
+The last family does not change the learner; it changes what the learner is shown.  Once
+the stateless control and the stateful model read the same sixty-one features and tie at one
+hour (\cref{sec:stateful:calibration}), the remaining question is whether anything the book
+does not contain predicts the price: a pretrained forecaster's view of the price series, the
+news flow about the market's subject, or the text of the market itself.
+
+\subsection{Time-series foundation models}
+\label{sec:external:tsfm}
+\label{sec:exp:tsfm}
+
+
+\paragraph{Zero-shot.}  Chronos-2 was given, for 60{,}000 random validation samples per
+horizon, the last 512 mids of the market on a one-minute grid (1h) or five-minute grid
+(12h), ending at the sample time, and asked for the quantiles of the mid at $t+H$.
+\Cref{tab:exp:tsfm} turns the forecast into a decision in several ways.  The sign of
+the median almost never predicts \textsc{const} (17\% of the samples at 1h against 55\%
+in the labels) and scores $0.470$; with a half-tick dead zone it reaches $0.505$, still
+$-2.6$ [$-3.4$, $-1.9$] below Mean Reversion at 1h and $-0.4$ [$-1.4$, $+0.5$] at 12h.
+Where Mean Reversion takes a side, Chronos agrees with it 65--68\% of the time; where
+they disagree and the price moves, Chronos is right 52.9\% of the time at 1h and 48.0\%
+at 12h.  The foundation model re-discovers mean reversion in context.
+
+\begin{table}[t]
+\centering
+\caption{Zero-shot Chronos-2 on 60{,}000 validation samples per horizon.}
+\label{tab:exp:tsfm}
+\begin{fittable}\begin{tabular}{lcc}
+\toprule
+Rule & 1h & 12h \\
+\midrule
+Our model (same samples)                       & 0.559 & 0.495 \\
+Mean Reversion-$H$                             & 0.531 & 0.508 \\
+Chronos-2, sign of the median                  & 0.470 & 0.454 \\
+Chronos-2, median with half-tick dead zone     & 0.505 & 0.504 \\
+Chronos-2, quantile bands                      & 0.34--0.43 & 0.34--0.42 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\paragraph{As features.}  The same quantiles were then cached for every active market
+on a five-minute grid over 6--13 March (2.6--3.1 million forecasts per day, context of 512
+one-minute mids ending strictly before the grid time) and given to the best 1h model as
+eleven extra inputs: the ten-fold distance of the 10/50/90\% quantiles at 15, 30 and 60
+minutes from the \emph{current} mid, the sign of the 60-minute median change and an
+availability flag; a forecast is used for at most eight minutes.  They enter both the
+order-book window and the direct path (\cref{sec:models:tsfm}).
+\Cref{tab:exp:tsfmfeat} compares the two runs on the same validation samples.  The gain
+on all samples is $+0.29$ points, ten times the seed spread of the base model and with an
+interval that excludes zero, but it vanishes on the deduplicated samples and is the net
+of two opposite effects: $+0.85$ in the central price range and $-0.76$ at the extremes,
+where the zero-shot study had already shown the forecasts to be noise.  The direct path
+reads one forecast feature for direction, the sign of the 60-minute median (the largest
+directional weight in the layer, read \emph{with} the forecast), and uses the width of
+the quantile band for the \textsc{const} logit; the lookback weights are unchanged to two
+decimals.  A second seed of both runs gives the same picture ($+0.57$ [$+0.33$, $+0.82$]
+on all samples, $+0.93$ central, $-0.16$ extreme, $+0.14$ deduplicated): the gain on the
+full stream and in the central range is reproducible, the loss at the extremes keeps its
+sign but not its size.
+
+\begin{table}[t]
+\centering
+\caption{Best 1h model with and without the Chronos-2 forecast features, two seeds
+(balanced accuracy; differences in points with 95\% hour-block bootstrap intervals; the
+last column is the difference of the seed-1 pair).}
+\label{tab:exp:tsfmfeat}
+\begin{fittable}\begin{tabular}{lrccccc}
+\toprule
+Subset & $n$ & Best & + features & $\Delta$ (seed 0) & 95\% CI & $\Delta$ (seed 1) \\
+\midrule
+All samples          & 9{,}864{,}125 & 0.5547 & 0.5576 & $+0.29$ & [$+0.05$, $+0.53$] & $+0.57$ \\
+Deduplicated         & 1{,}255{,}651 & 0.5382 & 0.5380 & $-0.02$ & [$-0.18$, $+0.14$] & $+0.14$ \\
+Extreme prices       & 3{,}787{,}202 & 0.5385 & 0.5309 & $-0.76$ & [$-1.02$, $-0.50$] & $-0.16$ \\
+Central prices       & 6{,}076{,}923 & 0.5602 & 0.5687 & $+0.85$ & [$+0.53$, $+1.17$] & $+0.93$ \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\subsubsection{Why the foundation model re-discovers mean reversion}
+\label{sec:analysis:tsfm}
+
+
+Chronos-2 standardises each context window and forecasts its continuation.  On a
+one-tick process the standardised window is noise around a level, and the model's
+best in-context guess is a return to the level: its median moves against the last change
+68\% of the time Mean Reversion does.  It is worse than the rule for two reasons: it
+never predicts ``no change'' (a dead zone recovers most of the gap), and at extreme
+prices the per-window standardisation amplifies one-tick noise into forecasts that are
+8 points below the rule.  This is the finance literature's finding
+\cite{rahimikia2025revisiting,dewage2026hybrid} reproduced on prediction markets: value,
+if any, must come from a learned correction on top of the frozen forecast.  That is the
+experiment of \cref{sec:models:tsfm}, and its outcome
+(\cref{tab:exp:tsfmfeat}) fits the same picture.  Given to the best model as inputs, the
+forecasts add about $0.9$ points where prices are central (both seeds) and cost between
+$0.2$ and $0.8$ where they are extreme, for a net $+0.3$ to $+0.6$ on the full stream and
+nothing reliable on independent samples.  The
+direct path learns to use a single bit of the forecast, the sign of the 60-minute median
+change, with the largest directional weight in the layer; the rest of the information
+it extracts is the width of the quantile band, which it reads as the probability of
+``no change''.  In other words, the foundation model is used as a smoothed second opinion
+on the direction and as a volatility estimate, both of which the recurrent state already
+has in the central range and both of which are unreliable at the boundaries.  The
+natural fix, masking the forecast outside the central range or giving the direct path
+the price level so that it can do the masking itself, was not run.
+
+\subsection{News volume}
+\label{sec:external:news}
+
+The twelve news features of \cref{sec:prep:features}, added to the control's table, change
+nothing: $-0.10$ [$-0.20$, +0.00] on all
+samples, $-0.06$ [$-0.16$, +0.04] on the political markets, which are 38\% of the samples, and
+$-0.27$ on the rows whose market has no entity at all, the signature of noise features displacing
+useful splits; the twelve features take 3\% of the trees' gain.  At one hour the news flow about a
+market's entities is either already in the book or unrelated to the contract's question, and a
+finer alignment of articles to questions is a different project.  The deep model was therefore
+not run with these inputs.
+
+\subsection{The text of the market}
+\label{sec:external:text}
+
+The sentence embedding of the question, as used to initialise the market state, has no
+effect (\cref{sec:data:tensors}); what the text could contribute is the \emph{type of
+contract} (\cref{sec:expl:templates}).  Questions are templated (3{,}528 templates among the active markets), and
+the template explains 55\% of the between-market variance of the probability of a move
+within one hour, from 4\% for House-seat markets to 83\% for daily-temperature markets;
+a ridge regression on the embedding predicts that probability out of sample with
+$R^2 = 0.22$, no better than the template means.  The cheap way to use the text is a
+learned embedding of the category or template fed to the predictor; the control gets a
+fifth of a point from the static fields, on top of everything else.
+
+\subsection{What is outside the book}
+
+The three sources give one answer at one hour.  A frozen forecaster of the price series
+knows what the market's own history knows, mean reversion and a volatility estimate, and is
+useful only as a smoothed second opinion in the central price range; the news flow about a
+market's entities is either already in the book or unrelated to the contract's question; and
+the text matters through a handful of contract types.  Information outside the book that
+would move a one-hour prediction, the reference price of a crypto interval market
+\cite{young2026openmarket}, the score of a game, the content rather than the volume of the
+news, was not available to this study, and \cref{sec:horizons:where} shows where its absence
+is felt.
+

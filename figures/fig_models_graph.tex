@@ -1,0 +1,13 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm, node distance=5mm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=4pt, minimum height=9mm, text width=70mm, fill=white},
+  state/.style={box, fill=vizA!12}, input/.style={box, dashed}, op/.style={box, fill=vizB!12},
+  arr/.style={->, draw=vizInk, line width=0.8pt}, lbl/.style={font=\scriptsize, color=vizInk, text width=120mm, align=center}]
+\node[input] (edges) at (0, 0) {fills of one block: edges $(w, m)$ with 7 numbers each:\\log volume, log tokens, price, fee, buy/sell, token side, maker/taker};
+\node[op, below=of edges] (ee) {edge encoder $7 \to 128 \to 128$ (SiLU): $z_e \in \mathbb{R}^{128}$};
+\node[op, below=of ee] (att) {attention over the edges into a node: one head, score from $[h_{\mathrm{src}}, h_{\mathrm{dst}}, z_e]$, softmax over the node's edges};
+\node[op, below=of att] (msg) {message $\tanh(W z_e) \odot \alpha_e \odot W' h_{\mathrm{src}}$, summed over the node's edges: $\mathbb{R}^{128}$};
+\node[state, below=of msg] (upd) {GRU cell (128) + LayerNorm on the receiving state $h_m$ or $h_w \in \mathbb{R}^{128}$};
+\node[input, text width=40mm, right=12mm of att] (st) {states of the two ends\\$h_w, h_m \in \mathbb{R}^{128}$};
+\draw[arr] (edges) -- (ee); \draw[arr] (ee) -- (att); \draw[arr] (att) -- (msg); \draw[arr] (msg) -- (upd); \draw[arr] (st) -- (att);
+\node[lbl, below=4mm of upd] {first pass: wallets $\to$ markets; second pass: markets $\to$ wallets, with the same weights; the updated $h_m$ then enters the state update of \cref{fig:models:architecture}};
+\end{tikzpicture}

@@ -1,0 +1,28 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=3pt, minimum height=9mm, text width=26mm, fill=white},
+  input/.style={box, dashed}, op/.style={box, fill=vizB!12}, outbox/.style={box, fill=vizC!15},
+  gbox/.style={box, fill=vizA!12, draw=vizA},
+  arr/.style={->, draw=vizInk, line width=0.8pt},
+  back/.style={->, draw=vizA, line width=0.8pt, dashed},
+  lab/.style={font=\scriptsize, text=vizInk, align=center}]
+% forward row
+\node[input] (x)  at (0,0)    {input\\$\mathbf{x} \in \mathbb{R}^{n}$};
+\node[op]    (a1) at (3.2,0)  {$\mathbf{a} = \mathbf{W}_1 \mathbf{x} + \mathbf{b}_1$\\$\mathbb{R}^{d}$};
+\node[op]    (h)  at (6.4,0)  {$\mathbf{h} = \sigma(\mathbf{a})$\\(element-wise)};
+\node[op]    (z)  at (9.6,0)  {$\mathbf{z} = \mathbf{W}_2 \mathbf{h} + \mathbf{b}_2$\\logits, $\mathbb{R}^{3}$};
+\node[op]    (p)  at (12.8,0) {$\hat{\mathbf{p}} = \operatorname{softmax}(\mathbf{z})$};
+\node[outbox] (L) at (16.0,0) {loss\\$\ell = -\log \hat{p}_{y}$};
+\draw[arr] (x) -- (a1); \draw[arr] (a1) -- (h); \draw[arr] (h) -- (z); \draw[arr] (z) -- (p); \draw[arr] (p) -- (L);
+% backward row: gradients with respect to the activations
+\node[gbox] (gz) at (12.8,-2.4) {$\dfrac{\partial \ell}{\partial \mathbf{z}} = \hat{\mathbf{p}} - \mathbf{e}_{y}$};
+\node[gbox] (gh) at (9.6,-2.4)  {$\dfrac{\partial \ell}{\partial \mathbf{h}} = \mathbf{W}_2^{\top}\dfrac{\partial \ell}{\partial \mathbf{z}}$};
+\node[gbox] (ga) at (6.4,-2.4)  {$\dfrac{\partial \ell}{\partial \mathbf{a}} = \dfrac{\partial \ell}{\partial \mathbf{h}} \odot \sigma'(\mathbf{a})$};
+\draw[back] (L.south) |- ++(-1.0,-1.2) -| (gz.north);
+\draw[back] (gz) -- (gh); \draw[back] (gh) -- (ga);
+% gradients with respect to the weights
+\node[gbox] (gw2) at (9.6,-4.6)  {$\dfrac{\partial \ell}{\partial \mathbf{W}_2} = \dfrac{\partial \ell}{\partial \mathbf{z}}\, \mathbf{h}^{\top}$};
+\node[gbox] (gw1) at (3.2,-4.6)  {$\dfrac{\partial \ell}{\partial \mathbf{W}_1} = \dfrac{\partial \ell}{\partial \mathbf{a}}\, \mathbf{x}^{\top}$};
+\draw[back] (gz.south) |- (gw2.east);
+\draw[back] (ga.south) |- (gw1.east);
+\node[lab, anchor=west] at (0,-2.4) {solid: forward pass\\dashed, blue: backward pass\\(each box reuses the one to its right)};
+\end{tikzpicture}

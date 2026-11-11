@@ -5,7 +5,6 @@ University of Pisa.
 Candidate: Vito Pampinella. Supervisor: Prof. Davide Bacciu.
 Co-supervisor: Prof. Giulia Livieri (London School of Economics).
 
-Work in progress. The current PDF is [thesis.pdf](thesis.pdf); the red `[TODO: ...]`
-markers are the parts still to be written.
+Work in progress. The current PDF is [thesis.pdf](thesis.pdf).
 
-Build: `latexmk -pdf main.tex` (pdfLaTeX + biber).
+Build: `latexmk main.tex` (pdfLaTeX + biber; the output is `build/main.pdf`).

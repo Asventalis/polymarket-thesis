@@ -1,10 +1,28 @@
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 
-This thesis studies Polymarket, a decentralised prediction market, as a data-analysis and
-data-mining object: how twenty-one days of order-book, on-chain transaction and market
-data were collected and prepared, what the price process and the transaction graph look
-like, and which families of models can predict the direction of a market's price over
-horizons from one minute to twelve hours.
+Polymarket is the largest decentralised prediction market: contracts on real-world events
+are traded on a central limit order book and settled on the Polygon blockchain, so that
+every order-book update and every trade is publicly observable.  This thesis treats that
+venue as a data-analysis and data-mining object and asks whether, and how, the direction
+of its prices can be predicted over horizons from one minute to twelve hours.
 
-\todo{rewrite at the end, together with the introduction}
+The thesis first explains how a prediction market and Polymarket work, and introduces the
+notions of time series, order books, graphs, learners and evaluation that it uses.  It then
+follows twenty-one days of order-book, on-chain and market data from collection, through
+preprocessing and audit, to a leakage-free three-class benchmark (down, unchanged, up), and
+explores them as a price process, a transaction graph and a feature space.  The
+methodology sets the objective and the criteria of comparison and presents five families
+of approaches: causal rules on the price, stateless learners on hand-made features, a
+continuous-time stateful model of the order-book stream, graph models on the
+wallet--market transactions, and sources of information outside the book.  The
+experiments compare these families on the same samples, with bootstrap intervals and a
+locked test period, family by family and then across horizons, kinds of market and seeds.
+
+The main findings are that a market's own activity is its most predictable feature; that
+gradient-boosted trees on hand-made features are the strongest model from fifteen minutes
+to twelve hours; that the stateful model of the book stream adds a small but reliable gain
+at one minute, where the task is whether the price will move at all; and that the
+transaction graph and the sources outside the book add no reliable gain over what the book
+already shows.  The conclusions state the limits of the study, what a deployment would
+need, and the future work.

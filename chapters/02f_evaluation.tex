@@ -1,0 +1,40 @@
+\section{Evaluation under imbalance and dependence}
+\label{sec:bg:eval}
+
+A \emph{sample} is one market at one moment at which a prediction is asked
+(\cref{sec:bg:notation}); a validation day has about ten million of them.  The three
+classes are of very unequal size: at one hour more than half of the samples are
+\textsc{const}, at one minute nine in ten.  Plain accuracy, the share of samples predicted
+correctly, would therefore reward a model that always predicts \textsc{const}: it is right
+89\% of the time at one minute and knows nothing.  The thesis uses \emph{balanced
+accuracy} instead \cite{brodersen2010balanced}.  For each class, the \emph{recall} is the
+share of the samples of that class that the model predicts as that class, how many of
+the real \textsc{up} samples it called \textsc{up}, and so on; balanced accuracy is the
+mean of the three recalls,
+\begin{equation}
+  \mathrm{BA} = \frac{1}{3} \sum_{c=1}^{3} \mathrm{recall}_c, \qquad
+  \mathrm{recall}_c = \frac{\#\{i : y_i = c,\ \hat{y}_i = c\}}{\#\{i : y_i = c\}} .
+\end{equation}
+A model that always predicts one class has recall one on that class and zero on the other
+two, hence balanced accuracy $1/3$ whatever the class sizes, and random guessing scores
+the same.  Balanced accuracy depends on the predicted classes, not on the probabilities,
+which is why the decision rule of \cref{eq:logit-adjustment} matters as much as the model
+and why every comparison of the thesis is made after the same calibration.
+
+A confidence interval says how much a number would move if the experiment were repeated
+on fresh data.  The usual interval treats every sample as an independent observation, and
+with ten million samples it would be a few hundredths of a point wide.  Here it would be
+wrong, because the samples are far from independent: one market contributes thousands of
+samples a few seconds apart that are almost copies of one another, and all the markets of
+one hour share the same news, so there are far fewer independent observations than
+samples.  The intervals are therefore computed with a \emph{block bootstrap}
+\cite{kunsch1989jackknife}.  The validation day is cut into its 24 hours; a new ``day''
+is built by drawing 24 hours at random, with replacement, from those 24; the metric, or
+the difference between two models, is recomputed on it; this is repeated two thousand
+times, and the 2.5th and 97.5th percentiles of the two thousand values are the 95\%
+interval.  Drawing whole hours keeps the dependence inside an hour intact, which is what
+makes the interval account for it.  A difference whose interval includes zero is reported
+as a tie.  Every number is also given on the \emph{deduplicated} subset of
+\cref{sec:data:labels}, one sample per market per fifteen minutes, on which the samples
+are closest to independent, and on the \emph{extreme} and \emph{central} price ranges
+separately; a result that holds on one view only is reported as such.

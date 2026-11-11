@@ -1,0 +1,302 @@
+\section{Across horizons, kinds of market and seeds}
+\label{ch:horizons}
+
+The previous sections built and assessed the families mostly at one hour.  This section
+reads the same families across the five horizons of the study, one minute, fifteen minutes,
+one hour, six and twelve hours, because the horizon changes what the task is and which family
+can do it; then by kind of market; then for robustness, across seeds, calibration and run
+length.  The locked test set and the return to the four questions follow in
+\cref{sec:horizons:test,sec:horizons:questions}.
+
+\subsection{Short horizons: one and fifteen minutes}
+\label{sec:horizons:short}
+\label{sec:exp:short}
+
+
+At a horizon of one minute the task changes: 89\% of the labels are \textsc{const}, the
+direction of a move is nearly unpredictable and the whole gain is in whether the mid will
+move (\cref{sec:expl:classes,sec:expl:activity}).  The early LOB-only models with undersampling scored $0.550$
+at 60~s against $0.536$ for Mean Reversion, $0.532$ at 120~s and $0.518$ at 300~s; the
+numbers below are from the final configuration of \cref{sec:stateful:hand} (five
+lookbacks, hierarchical memory, time-first encoder, hand features, two passes), trained at
+60~s and 900~s.
+The controls of \cref{tab:exp:nostate:horizons} sample one tensor row in twenty at the
+row's time, with the label of the last tensor row before $t+H$; the deep runs sample every
+market of every block at the block's time, with the label of the mid-price index.  At one
+hour the two populations coincide, because the control was built from the run's own
+predictions; at one minute only 27 of the 598{,}872 tensor rows coincide with a run sample.
+The control was therefore rebuilt on the runs' own validation samples at each horizon (9.9~M samples at both
+60 and 900~s), with the same features, learner and protocol as in \cref{sec:stateless:control}.
+Every model then receives the same two cross-fitted logit offsets of
+\cref{sec:models:protocol}, with the grid widened to $\pm 2$: at one minute both learners
+sit at the edge of the $\pm 0.6$ grid used at one hour, and the offsets are worth $+5.4$
+points to LightGBM ($0.6086 \to 0.6623$) and $+5.8$ to the network.  Any one-minute number
+without this calibration compares decision thresholds, not models; at fifteen minutes the
+same offsets are worth $+0.5$, and at one hour $+0.3$.
+
+\begin{table}[t]
+\centering
+\caption{Short horizons against one hour: the no-state control, the tabular network on the
+control's table and the stateful model, every one with its own two cross-fitted logit
+offsets (DOWN, UP), on the runs' validation samples of 13 March.  Balanced accuracy after
+calibration; $\Delta$ in points against the calibrated LightGBM with 95\% hour-block
+bootstrap intervals.  Labels DOWN / CONST / UP: $5.7 / 89.1 / 5.2\%$ at 1~min,
+$16.4 / 69.0 / 14.6\%$ at 15~min.}
+\label{tab:exp:short}
+\small
+\begin{fittable}\begin{tabular}{llcccc}
+\toprule
+Horizon & Model & All & $\Delta$ [95\% CI] & Dedup. & $\Delta$ [95\% CI] \\
+\midrule
+1 min  & LightGBM G5 (offsets 1.6, 1.6)  & 0.6623 & --- & 0.6143 & --- \\
+       & TabM, 3 seeds                   & 0.6656 & $+0.33$ [$+0.26$, $+0.39$] & 0.6133 & $-0.10$ [$-0.31$, $+0.10$] \\
+       & Stateful, 2 passes              & 0.6685 & $+0.62$ [$+0.46$, $+0.82$] & 0.6317 & $+1.74$ [$+1.31$, $+2.22$] \\
+       & Stateful, 2 passes, residual    & \textbf{0.6760} & $\mathbf{+1.37}$ [$+1.16$, $+1.58$] & \textbf{0.6346} & $\mathbf{+2.04}$ [$+1.76$, $+2.30$] \\
+\midrule
+15 min & LightGBM G5 (offsets 0.4, 0.4)  & 0.6213 & --- & 0.6197 & --- \\
+       & TabM, 3 seeds                   & \textbf{0.6235} & $+0.22$ [$+0.07$, $+0.36$] & \textbf{0.6248} & $+0.51$ [$+0.35$, $+0.68$] \\
+       & Stateful, 2 passes              & 0.6206 & $-0.07$ [$-0.34$, $+0.19$] & 0.6158 & $-0.39$ [$-0.63$, $-0.13$] \\
+\midrule
+1 h    & LightGBM G5 (offsets 0.2, 0.3)  & 0.6044 & --- & 0.5943 & --- \\
+       & TabM, 3 seeds                   & 0.6033 & $-0.11$ [$-0.29$, $+0.06$] & 0.5922 & $-0.21$ [$-0.45$, $+0.00$] \\
+       & Stateful, 2 passes              & 0.5902 & $-1.42$ [$-1.83$, $-1.00$] & 0.5797 & $-1.46$ [$-1.76$, $-1.14$] \\
+       & Stateful, 2 passes, residual    & \textbf{0.6048} & $+0.04$ [$-0.18$, $+0.24$] & 0.5933 & $-0.10$ [$-0.26$, $+0.05$] \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\Cref{tab:exp:short} gives the result, and it reverses with the horizon.  At one minute the
+stateful model without trees is $+0.62$ [$+0.46$, $+0.82$] above the calibrated trees on
+all samples and $+1.74$ [$+1.31$, $+2.22$] on the deduplicated ones, ahead on every subset
+($+0.45$ at extreme mids, $+0.64$ central).  TabM on the same sixty-one features and the
+same samples, with the same calibration, is $+0.33$ on all samples and $-0.10$ on the
+deduplicated ones: half of the gain on all samples is the learner, and the whole of the
+gain on the sparse markets is the state, $+1.84$ over TabM.  Given the cross-fitted trees as
+a base, the residual model is the best model of this thesis at one minute, $+1.37$
+[$+1.16$, $+1.58$] on all samples and $+2.04$ [$+1.76$, $+2.30$] on the deduplicated ones,
+above the calibrated trees on every subset and $+1.0$ to $+2.1$ above TabM.  At fifteen
+minutes the stateful model ties the calibrated trees on all samples ($-0.07$ [$-0.34$,
+$+0.19$]) and is below them on the deduplicated ($-0.39$) and extreme ($-0.27$) ones, while
+TabM is $+0.22$ and $+0.51$: against the same learner the online, time-ordered regime costs
+$-0.3$ on all samples and $-0.9$ on the sparse ones.  At one hour it costs $-1.4$ and the
+residual model only recovers it (\cref{sec:stateful:calibration}).  Before calibration the
+ordering is the same but the gaps are not: the raw stateful model is $+0.23$ (not
+significant) at one minute and $-0.76$ [$-1.08$, $-0.45$] at fifteen, and the prior
+correction of \cref{sec:stateful:hand} is worse than nothing at fifteen minutes
+($0.6084 \to 0.5587$).
+
+The reading is that the window of book events, the five lookbacks and the memory carry
+information about the next minute of a market that the sixty-one summary features throw
+away, chiefly on the quiet markets where a summary of the last hour says little about the
+next sixty seconds, and that by fifteen minutes the summary is complete and the sequential
+regime only costs.  The gain is small in absolute terms, under two points on a scale where
+the activity clock alone is worth seven, but it is the one place in this study where the
+stateful model beats a calibrated tree model on the same inputs with an interval that
+excludes zero on every subset.  The residual model was not run at fifteen minutes.
+
+\subsection{One hour}
+\label{sec:horizons:1h}
+
+One hour is the horizon at which most of the design was done, and its result is the tie of
+\cref{sec:stateful:calibration}: calibrated against calibrated, the trees on sixty-one
+hand-made features (0.6044 on all samples, 0.5943 deduplicated), TabM on the same table
+($-0.11$), and the two-pass residual stateful model ($+0.04$) are within their intervals of
+one another, the stateful model without trees is $-1.4$, and the best LOB-only model without
+the hand features is four points below.  Half of the labels are \textsc{const}; the activity
+clock decides whether the price moves and the reversal of the recent change decides which
+way; the combination of the stateful model with the trees adds two to three tenths of a
+point, most of it on the sparse markets.  The one-hour task is a summary task: everything a
+model needs is in a few dozen numbers computed at the sample time.
+
+\subsection{Six and twelve hours}
+\label{sec:horizons:long}
+
+At six and twelve hours the \textsc{const} class shrinks to a third of the samples and the
+direction is the task.  The LOB-only stateful model of \cref{sec:stateful:chain} is
+$+1.5$ above Mean Reversion at six hours and $-1.6$ below it at twelve on all samples
+(above on the deduplicated samples at both, $+3.3$ and $+1.7$), and the time-first encoder
+raises the six-hour gain to $+3.3$ on every subset; the hierarchical memory is worth most at
+twelve hours ($+3.4$), the horizon at which the morning matters most, and the three seeds of
+the twelve-hour model are below the rule on the full stream and above it on independent
+samples.  The no-state control is six and a half points above the rule at both horizons
+(\cref{tab:exp:nostate:horizons}) and the price history alone already beats the stateful
+model ($+1.7$ at 6h, $+5.3$ at 12h): the long-horizon signal is a slow reversal of the 6h and
+12h returns, modulated by the price level and by where the market is in its life (time to the
+end, age, duration, about 9\% of the gain importance together), which trees read directly and
+a direct path that is linear in the returns cannot bend to the level.  The stateful model
+with the hand features and the residual construction were not run at these horizons; the
+stateless control is the reference there.
+
+\subsection{Synthesis}
+\label{sec:horizons:synthesis}
+
+\Cref{tab:horizons:synthesis} and \cref{fig:horizons:synthesis} put the best model of each
+family at each horizon on one page.  Three regimes appear.  At one minute the task is activity, calibration is worth five
+points to every model, and the sequence of book events carries information about the next
+minute of a quiet market that the summary features lose: the stateful model beats calibrated
+trees by $+0.6$ alone and $+1.4$ as their residual, with intervals that exclude zero on every
+subset, and the gain over the same learner without state is concentrated on the sparse
+markets.  At fifteen minutes and one hour the summary is complete: trees, a tabular network
+and the stateful model with the same inputs tie, the online regime costs the stateful model
+one to two points unless it is given the trees as a base, and the graph and the external
+sources add nothing.  At six and twelve hours the task is the direction of a slow reversal
+read together with the price level and the market's lifecycle, the stateless control is six
+points above the rule and the stateful models of this study are below it.  The same
+architecture cannot be the right one at both ends, and the reading the data give is that a
+model of this market should be a stateless learner on the activity clock, the first level,
+the long returns, the price level and the contract type, with a sequential state added only
+where the horizon is shorter than the summary.
+
+\begin{table}[t]
+\centering
+\caption{The best model of each family at each horizon, all samples and deduplicated
+samples (balanced accuracy).  At 1 min, 15 min and 1 h every model carries its own two
+cross-fitted logit offsets; at 6 h and 12 h the raw argmax (the stateless control was not
+calibrated there and the stateful models' probabilities were not saved).  ``Stateless'' is
+LightGBM G5; ``stateful'' is the best run without trees; ``residual'' is the two-pass
+stateful model on the cross-fitted trees.  $\Delta$ in points against the stateless control.}
+\label{tab:horizons:synthesis}
+\small
+\begin{fittable}\begin{tabular}{llcccccc}
+\toprule
+Horizon & Subset & MR & Stateless & Stateful & $\Delta$ & Residual & $\Delta$ \\
+\midrule
+1 min  & All   & 0.5363 & 0.6623 & 0.6685 & $+0.62$ [$+0.46$, $+0.82$] & \textbf{0.6760} & $+1.37$ [$+1.16$, $+1.58$] \\
+       & Dedup & 0.5012 & 0.6143 & 0.6317 & $+1.74$ [$+1.31$, $+2.22$] & \textbf{0.6346} & $+2.04$ [$+1.76$, $+2.30$] \\
+15 min & All   & 0.5373 & \textbf{0.6213} & 0.6206 & $-0.07$ [$-0.34$, $+0.19$] & --- & \\
+       & Dedup & 0.5253 & \textbf{0.6197} & 0.6158 & $-0.39$ [$-0.63$, $-0.13$] & --- & \\
+1 h    & All   & 0.5311 & 0.6044 & 0.5902 & $-1.42$ [$-1.83$, $-1.00$] & \textbf{0.6048} & $+0.04$ [$-0.18$, $+0.24$] \\
+       & Dedup & 0.5180 & \textbf{0.5943} & 0.5797 & $-1.46$ [$-1.76$, $-1.14$] & 0.5933 & $-0.10$ [$-0.26$, $+0.05$] \\
+6 h    & All   & 0.5069 & \textbf{0.5716} & 0.5396 & $-3.20$ & --- & \\
+       & Dedup & 0.5002 & \textbf{0.5665} & 0.5370 & $-2.95$ & --- & \\
+12 h   & All   & 0.5071 & \textbf{0.5715} & 0.4914 & $-8.01$ & --- & \\
+       & Dedup & 0.4995 & \textbf{0.5680} & 0.5168 & $-5.12$ & --- & \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\input{figures/fig_synthesis}
+\caption{The gain of the stateful family over the stateless control at each horizon
+(all samples; calibrated against calibrated at 1 min, 15 min and 1 h with 95\% hour-block
+bootstrap intervals; raw argmax at 6 h and 12 h).  The sign reverses with the horizon.}
+\label{fig:horizons:synthesis}
+\end{figure}
+
+\subsection{Where the models win, by kind of market}
+\label{sec:horizons:where}
+\label{sec:analysis:where}
+
+
+The per-market analysis at 1 h (\cref{tab:horizons:where}; the lookback model with the
+graph against Mean Reversion on the same 9.86 million samples, before the direct path and the
+hand features) shows where a learned model of the book is strong or weak relative to the
+rule.  The model is above the rule only on weather markets ($+1.8$) and on markets that last
+one hour or less ($+13.7$, a small group of 402 markets in which the rule is near chance);
+it is closest to the rule on markets one to six hours from their end date ($+2.4$) and on
+the most traded quartile ($-0.3$), and farthest on the fifteen-minute crypto markets
+($-6.5$), on sports markets while the game is being played ($-6.6$), on political markets
+($-4.3$) and on markets that had no trades in the training days ($-5.3$).  By price level
+(\cref{fig:horizons:pricelevel}) both the model and the rule are best between $0.05$ and
+$0.2$ and between $0.8$ and $0.95$, and the model collapses above $0.95$ ($-10.6$), where the
+process is a one-tick oscillation that the rule reads directly.  The pattern has one reading:
+the model wins where the book moves for reasons the book shows (weather resolves on a
+schedule, a short market lives inside its own activity), and loses where the price is driven
+by an external reference the model does not see, the exchange price for the crypto markets
+\cite{young2026openmarket}, the game for in-play sports, the news for politics.  Every
+later model of the thesis inherits this map; the hand features and the trees raise every
+row, and the control's gain over the rule is positive in every category
+(\cref{sec:stateless:control}), but the ordering of the categories, crypto and in-play
+sports hardest, does not change.
+
+\begin{table}[t]
+\centering
+\caption{Balanced accuracy at 1 h by kind of market: the lookback stateful model (graph
+variant, seed 0) against Mean Reversion on the same validation samples, with the class mix
+of each group.  $\Delta$ in points.}
+\label{tab:horizons:where}
+\small
+\begin{fittable}\begin{tabular}{lrrccc}
+\toprule
+Group & samples & markets & \textsc{const} share & Model / MR & $\Delta$ \\
+\midrule
+\multicolumn{6}{l}{\emph{By category}} \\
+politics          & 3{,}762{,}863 & 4{,}502 & 0.64 & 0.500 / 0.543 & $-4.3$ \\
+sports            & 3{,}088{,}176 & 6{,}720 & 0.54 & 0.512 / 0.535 & $-2.3$ \\
+culture           & 1{,}404{,}248 &   726   & 0.37 & 0.474 / 0.490 & $-1.6$ \\
+economy, tech     &   889{,}481   & 1{,}197 & 0.55 & 0.470 / 0.498 & $-2.8$ \\
+crypto            &   292{,}307   & 1{,}160 & 0.56 & 0.461 / 0.526 & $-6.5$ \\
+weather           &   200{,}158   &   696   & 0.30 & 0.480 / 0.463 & $+1.8$ \\
+esports           &   150{,}765   & 1{,}213 & 0.33 & 0.504 / 0.517 & $-1.3$ \\
+\midrule
+\multicolumn{6}{l}{\emph{By time to the end date}} \\
+less than 1 h     &    49{,}044   &   539   & 0.09 & 0.371 / 0.425 & $-5.4$ \\
+1 h to 6 h        &   136{,}031   & 1{,}250 & 0.25 & 0.490 / 0.466 & $+2.4$ \\
+6 h to 1 day      &   219{,}307   & 1{,}615 & 0.55 & 0.472 / 0.471 & $+0.1$ \\
+1 day to 1 week   & 2{,}260{,}895 & 2{,}798 & 0.44 & 0.483 / 0.505 & $-2.2$ \\
+more than 1 month & 4{,}914{,}916 & 7{,}711 & 0.65 & 0.496 / 0.532 & $-3.7$ \\
+\midrule
+\multicolumn{6}{l}{\emph{By market duration}} \\
+1 h or less       &    24{,}215   &   402   & 0.15 & 0.514 / 0.376 & $+13.7$ \\
+1 h to 1 day      &   413{,}522   & 1{,}466 & 0.17 & 0.466 / 0.479 & $-1.3$ \\
+more than 3 months & 5{,}954{,}469 & 8{,}484 & 0.61 & 0.501 / 0.531 & $-3.0$ \\
+\midrule
+\multicolumn{6}{l}{\emph{Sports, by phase}} \\
+before the game   & 1{,}160{,}800 & 3{,}932 & 0.63 & 0.467 / 0.494 & $-2.8$ \\
+game started      &   557{,}082   & 1{,}818 & 0.11 & 0.464 / 0.530 & $-6.6$ \\
+\midrule
+\multicolumn{6}{l}{\emph{By traded volume in the training days}} \\
+top quartile      & 3{,}071{,}194 & 2{,}291 & 0.48 & 0.510 / 0.512 & $-0.3$ \\
+bottom quartile   & 1{,}373{,}930 & 2{,}159 & 0.65 & 0.493 / 0.543 & $-4.9$ \\
+no trades         & 1{,}987{,}456 & 7{,}179 & 0.49 & 0.499 / 0.552 & $-5.3$ \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\input{figures/fig_pricelevel}
+\caption{Balanced accuracy at 1 h by price level: the lookback stateful model against
+Mean Reversion on the same samples.  Both are best just inside the boundaries and the model
+collapses above $0.95$.}
+\label{fig:horizons:pricelevel}
+\end{figure}
+
+\subsection{Robustness}
+\label{sec:horizons:robustness}
+
+\paragraph{Seeds.}  Three seeds of the best LOB-only configuration give $0.5547$, $0.5546$
+and $0.5549$ at one hour, a spread of three ten-thousandths, and the time-first encoder and
+the forecast features reproduce their gains on a second seed to within a tenth of a point
+(\cref{sec:stateful:chain,sec:stateful:encoders,sec:external:tsfm}); the tabular network
+is reported as the mean of three seeds.  At twelve hours the seeds spread by $0.009$ and
+straddle the rule on the full stream, which is why the twelve-hour result is stated as
+``real on independent samples, fragile on the full stream''.  The hour-block bootstrap
+intervals of every difference are the second guard: a difference whose interval includes
+zero is reported as a tie.
+
+\paragraph{Calibration.}  The two cross-fitted logit offsets of \cref{sec:data:protocol}
+are worth $+0.3$ points to the trees at one hour and $+5.4$ at one minute, and the prior
+correction of \textcite{menon2021logitadjustment} is destructive on a focal-loss model
+(\cref{sec:stateful:hand}); every ordering reported in this section survives the
+calibration, several gaps do not, and the one-hour tie between trees and the residual
+stateful model only appears once both are calibrated (\cref{sec:stateful:calibration}).
+
+\paragraph{Two views of every sample.}  Every number is given on the full stream and on
+the deduplicated subset, and the two disagree in a systematic way: the full stream rewards
+what is right on the busy markets, the deduplicated subset what is right on the sparse ones.
+The time-first encoder and the forecast features gain on the first; the hand features, the
+second pass and the residual construction on the second.  A result that holds on one view
+only is reported as such.
+
+\subsubsection{Short tests versus full-length runs}
+\label{sec:horizons:short-tests}
+
+A recurring methodological lesson: a two-day short test is not a reliable predictor of
+a seven-day result.  The Mean-Reversion initialisation of the direct path gained two
+points in the short test and lost two at full length; the five-lookback and global-state
+additions kept their sign.  The explanation is that a short test is in the regime where
+the recurrent part has learned little and the heuristic is all there is; the full run
+is in the regime where the residual has been learned.  Every claim of the thesis rests on
+full-length runs, and the short tests are reported as what they are: screening.

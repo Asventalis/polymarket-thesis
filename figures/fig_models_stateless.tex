@@ -1,0 +1,24 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm, node distance=5mm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=4pt, minimum height=9mm, text width=62mm, fill=white},
+  state/.style={box, fill=vizA!12}, input/.style={box, dashed}, op/.style={box, fill=vizB!12}, outbox/.style={box, fill=vizC!15},
+  arr/.style={->, draw=vizInk, line width=0.8pt}, lbl/.style={font=\scriptsize\bfseries, color=vizInk}]
+% column (a): LightGBM
+\node[lbl] at (0, 0.9) {(a) LightGBM};
+\node[input] (in1) at (0, 0) {61 hand-made features of the sample:\\60 numbers and the category};
+\node[op, below=of in1] (gbm) {gradient-boosted trees:\\$R$ rounds $\times$ 3 trees of $\le 63$ leaves\\($R = 536$ at 1 h, 324 at 1 min)};
+\node[state, below=of gbm] (sc1) {3 class scores $\to$ softmax\\$\to$ 3 probabilities};
+\draw[arr] (in1) -- (gbm); \draw[arr] (gbm) -- (sc1);
+% column (b): MLP and TabM
+\node[lbl] at (7.6, 0.9) {(b) MLP and TabM};
+\node[input] (in2) at (7.6, 0) {the same 61 features};
+\node[op, below=of in2] (enc) {encoding: each number cut into 16 quantile bins (piecewise-linear), hour $\to$ sine and cosine, category $\to$ 8 indicators: 674 numbers};
+\node[op, below=of enc] (mlp) {MLP: $3 \times$ [linear 512, SiLU, dropout 0.15], head $512 \to 3$\\TabM: 16 members through the same body, mean of their 16 softmax outputs};
+\node[state, below=of mlp] (sc2) {3 probabilities};
+\draw[arr] (in2) -- (enc); \draw[arr] (enc) -- (mlp); \draw[arr] (mlp) -- (sc2);
+% shared calibration and output
+\node[op] (cal) at (3.8, -7.3) {2 logit offsets (calibration), argmax};
+\node[outbox, below=of cal] (out) {class: \textsc{down} / \textsc{const} / \textsc{up}};
+\draw[arr] (sc1.south) |- (cal.west);
+\draw[arr] (sc2.south) |- (cal.east);
+\draw[arr] (cal) -- (out);
+\end{tikzpicture}

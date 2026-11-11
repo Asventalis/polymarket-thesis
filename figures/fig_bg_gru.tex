@@ -1,0 +1,19 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=3pt, minimum height=9mm, text width=44mm, fill=white},
+  input/.style={box, dashed, text width=26mm}, op/.style={box, fill=vizB!12}, state/.style={box, fill=vizA!12, text width=26mm},
+  arr/.style={->, draw=vizInk, line width=0.8pt}, lab/.style={font=\scriptsize, text=vizInk}]
+\node[input] (x)    at (0,1.3)    {input $\mathbf{x}_t$};
+\node[state] (hp)   at (0,-1.3)   {previous state $\mathbf{h}_{t-1}$};
+\node[op]    (r)    at (5.6,2.4)  {reset gate\\$\mathbf{r}_t = \sigma(\mathbf{W}_r \mathbf{x}_t + \mathbf{U}_r \mathbf{h}_{t-1} + \mathbf{b}_r)$};
+\node[op]    (z)    at (5.6,0.0)  {update gate\\$\mathbf{z}_t = \sigma(\mathbf{W}_z \mathbf{x}_t + \mathbf{U}_z \mathbf{h}_{t-1} + \mathbf{b}_z)$};
+\node[op]    (cand) at (5.6,-2.4) {candidate\\$\tilde{\mathbf{h}}_t = \tanh(\mathbf{W}_h \mathbf{x}_t + \mathbf{U}_h (\mathbf{r}_t \odot \mathbf{h}_{t-1}) + \mathbf{b}_h)$};
+\node[op]    (mix)  at (11.4,0.0) {interpolation\\$\mathbf{h}_t = (1 - \mathbf{z}_t) \odot \mathbf{h}_{t-1} + \mathbf{z}_t \odot \tilde{\mathbf{h}}_t$};
+\node[state] (h)    at (15.6,0.0) {new state $\mathbf{h}_t$};
+\draw[arr] (x.east) -- (r.west); \draw[arr] (x.east) -- (z.west); \draw[arr] (x.east) -- (cand.west);
+\draw[arr] (hp.east) -- (r.west); \draw[arr] (hp.east) -- (z.west); \draw[arr] (hp.east) -- (cand.west);
+\draw[arr] (r.east) -- ++(0.5,0) |- node[lab, pos=0.25, right] {$\mathbf{r}_t$} (cand.east);
+\draw[arr] (z.east) -- node[lab, above] {$\mathbf{z}_t$} (mix.west);
+\draw[arr] (cand.east) -| node[lab, pos=0.25, above] {$\tilde{\mathbf{h}}_t$} (mix.south);
+\draw[arr] (hp.south) |- ++(0,-2.4) -| node[lab, pos=0.25, below] {$\mathbf{h}_{t-1}$} (mix.south east);
+\draw[arr] (mix) -- (h);
+\end{tikzpicture}

@@ -1,0 +1,185 @@
+\subsection{The price process}
+\label{sec:expl:price}
+
+Before any model is trained, the data say a great deal about what can and cannot be
+predicted.  This section collects the descriptive results that the methodology and the experiments rely on:
+what the stream of book events looks like, how often a price moves over each horizon, how
+the price level bounds the dynamics, how regular the activity of a market is, what the kind
+of contract says, whether the contracts of the same event lead one another, and whether the
+wallets that trade carry information.  Every number is computed on the training and
+validation days of \cref{sec:data:protocol}, never on the locked test period.
+
+\subsubsection{The event stream}
+\label{sec:expl:stream}
+
+An audit of one training day (12 March,
+325 million events on 23{,}512 markets) shows how uneven this unit is.  Only 4.2\% of
+the events change the mid (1.9\% at extreme prices, 5.2\% at central ones); 55\% add
+size and 44\% remove it.  Ninety percent of the events are away from the best quote
+(median distance 0.03 on the bid side and 0.10 on the ask side), and a full book has a
+median of about 650 bid and 750 ask levels, so most events never reach the ten stored
+levels and enter the vector only through the order-flow accumulators.  The event clock
+is irregular: 30\% of consecutive events share a timestamp, the median gap is 31~ms and
+the 90th percentile 4.3~s.  One 20-event snapshot therefore spans 12~s in median but
+196~s at the 90th percentile, and 73\% of the snapshots contain no mid change; a
+10-snapshot window spans 2.8 minutes in median and 34 minutes at the 90th percentile,
+with 44\% of the windows containing no mid change.  The consequences for the models are
+discussed in \cref{sec:exp:nostate,sec:analysis:nostate}.
+
+\subsubsection{How often a price moves}
+\label{sec:expl:classes}
+
+The three-class label of \cref{sec:data:labels} is dominated by \textsc{const} at every
+horizon below a few hours (\cref{tab:expl:classes,fig:expl:classes}).  Over one minute nine samples in ten do
+not move; over fifteen minutes seven in ten; over one hour a little more than half; over
+twelve hours one in three.  The two directions are close to balanced at every horizon, with
+\textsc{down} slightly more frequent than \textsc{up} at the short ones.  Two consequences
+follow.  The first is that the task changes with the horizon: at one minute it is almost
+entirely ``will the mid move at all'', and the direction of a move, once it moves, is nearly
+a coin toss (\cref{sec:expl:direction}); at twelve hours the direction is the task.  The
+second is that any classifier's balanced accuracy at a short horizon depends on where it
+places its decision thresholds far more than on what it knows: a model that under-calls the
+moves by a few per cent loses several points of balanced accuracy, which is why every
+comparison in \cref{ch:horizons} is made after the same post-hoc calibration.
+
+\begin{table}[t]
+\centering
+\caption{Share of the three classes among the labelled validation samples of 13 March, by
+horizon (samples of the stateful models: every market of every block at the block time;
+1 h, 6 h and 12 h from the causal-baseline evaluation, 1 and 15 min from the short-horizon
+runs).}
+\label{tab:expl:classes}
+\begin{fittable}\begin{tabular}{lccc}
+\toprule
+Horizon & \textsc{down} & \textsc{const} & \textsc{up} \\
+\midrule
+1 min  & 0.057 & 0.891 & 0.052 \\
+15 min & 0.164 & 0.690 & 0.146 \\
+1 h    & 0.236 & 0.549 & 0.215 \\
+6 h    & 0.335 & 0.354 & 0.312 \\
+12 h   & 0.377 & 0.275 & 0.348 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\input{figures/fig_classes}
+\caption{Class shares of the validation labels by horizon.  Below one hour the task is
+dominated by \textsc{const}; at twelve hours the three classes are nearly balanced.}
+\label{fig:expl:classes}
+\end{figure}
+
+\subsubsection{The price level}
+\label{sec:expl:level}
+
+About 40\% of the samples have a mid below $0.05$ or above $0.95$.  A Polymarket mid price
+is a bounded, discrete process observed through a thin book; most of its changes are
+one-tick moves produced by an order arriving at or leaving the best quote, they are not
+information and they revert, and a market that has not moved in the last hour is usually
+illiquid or settled near a boundary and will not move in the next hour either.  At extreme
+prices the process is almost purely a one-tick oscillation: the share of events that change
+the mid falls from 5.2\% at central prices to 1.9\% there (\cref{sec:expl:stream}).  Every
+result of the thesis is therefore reported separately on the \emph{extreme} samples (mid
+outside $[0.05, 0.95]$) and the \emph{central} ones, and every learned model is weakest,
+relative to the simple rules, at the extremes.  The literature adds that the extremes are
+also where prices are systematically biased: contracts bought below ten cents lose money on
+average and contracts above ninety cents earn a little \cite{cardozo2026favorite}, the
+favourite--longshot bias of \cref{sec:pm:what}, so the price level is not only a bound on
+the dynamics but a feature in its own right.
+
+\subsubsection{The activity clock}
+\label{sec:expl:activity}
+
+The most regular thing about a market is its own rhythm.  The time since the mid last
+changed, the number of mid changes in the last hour and the number of book events in the
+last minute are the three quantities that best separate the samples whose mid will move
+from those whose mid will not.  Over a one-hour horizon the time since the last change
+separates \textsc{const} from a move with an area under the ROC curve of $0.85$; over one
+minute the number of changes in the last hour reaches $0.94$, the time since the last change
+$0.91$ and the event count of the last minute $0.89$ (\cref{sec:stateless:control}).  No
+quantity of the book's shape comes close.  This is the \emph{activity clock}, and it is the
+first fact any model of this data has to know: a market that has moved often lately will
+move again, one that has been still will stay still.  It is also a fact that the event-clock
+representation of \cref{sec:data:tensors} hides, since a window of twenty book events can be
+ten seconds or ten minutes old and nothing in the window says which; \cref{ch:stateless,ch:stateful}
+measure what this costs.
+
+\subsubsection{The direction of a move}
+\label{sec:expl:direction}
+
+Given that the mid moves, which way is far less predictable.  On the samples that moved
+within one hour, the sign of ``mid minus its one-hour mean'' gives the direction 57.3\% of
+the time, the level-1 imbalance of the book 55.7\%, the microprice 55.5\%, the on-chain
+taker flow 52.6\% (on the fifth of the samples with trades), the ten-level imbalance 50.8\%
+and the all-level order-flow accumulators of the tensor 50.0--50.5\%.  The direction is in
+the first level of the book and in the position of the mid relative to its recent mean,
+which is the reversal of \cref{sec:expl:level}, and not in the depth of the book; this is the
+finding of \textcite{tran2022beyondbest} and \textcite{kolm2023dofi} on equities reproduced
+on a prediction market.  Over one minute the best univariate hit rate is 54.1\% (the level-1
+imbalance), every feature is within four points of a coin toss, and the twelve-hour return
+is the strongest single feature at twelve hours with a 57.9\% directional hit as a reversal
+sign.  The rule that follows from these numbers, ``predict that the price will move back
+against its recent change, and no move if it did not move'', is Mean Reversion-$H$, the
+reference of every comparison in the thesis (\cref{sec:models:baselines}).
+
+\subsubsection{The kind of contract}
+\label{sec:expl:templates}
+
+Questions are templated: 3{,}528 templates among the active markets (``Will the
+temperature in $X$ be above $y$ on $d$'', ``Will $X$ win the $Y$ game'', ``Bitcoin Up or
+Down, $t$ to $t + 15$ min'').  The template explains 55\% of the between-market variance of
+the probability of a move within one hour, from 4\% for House-seat markets to 83\% for
+daily-temperature markets, and a ridge regression on a sentence embedding of the question
+predicts that probability out of sample with $R^2 = 0.22$, no better than the template
+means.  The contract type therefore conditions the dynamics, as \textcite{le2026calibration}
+also find for the calibration of political markets, but it does so through a handful of
+categories rather than through the words of the question; the usable form of the text is a
+category or template indicator, and that is how it enters the models
+(\cref{sec:prep:features}).
+
+\subsubsection{Siblings co-move, nobody leads}
+\label{sec:expl:siblings}
+
+Contracts of the same event, the two sides of a game or the candidates of an election, are
+the obvious place to look for one price leading another (\cref{fig:expl:leadlag}).  Taking the minute changes of the mid of every market
+(6.65 million changes over 49 million market-minutes of 6--13 March) and, for every change of
+the more active contract of a sibling pair, counting the changes of the quieter one at lags of
+$-15$ to $+15$ minutes against the count expected under independence, two contracts of the same
+game change in the same minute 2.7 times more often than chance, 2.3 times at one minute of
+distance and still 1.9 times at fifteen; the contracts of the same election or ladder, 2.0 and
+1.5 times.  But the histogram is symmetric to the third decimal (asymmetry between $+k$ and
+$-k$ below 0.01 at every lag): the quieter contract does not follow the active one any more
+than it precedes it.  The common cause, the event on the pitch or the headline, reaches both
+books within the same minute, which is below the resolution of any horizon this thesis uses.
+What a sibling did in the last hour is therefore already in the market's own book by the time
+the model reads it, and the sibling features of \cref{sec:graph:siblings} lose rather than
+gain in the trees.  The sign structure is weak and, for exclusive events, slightly
+concordant rather than opposite (43--47\% of the simultaneous changes have opposite signs): a
+part of the co-movement is a market maker re-quoting the same side of several books, not
+probability mass moving from one candidate to another.
+
+\begin{figure}[t]
+\centering
+\input{figures/fig_leadlag}
+\caption{Lead--lag between sibling contracts, 6--13 March: for every minute change of the
+more active contract of a pair, the number of changes of the quieter one at each lag,
+divided by the number expected under independence.  The peak is at lag zero and the two
+sides are symmetric: siblings co-move, nobody leads.}
+\label{fig:expl:leadlag}
+\end{figure}
+
+\subsubsection{Wallets}
+\label{sec:expl:wallets}
+
+Each day 122{,}000--161{,}000 distinct wallets trade.  A wallet's past accuracy, the share
+of its trades on the side that the price then moved to over the horizon, is strongly
+persistent: the Spearman correlation between a wallet's hit rate on the training days and
+on the validation day is $0.5$--$0.6$.  Skill exists at the wallet level.  Whether it is
+information about a \emph{market} is another question: a market is traded by many wallets,
+their aggregate at any moment is close to that of random wallets with the same activity, and
+as a market-level predictor the skill of the wallets that traded in the last hour adds about
+one point over an identity-free placebo and does not beat Mean Reversion
+(\cref{sec:graph:smartmoney}).  The trade of a skilled wallet is also a book event, seen by
+the order-flow features before any wallet feature can see it.
+

@@ -1,0 +1,17 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm, node distance=5mm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=4pt, minimum height=9mm, text width=62mm, fill=white},
+  state/.style={box, fill=vizA!12}, input/.style={box, dashed}, op/.style={box, fill=vizB!12}, outbox/.style={box, fill=vizC!15},
+  arr/.style={->, draw=vizInk, line width=0.8pt}, lbl/.style={font=\scriptsize\bfseries, color=vizInk}]
+\node[lbl] at (0, 0.9) {(a) zero-shot};
+\node[input] (in) at (0, 0) {last 512 mid prices of the market, one per minute (one per 5 min at 12 h): 512 numbers};
+\node[op, below=of in] (ch) {Chronos-2: pretrained forecaster, frozen, no training on our data};
+\node[state, below=of ch] (q) {forecast of the mid at $t + H$:\\9 quantiles, 10\% to 90\%};
+\node[op, below=of q] (rule) {decision rule: sign of the median; or median with a dead zone of $\pm 0.0005$ (half a tick); or the quantile bands};
+\node[outbox, below=of rule] (out) {class: \textsc{down} / \textsc{const} / \textsc{up}};
+\draw[arr] (in) -- (ch); \draw[arr] (ch) -- (q); \draw[arr] (q) -- (rule); \draw[arr] (rule) -- (out);
+\node[lbl] at (7.6, 0.9) {(b) as features};
+\node[op] (feat) at (7.6, -1.9) {$10 \times$ (quantile $-$ current mid) for the 10, 50 and 90\% quantiles at 15, 30 and 60 min, the sign of the 60-min median change and an availability flag: 11 numbers};
+\node[outbox, below=of feat] (dest) {window rows and direct path of the stateful model (\cref{fig:models:architecture})};
+\draw[arr] (q.east) -- (feat.west |- q.east);
+\draw[arr] (feat) -- (dest);
+\end{tikzpicture}

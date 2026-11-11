@@ -1,4 +1,63 @@
-\chapter{The hand-made features}
+\chapter{The Sixty-One Hand-Made Features}
 \label{app:features}
 
-\todo{table of the sixty-one features, one line each, with the definition and the group (price history, book shape, activity and clock, trades, static)}
+The features of the stateless control (\cref{sec:prep:features}) are computed for every
+tensor row from the clean data strictly before the row's time, with DuckDB window functions
+over the market's own history (\texttt{hand\_features.py}).  Sizes are in contract units,
+times in seconds, prices in ticks of the market where noted; \texttt{log} is $\ln(1 + x)$.
+The category is a one-hot indicator in the networks and a categorical column in the trees.
+
+\begin{footnotesize}
+\begin{longtable}{llp{7.3cm}}
+\toprule
+Group & Name & Definition \\
+\midrule
+\endfirsthead
+\toprule
+Group & Name & Definition \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+G1 & \texttt{mid} & mid price of the last book state \\
+   & \texttt{ret\_15m}, \texttt{ret\_1h}, \texttt{ret\_3h}, \texttt{ret\_6h}, \texttt{ret\_12h} & change of the mid over the past 15 min, 1, 3, 6 and 12 h (the lookbacks of the direct path) \\
+   & \texttt{sgn\_15m} \ldots \texttt{sgn\_12h} & sign of each change \\
+   & \texttt{hour} & hour of the day (UTC) \\
+\midrule
+G2 & \texttt{spread\_ticks} & best ask minus best bid, in ticks \\
+   & \texttt{imb1}, \texttt{imb5}, \texttt{imb10} & depth imbalance $(b - a)/(b + a)$ over the first 1, 5 and 10 levels \\
+   & \texttt{micro\_minus\_mid\_ticks} & microprice (size-weighted best quotes) minus the mid, in ticks \\
+   & \texttt{log\_bid\_sz0}, \texttt{log\_ask\_sz0} & log size at the best bid and ask \\
+   & \texttt{log\_bid\_sz10}, \texttt{log\_ask\_sz10} & log size over the first ten levels of each side \\
+   & \texttt{bid\_levels}, \texttt{ask\_levels} & number of filled levels among the ten stored \\
+   & \texttt{depth\_skew} & skew of the depth between the two sides (tensor feature) \\
+   & \texttt{bid\_rel1}, \texttt{ask\_rel1} & distance of the best bid and ask from the mid, relative (tensor features) \\
+\midrule
+G3 & \texttt{ofi}, \texttt{ofi\_5}, \texttt{ofi\_20}, \texttt{ofi\_15m} & order-flow imbalance accumulated over the last event, the last 5 and 20 events and the last 15 minutes \\
+   & \texttt{ofi\_20\_z}, \texttt{ofi\_15m\_z} & the same, divided by the volume of book changes over the same span \\
+   & \texttt{log\_vol\_15m} & log volume of book changes in the last 15 minutes \\
+   & \texttt{buy\_ratio}, \texttt{cancel\_ratio} & share of bid-side events and of size removals among recent events (tensor features) \\
+   & \texttt{log\_dt\_prev} & log time since the previous book event \\
+   & \texttt{since\_row} & time since the market's last tensor row (control only; the stateful model reads the current row) \\
+   & \texttt{n\_1m}, \texttt{n\_5m}, \texttt{n\_15m}, \texttt{n\_60m} & number of book events in the last 1, 5, 15 and 60 minutes \\
+   & \texttt{moves\_60m} & number of mid changes in the last hour \\
+   & \texttt{rv\_60m} & realised volatility of the mid over the last hour \\
+   & \texttt{range\_pos\_60m} & position of the mid in its one-hour range, centred at zero \\
+   & \texttt{mid\_minus\_mean60} & mid minus its one-hour mean \\
+   & \texttt{since\_move} & time since the last mid change (the strongest feature at every horizon) \\
+   & \texttt{last\_move\_sign} & sign of the last mid change \\
+\midrule
+G4 & \texttt{flow\_5m}, \texttt{flow\_15m}, \texttt{flow\_60m} & signed taker flow of the on-chain fills over 5, 15 and 60 minutes (oriented to the book's token) \\
+   & \texttt{usd\_15m}, \texttt{usd\_60m} & log collateral traded over 15 and 60 minutes \\
+   & \texttt{ntr\_15m} & number of fills in the last 15 minutes \\
+   & \texttt{flow\_ratio\_15m} & signed flow divided by collateral traded, 15 minutes \\
+   & \texttt{last\_trade\_minus\_mid\_ticks} & price of the last fill minus the mid, in ticks (within the last hour) \\
+   & \texttt{log\_since\_trade} & log time since the last fill \\
+\midrule
+G5 & \texttt{category} & market category from the tags (politics, sports, crypto, weather, esports, culture, economy and tech, other) \\
+   & \texttt{is\_yesno} & whether the outcomes are Yes/No (token orientation) \\
+   & \texttt{log\_hours\_to\_end} & log hours to the market's end date \\
+   & \texttt{log\_duration\_h} & log duration of the market from deployment to end date \\
+   & \texttt{log\_hours\_since\_start} & log age of the market \\
+\end{longtable}
+\end{footnotesize}

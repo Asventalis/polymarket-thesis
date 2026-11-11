@@ -1,0 +1,114 @@
+\chapter{Glossary and Notation}
+\label{ch:glossary}
+
+\section*{Terms}
+\begin{description}[nosep, font=\normalfont\itshape, leftmargin=3.2cm, style=nextline]
+  \item[activity clock] the quantities that describe how recently and how often a market's
+  mid has changed: the time since the last mid change, the number of mid changes and of
+  book events in the last minutes and hour.  The strongest predictors of whether the mid
+  will move (\cref{sec:expl:activity}).
+  \item[balanced accuracy] the mean of the per-class recalls of a classifier; $1/3$ for a
+  constant three-class rule (\cref{sec:models:protocol}).
+  \item[block] the unit of time of the Polygon blockchain, about two seconds; the time step
+  of the stateful model (\cref{sec:data:blocks}).
+  \item[calibration (offsets)] two additive constants on the \textsc{down} and \textsc{up}
+  logits of a model, chosen on the even validation hours and applied to the odd ones and
+  vice versa, so that every model's decision rule is placed the same way before models are
+  compared (\cref{sec:models:protocol}).
+  \item[central / extreme samples] samples whose mid is inside $[0.05, 0.95]$ and outside
+  it (\cref{sec:expl:level}).
+  \item[CLOB] central limit order book, the matching mechanism of Polymarket: off-chain
+  order matching, on-chain settlement (\cref{sec:pm:mechanics}).
+  \item[conditional token] an outcome token of a market; a pair of complementary tokens is
+  minted from one unit of collateral and the winning one is redeemed for it after resolution
+  (\cref{sec:pm:mechanics}).
+  \item[control (no-state)] the LightGBM model on the sixty-one hand-made features, the
+  stateless reference of every comparison (\cref{sec:stateless:control}).
+  \item[cross-fitting] fitting a quantity (offsets, tree log-probabilities, a combination
+  weight) on one part of the data and applying it to another, so that no sample is
+  evaluated with a quantity fitted on itself.
+  \item[deduplicated samples] at most one sample per market per fifteen minutes; the subset
+  on which samples are closest to independent (\cref{sec:data:labels}).
+  \item[direct path] a zero-initialised linear layer from the lookback price features (and
+  the hand features) to the three logits, which contains Mean Reversion as a special case
+  (\cref{sec:models:skip}).
+  \item[fill] a matched trade, recorded on-chain with maker, taker, token, side, quantity
+  and price; the rows of the transactions table.
+  \item[hierarchical memory] the minute and hour states of a market, each updated by its
+  own GRU cell at its own period (\cref{sec:models:memory}).
+  \item[rank-gauss transform] the monotone map of a feature to its rank and then through the
+    inverse normal distribution, fitted on training rows; it removes heavy tails and scale
+    before distance-based methods (\cref{ch:structure}).
+  \item[hour-block bootstrap] resampling of the 24 validation hours with replacement to
+  obtain confidence intervals for differences between models (\cref{sec:models:protocol}).
+  \item[lead--lag] whether the changes of one contract precede those of another;
+  measured at the minute scale between sibling contracts (\cref{sec:expl:siblings}).
+  \item[lookback] the change of the mid over a fixed past span (15 min, 1, 3, 6, 12 h).
+  \item[Mean Reversion-$H$] the rule that predicts the opposite of the sign of the change
+  over the past $H$, and \textsc{const} if the price did not move (\cref{sec:models:baselines}).
+  \item[mid price] the average of the best bid and the best ask of the Yes-side book.
+  \item[residual model] the stateful model that receives the cross-fitted tree
+  log-probabilities as inputs and adds them to its logits (\cref{sec:models:residual}).
+  \item[resolution] the decision of a market's outcome through UMA's optimistic oracle
+  after the event (\cref{sec:pm:life}).
+  \item[sibling contracts] markets of the same event: the two sides of a game, the
+  candidates of an election, the strikes of a ladder (\cref{sec:prep:features}).
+  \item[stateful / stateless model] a model that keeps a state per market updated from the
+  stream, against one that reads a table of features at the sample time
+  (\cref{ch:stateless,ch:stateful}).
+  \item[TabM] a parameter-efficient ensemble of multilayer perceptrons sharing one
+  backbone, the tabular network used in \cref{sec:stateless:tabular}.
+  \item[tensor row] one 52-feature description of a market's book at one book event, the
+  unit of the derived order-book tensors (\cref{sec:data:tensors}).
+  \item[time-first encoder] the window encoder that reads each book quantity as its own
+  series before mixing quantities (\cref{sec:models:encoders}).
+  \item[token orientation] whether the book (and the label) refers to token 1 or token 2
+  of the market; the sign of a trade is corrected accordingly (\cref{sec:data:quality}).
+\end{description}
+
+\section*{Acronyms}
+\begin{description}[nosep, font=\normalfont\bfseries, leftmargin=2.2cm, style=sameline]
+  \item[AMI] adjusted mutual information between two partitions of the markets.
+  \item[AUC] area under the receiver operating characteristic curve.
+  \item[BA] balanced accuracy.
+  \item[CI] confidence interval (95\%, hour-block bootstrap unless stated).
+  \item[CLOB] central limit order book.
+  \item[CT-DGNN] continuous-time dynamic graph neural network, the name of the stateful model in the code.
+  \item[GDELT] Global Database of Events, Language and Tone, the news source of \cref{sec:external:news}.
+  \item[GRU] gated recurrent unit.
+  \item[kNN] $k$-nearest-neighbour classifier.
+  \item[LDA] linear discriminant analysis.
+  \item[LOB] limit order book.
+  \item[MI] mutual information.
+  \item[MLP] multilayer perceptron.
+  \item[MR] Mean Reversion-$H$.
+  \item[OFI] order-flow imbalance.
+  \item[PCA] principal component analysis.
+  \item[PLE] piecewise-linear encoding of numeric features.
+  \item[TBPTT] truncated backpropagation through time.
+  \item[TSFM] time-series foundation model.
+  \item[t-SNE] t-distributed stochastic neighbour embedding.
+  \item[UMA] the optimistic oracle protocol that resolves Polymarket markets.
+  \item[UMAP] uniform manifold approximation and projection.
+  \item[USDC] the dollar stablecoin used as collateral.
+\end{description}
+
+\section*{Notation}
+\begin{description}[nosep, font=\normalfont, leftmargin=3.2cm, style=sameline]
+  \item[$\mathcal{M}$, $\mathcal{W}$] the sets of markets and wallets; $m$, $w$ one of each (\cref{sec:bg:notation}).
+  \item[$(t_i, \mathbf{b}_i)$] the book stream of a market: the time of its $i$-th event and the 52 numbers that describe the book just after it.
+  \item[$H$] the prediction horizon (60 s, 900 s, 1 h, 6 h, 12 h).
+  \item[$\operatorname{mid}_m(t)$] the mid price of market $m$ at the last book update strictly before $t$.
+  \item[$y_{m,t}$] the label: \textsc{up}, \textsc{const} or \textsc{down} according to whether $\operatorname{mid}_m(t + H)$ is above, equal to or below $\operatorname{mid}_m(t)$ (\cref{eq:label}).
+  \item[$(m, t)$] a sample: market $m$ at block $t$, a block in which $m$ had a book event.
+  \item[$\Delta^{-}_{L}$] the change of the mid over the past lookback $L$.
+  \item[$\mathbf{x}_{m,t}$] the 61 hand-made features of sample $(m, t)$.
+  \item[$\mathbf{z}_{m,t}$, $\hat{\mathbf{p}}_{m,t}$, $\hat{y}_{m,t}$] the three logits, the three probabilities and the predicted class of a model at $(m, t)$; $\boldsymbol{\delta}$ the calibration offsets added to the logits (\cref{eq:predictor}).
+  \item[$\mathbf{h}_m$, $\mathbf{h}_w$] the per-block states of market $m$ and wallet $w$, 128 numbers each; $\mathbf{h}^{\min}_m$, $\mathbf{h}^{\mathrm{hr}}_m$ the minute and hour states; $\bar{\mathbf{h}}$ the global state (\cref{eq:state-update,eq:memory}).
+  \item[$r$] the learned decay rate of the states; $e^{-r\Delta t}$ the decay over $\Delta t$ seconds.
+  \item[$K$, $\mathbf{W}_{m,t}$] the number of book states in the window read by the encoder, and the window itself; $\phi$ the window encoder.
+  \item[$G = (V, E)$] a graph with nodes $V$ and edges $E$; $E_t$ the fills of block $t$, $N_t(v)$ those incident to node $v$, $\mathbf{a}_e$ the seven attributes of fill $e$ (\cref{eq:mp-attention,eq:mp-update}).
+  \item[$\mathrm{BA}$, $\mathrm{recall}_c$] balanced accuracy and the recall of class $c$ (\cref{sec:bg:eval}).
+  \item[$\Delta$] a difference of balanced accuracies in percentage points, followed by its 95\% interval in brackets.
+  \item[G1 \ldots G5] the nested groups of hand-made features (\cref{app:features}).
+\end{description}

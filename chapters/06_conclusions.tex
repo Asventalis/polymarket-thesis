@@ -1,19 +1,156 @@
 \chapter{Conclusions}
 \label{ch:conclusions}
 
-\todo{after the results chapter}
-
-\section{What the thesis found}
+\section{What the thesis found, question by question}
 \label{sec:concl:summary}
 
-\todo{question by question}
+This thesis treated a decentralised prediction market as a data-mining object and asked four
+questions (\cref{sec:intro:questions}): what its price process looks like and how its
+trading is organised, which public information predicts its direction, which families of
+models can read it, and how the answers change with the horizon.  The answers, on three
+weeks of complete order-book and on-chain data, are these.
+
+\paragraph{The process (\ref{q:process}).}  The price is a bounded, discrete process whose most
+regular feature is its own activity clock: whether it will move is written in how recently and
+how often it has moved, and the direction, when it moves, is weakly in the first level of the
+book and in the reversal of its recent change.  The price level and the kind of contract
+condition everything; the neighbours of a market, the wallets that trade it and the contracts
+of its event, carry nothing that its own book does not already show.  Read as a graph, the
+trading is one connected component of 646 thousand wallets and 158 thousand markets with a
+dense core of a few thousand nodes, a long tail of wallets with a single fill, and a map
+organised by category, contract type and date.  The sixty-one features
+that summarise these properties are about seventeen independent quantities; the space they span
+is organised by market and by activity, not by the label; the part of the label that is
+linear or local is \emph{whether} the price moves, and the information the label asks for
+moves from the activity clock at minutes to the shape of the book at hours.
+
+\paragraph{The information and the models (\ref{q:information}, \ref{q:models}).}  A
+stateless learner on sixty-one hand-made features that encode these properties is the strongest model at every horizon
+from fifteen minutes to twelve hours, six to seven points above the best rule; a properly
+trained tabular network ties it; a continuous-time stateful model reaches it only when given
+the same inputs and the trees as a base, and beats it, by a small margin with an interval that
+excludes zero, only at one minute, where the sequence of book events says something about the
+next minute of a quiet market that no summary of the last hour contains.
+
+\paragraph{The horizon (\ref{q:horizon}).}  At one minute the task is activity and the
+sequence of book events carries information that the summary loses; at fifteen minutes and
+one hour the summary is complete and a stateless learner is the right model; at six and
+twelve hours the task is the direction of a slow reversal read with the price level and the
+lifecycle of the market, and the stateless learner is six points above the rule while the
+stateful models of this study are below it.  The live-game regime and the crypto interval
+contracts are the hard cases at every horizon.
+
+\paragraph{In more detail.}  The thesis built, from raw order-book and on-chain data, a leakage-free benchmark for
+short-horizon price-direction prediction on Polymarket, and used it to compare a
+family of models against the strongest simple rule on the data.  A continuous-time
+model that contains the mean-reversion rule as a special case, encodes the order book
+with a recurrent network, keeps a three-rate hierarchical memory and reads five
+lookback price changes beats the rule by $2.4$ balanced-accuracy points at one hour and
+$1.5$ at six hours, with a gain that is stable across seeds at one hour; reading the
+order-book window one quantity at a time before mixing quantities (the time-first
+encoder) raises the one-hour gain to $3.3$ points, reproduced on a second seed, and
+the six-hour gain to $3.3$ points; at twelve hours the model is below the rule on the
+full stream and above it on independent samples.  The
+wallet--market transaction graph never adds a
+reliable gain; zero-shot time-series foundation models re-discover the rule and do not
+beat it, and as inputs of the best model they add between three and six tenths of a
+point at one hour over two seeds, a gain confined to central prices.  The last experiment
+turns the picture around: a gradient-boosted model with no state, on sixty-one hand-made
+features from the clean data, beats the best deep model by $3.7$ points at one hour,
+$3.2$ at six hours and $8.0$ at twelve, and is $7.3$ points above the rule at one minute;
+the features that carry the gain (the time since the last price change, the number of
+recent changes, the first level of the book, the long returns read together with the
+price level) are exactly the ones the event-clock tensor hides or the linear direct path
+cannot use.  Given those same features as inputs, the deep model recovers half of the gap
+at one hour ($0.584$); the other half is the cost of its online, time-ordered training regime,
+and with the cross-fitted trees as a base and the same calibration as the trees it ties them.
+At one minute, with the control rebuilt on the runs' own samples and every model calibrated
+the same way, the stateful model is $+0.6$ above the trees alone and $+1.4$ as their residual;
+at fifteen minutes it ties them.  The locked test days of 24--26 March reproduce every one
+of these orderings, with the one-minute margins at $+0.4$ to $+0.8$ alone and $+0.9$ to $+1.0$ as the
+residual, over two seeds each, and the long-horizon
+gaps one to two points wider (\cref{sec:horizons:test}).
 
 \section{Limitations}
 \label{sec:concl:limits}
 
-\todo{to write}
+\begin{itemize}[nosep]
+  \item One validation day and one training week.  The three locked test days of 24--26
+  March (\cref{sec:horizons:test}) reproduce every ordering of the validation day, but they
+  are three days of the same month, and the long-horizon gaps widened by one to two points
+  on them.
+  \item Balanced accuracy is a statistical, not an economic, measure: a one-tick move
+  predicted correctly is not a profitable trade once spread and fees are paid.  The
+  thesis makes no claim about trading.
+  \item The graph was tested with one family of message-passing operators and a shared
+  decay; a wallet memory at a slower time scale remains untested.
+  \item Hyper-parameters were chosen by a small number of screening runs, not by a
+  systematic search; the comparison between components is paired and fair, the absolute
+  level could be higher.
+  \item Three weeks of one venue in one month: the regularities found are those of
+  Polymarket in March 2026, and a different season of events, or a different exchange,
+  could weigh the families differently.
+\end{itemize}
+
+\section{Towards deployment}
+\label{sec:concl:deployment}
+
+The thesis stops before deployment.  Balanced accuracy is a statistical measure; a trading use of these models would
+have to answer at least four further questions, none of which the present data settle.
+\emph{Costs}: most correctly predicted moves are one tick, and a tick is smaller than the
+median spread of three of the four families of markets of \cref{tab:structure:clusters}, so a correct direction is not a
+profitable trade unless the position is taken as a resting order, which changes the
+problem.  \emph{Latency}: a prediction at block $t$ uses the book up to $t$ and the fills of
+$t$; the order that acts on it reaches the operator later, and at one minute the signal is
+mostly ``the price is about to move'', which a resting order cannot use.  \emph{Capacity}:
+the sparse markets, where the sequential state is worth most, are sparse because little
+money trades them.  \emph{Non-stationarity}: the families were selected on one validation
+day; a deployed model would be retrained on a rolling window, and the stability of the
+rankings across days is measured here only by the locked test period.  What the thesis does
+settle is what a model of this market should be made of, and that is the content of the next
+section.
+
+\section{What the thesis would start from today}
+\label{sec:concl:today}
+
+Taken together, the control suggests the design the thesis would start from today: a
+regular time grid per market (one-minute bars, aggregated to fifteen minutes for the long
+horizons) instead of the event clock, a feature set reduced to the first level, the
+microprice, the recent-mean distance, the activity clock and the contract type, the
+time-first encoder on those bars, and gradient boosting as the control that any deep model
+must beat.
 
 \section{Future work}
 \label{sec:concl:future}
 
-\todo{to write}
+\begin{itemize}[nosep]
+  \item A rebuilt input pipeline on a regular time grid (one-minute bars, fifteen-minute
+  bars for the long horizons) with the features the no-state control found decisive, the
+  time-first encoder on those bars, a learned contract-type embedding and one
+  multi-horizon model \cite{zhang2021multihorizon}; gradient boosting as the control
+  that every deep model has to beat; and the residual construction at fifteen minutes and
+  at the long horizons, where it was not run.
+  \item A learned, sparse market--market graph restricted to markets of the same event,
+  in the spirit of \textcite{cini2023sparse}, in place of the wallet graph.
+  \item Smoothed labels at long horizons \cite{berti2025tlob}, to make the
+  \textsc{const} class less sensitive to one-tick noise.
+  \item The Binance price as a covariate for the crypto markets, following
+  \textcite{young2026openmarket}.
+  \item Foundation-model features (\cref{sec:models:tsfm}) at the horizons where the
+  model is already strong, and a fine-tuned or domain-pretrained variant if the frozen
+  one helps.
+  \item The time-first encoder with the elapsed time between snapshots as an input
+  channel, and the time-first encoder together with the foundation-model features,
+  since the two gains are measured on the same base model and may add up.
+  \item A different task on the same data: the generation of the next edges of the
+  transaction graph (which wallet will trade which market), the estimation of the real
+  probability of the event against the price, or the distribution of the price at the
+  horizon rather than its sign; and a graph model with a wallet memory at the time scale of
+  days, which \cref{sec:expl:graph} suggests is the only scale at which most wallets have a
+  history.
+  \item An ensemble of the seeds already trained, the cheapest known improvement of a
+  deep classifier \cite{lakshminarayanan2017ensembles}, and event-based labels such
+  as the triple-barrier method \cite{lopezdeprado2018advances} in place of the
+  fixed-horizon label.
+\end{itemize}
+

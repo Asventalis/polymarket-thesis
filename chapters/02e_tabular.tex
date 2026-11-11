@@ -1,0 +1,131 @@
+\section{Gradient-boosted trees and neural tabular learners}
+\label{sec:bg:tabular}
+
+When the inputs are a table of hand-made features, one row per sample, the reference
+learner is not a neural network but an ensemble of decision trees built by gradient
+boosting.  This section explains the decision tree, the boosting procedure that adds trees
+one at a time along the gradient of the loss, the LightGBM implementation used here, and
+the two neural learners trained on the same table to tell the learner apart from the
+training regime.
+
+\subsection{Decision trees}
+
+A \emph{decision tree} \cite{breiman1984cart} partitions the input space with a sequence
+of binary questions on single features, ``is the time since the last move below 17
+minutes?'', each question splitting the samples that reach it into two groups, until the
+groups, the \emph{leaves}, are small or pure; every leaf then carries one output, the
+class frequencies of the training samples in it or, in the trees of a boosted ensemble, a
+single number.  A tree is grown greedily: at every node the feature and the threshold are
+chosen that most reduce an \emph{impurity} of the two children, the entropy or the Gini
+index of their class mix for a classification tree, or the squared error for a regression
+tree.  A tree is invariant to any monotone rescaling of the features, needs no
+normalisation and no imputation beyond a rule for missing values, and represents sharp
+thresholds and interactions between a few features exactly, which an MLP can only
+approximate smoothly; a single deep tree, on the other hand, overfits, and a shallow one
+underfits.  The depth-three tree of \cref{sec:structure:sep} is a tree of this kind read
+in full.
+
+\subsection{Gradient boosting}
+\label{sec:bg:boosting}
+
+\emph{Boosting} builds a strong model as a sum of many weak ones, each fitted to what the
+previous ones got wrong.  \emph{Gradient boosting} \cite{friedman2001gbm} makes this
+precise as gradient descent in the space of functions.  The model after $k$ rounds is an
+additive sum of trees,
+\begin{equation}
+  F_k(\mathbf{x}) = F_{k-1}(\mathbf{x}) + \eta\, h_k(\mathbf{x}), \qquad
+  F_0(\mathbf{x}) = \text{a constant (the log-frequencies of the classes)},
+  \label{eq:boosting}
+\end{equation}
+where $h_k$ is a small tree and $\eta$ a \emph{learning rate} (0.05 here) that shrinks
+every tree's contribution so that many trees share the work.  For a classifier
+$F(\mathbf{x})$ is a vector of three scores, the logits of \cref{eq:softmax}, and one tree
+per class is added at every round.  Each round asks which tree would most reduce the loss
+$\sum_i \ell(F_{k-1}(\mathbf{x}_i) + h(\mathbf{x}_i), y_i)$, and answers it with a
+second-order Taylor expansion of the loss around the current model
+\cite{chen2016xgboost}: with
+\begin{equation}
+  g_i = \frac{\partial \ell}{\partial F}\Big|_{F_{k-1}(\mathbf{x}_i)}, \qquad
+  h_i = \frac{\partial^2 \ell}{\partial F^2}\Big|_{F_{k-1}(\mathbf{x}_i)},
+\end{equation}
+the gradient and the curvature of the loss at every training row (for the cross-entropy
+and class $c$, $g_i = \hat{p}_{i,c} - [y_i = c]$ and $h_i = \hat{p}_{i,c}(1 -
+\hat{p}_{i,c})$, the same quantities as in \cref{eq:xent-grad}), the loss change produced
+by a tree that assigns the value $w_j$ to the rows of its leaf $j$ is approximately
+$\sum_j \bigl( G_j w_j + \tfrac{1}{2} (H_j + \lambda) w_j^2 \bigr)$ with $G_j = \sum_{i \in
+j} g_i$ and $H_j = \sum_{i \in j} h_i$, which is minimised by
+\begin{equation}
+  w_j^{\ast} = -\frac{G_j}{H_j + \lambda}, \qquad
+  \text{gain of a split} = \frac{1}{2}\Bigl( \frac{G_L^2}{H_L + \lambda} + \frac{G_R^2}{H_R + \lambda} - \frac{(G_L + G_R)^2}{H_L + H_R + \lambda} \Bigr),
+  \label{eq:leaf}
+\end{equation}
+where $\lambda$ is an L2 penalty on the leaf values (1 here).  The tree is grown by
+choosing, at every node, the feature and threshold whose split has the largest gain, and
+its leaves take the values $w_j^{\ast}$: a leaf's value is a Newton step of the loss,
+averaged over the rows in the leaf, so each round moves the scores of every row towards
+the direction that reduces its loss, by an amount that depends on how many rows share the
+leaf and how sure the model already is.  \Cref{fig:bg:boosting} draws the loop.  Class
+weights enter by multiplying $g_i$ and $h_i$ of each row by $\alpha_{y_i}$, and the
+offsets of \cref{eq:logit-adjustment} are added to the final scores exactly as for a
+network.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig_bg_boosting}}
+\caption{One round of gradient boosting.  The gradient and the curvature of the loss are
+computed at every training row for the current model; one small tree per class is fitted
+to them, with leaf values given by \cref{eq:leaf}; the tree is added with a small step;
+the model is scored on the early-stopping day and training stops when the score has not
+improved for forty rounds.}
+\label{fig:bg:boosting}
+\end{figure}
+
+\paragraph{LightGBM.}  LightGBM \cite{ke2017lightgbm} is the implementation used.  Three
+of its choices matter here.  It bins every feature into at most 255 \emph{histogram} bins
+before training, so that the gain of every candidate split is computed from sums over
+bins rather than over rows, which makes a round on seven million rows take seconds.  It
+grows trees \emph{leaf-wise}, splitting at every step the leaf with the largest gain
+anywhere in the tree rather than completing one level at a time, up to a maximum number of
+leaves (63 here) and with a minimum number of rows per leaf (500), which is what limits
+how fine a threshold the trees can fit.  And it subsamples the rows and the features of
+every tree (80\% of each), so that consecutive trees see slightly different data and the
+ensemble does not fit the noise of any one row.  The number of rounds is chosen by
+\emph{early stopping} on a day the trees do not train on: the score on 12 March is
+computed after every round and training stops when it has not improved for forty rounds
+(536 rounds at one hour, hence 1{,}608 trees).  Gradient-boosted trees are the reference
+for tabular prediction: the M5 forecasting competition was won almost entirely by LightGBM
+on lagged and calendar features \cite{makridakis2022m5}, and systematic comparisons on
+tabular benchmarks find trees at or near the top unless a neural model is trained with
+care.
+
+\subsection{Neural tabular learners}
+\label{sec:bg:tabnets}
+
+That care consists of a few known ingredients \cite{holzmuller2024betterbydefault}.  The
+first is the \emph{piecewise-linear encoding} of every numeric feature
+\cite{gorishniy2022embeddings}: the range of a feature is cut at $T$ quantiles of the
+training data, $b_0 < b_1 < \cdots < b_T$, and the feature value $x$ is replaced by $T$
+numbers,
+\begin{equation}
+  \operatorname{PLE}(x)_t = \min\Bigl(1, \max\Bigl(0, \frac{x - b_{t-1}}{b_t - b_{t-1}}\Bigr)\Bigr), \qquad t = 1, \ldots, T,
+  \label{eq:ple}
+\end{equation}
+which are one for the bins below $x$, zero for the bins above it and a fraction in the bin
+that contains it; a linear layer on this encoding can represent any piecewise-linear
+function of $x$ with knots at the quantiles, that is, the thresholds that a tree would
+find, which is exactly what a plain MLP on the raw feature cannot do.  With $T = 16$ bins
+the 59 numeric features become $59 \times 16$ numbers, plus a flag per missing value, the
+hour as a sine and a cosine and the category as eight indicators: 674 inputs at one hour.
+The other ingredients are the ones of \cref{sec:bg:learning}: shuffled mini-batches of
+8{,}192 rows, the one-cycle learning-rate schedule, dropout and early stopping on 12 March.
+The MLP so trained has three layers of 512 units.  \emph{TabM} \cite{gorishniy2025tabm}
+turns it into a cheap \emph{ensemble}: $k = 16$ members share the same three layers, but
+each member multiplies the inputs of every layer by its own learned vector (initialised at
+$\pm 1$) and has its own output head, so that the sixteen members are different functions
+at the cost of one; the prediction is the mean of their sixteen softmax outputs.  Averaging
+several differently initialised classifiers is the most reliable known improvement of a
+neural classifier, and TabM obtains most of it with a tenth of the parameters of sixteen
+separate networks; it is among the best neural tabular learners on recent benchmarks
+\cite{jiang2026omnitabbench}.  Both learners are used in \cref{ch:stateless} for one
+purpose: to tell whether a gap between the trees and the stateful model is the learner or
+the training regime.

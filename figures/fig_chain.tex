@@ -1,0 +1,18 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, width=0.47\textwidth, ybar, bar width=14pt, ymin=0.40, ymax=0.58, title={1 h}, title style={font=\footnotesize},
+  ylabel={balanced accuracy, all samples}, symbolic x coords={lookback, + memory, + direct path, + 5 lookbacks}, xtick=data,
+  x tick label style={rotate=30, anchor=east}, enlarge x limits=0.18, ytick={0.40,0.45,0.50,0.55}, name=left]
+\addplot[fill=vizA, draw=white, line width=0.5pt, error bars/.cd, y dir=both, y explicit, error bar style={vizInk}]
+  coordinates {(lookback,0.5038) (+ memory,0.5161) +- (0.0015,0.0015) (+ direct path,0.5452) +- (0.0017,0.0017) (+ 5 lookbacks,0.5547) +- (0.0007,0.0007)};
+\addplot[vizB, dashed, line width=1pt, sharp plot] coordinates {(lookback,0.5311) (+ 5 lookbacks,0.5311)};
+\end{axis}
+\begin{axis}[thesis, width=0.47\textwidth, ybar, bar width=14pt, ymin=0.40, ymax=0.58, title={12 h}, title style={font=\footnotesize},
+  symbolic x coords={lookback, + memory, + direct path, + 5 lookbacks}, xtick=data, x tick label style={rotate=30, anchor=east},
+  enlarge x limits=0.18, ytick={0.40,0.45,0.50,0.55}, yticklabels={}, at={(left.east)}, anchor=west, xshift=1.2cm,
+  legend style={at={(0.03,0.97)}, anchor=north west}]
+\addplot[fill=vizA, draw=white, line width=0.5pt, error bars/.cd, y dir=both, y explicit, error bar style={vizInk}]
+  coordinates {(lookback,0.4368) (+ memory,0.4706) +- (0.0015,0.0015) (+ direct path,0.4727) +- (0.001,0.001) (+ 5 lookbacks,0.4914) +- (0.0007,0.0007)};
+\addplot[vizB, dashed, line width=1pt, sharp plot] coordinates {(lookback,0.5071) (+ 5 lookbacks,0.5071)};
+\legend{stateful model, Mean Reversion}
+\end{axis}
+\end{tikzpicture}

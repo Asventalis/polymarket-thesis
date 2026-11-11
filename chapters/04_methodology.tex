@@ -1,12 +1,18 @@
 \chapter{Methodology}
 \label{ch:models}
 
-% razionale (obiettivo, criteri, regole di inclusione) + famiglie di approcci con pro e contro
-This chapter sets out the rationale of the study (\cref{sec:meth:rationale}) and the
-approaches that were compared, in five families: causal rules on the price, stateless
-learners on hand-made features, sequence models of the order-book stream, graph models,
-and sources of information outside the book.  \todo{each family closes with its
-advantages and limits a priori; a summary table at the end}
+This chapter sets out the rationale of the study and the approaches that were compared.
+\Cref{sec:meth:rationale} states the objective, the criteria by which an approach is
+judged and the rules that decided which approaches were included and which were left
+out.  \Crefrange{sec:models:baselines}{sec:models:external} then describe the five
+families as they were built: causal rules on the price; stateless learners on hand-made
+features; sequence models of the order-book stream, a continuous-time stateful model
+built for this thesis, the same model given the trees as a base, and a pretrained
+forecaster; graph models on the wallet--market and market--market graphs; and sources of
+information outside the book.  Each family closes with its advantages and limits a
+priori, and \cref{sec:models:summary} puts them side by side; what each did on the data
+is the subject of \cref{ch:experiments}.  All of them read the inputs of
+\cref{sec:data:final} and are evaluated under the protocol of \cref{sec:data:protocol}.
 
 \section{Objective, criteria and rules of inclusion}
 \label{sec:meth:rationale}
@@ -15,41 +21,100 @@ advantages and limits a priori; a summary table at the end}
 \label{sec:meth:objective}
 
 The object of the study is the direction of the mid price of a Polymarket market over a
-horizon $H$, read as the three-class label of \cref{sec:data:labels}, at every block in
-which the market updated its book, for five horizons from one minute to twelve hours.
-The task is the prediction of the price while the market is open, not of the outcome of
-the event; the measure is balanced accuracy, because the three classes are of very
-unequal size and change size with the horizon; and the unit of every comparison is the
-paired difference between two models on the same samples, with an interval.
+horizon $H$, read as the three-class label of \cref{sec:data:labels}, \textsc{down},
+\textsc{const} or \textsc{up}, at every block in which the market updated its book, for
+five horizons from one minute to twelve hours.  The task serves the four questions of
+\cref{sec:intro:questions}: the exploratory analysis of \cref{ch:exploration} answers the
+first, and the comparison of approaches built here is designed to answer the other three,
+which publicly observable information predicts the direction, which families of models
+can read it and what a sequential state or a neighbourhood is worth over a stateless
+learner on the same inputs, and how the answers change with the horizon.  The task is the
+prediction of the \emph{price while the market is open}, not of the outcome of the event;
+the measure is balanced accuracy, because the three classes are of very unequal size and
+change size with the horizon (\cref{sec:bg:eval}); and the unit of every comparison is
+the paired difference between two models on the same samples, with an interval.
 
 \subsection{Criteria of success}
 \label{sec:meth:criteria}
 
-A model is said to read information that another does not when its balanced accuracy
-on the validation day exceeds the other's on the same samples, after the same post-hoc
-calibration, by a margin whose 95\% hour-block bootstrap interval excludes zero.  The
-reference competitor is first the best causal rule found on the data and then, once it
-exists, the best stateless learner on hand-made features.  \todo{ties; the two views of
-the samples (full stream and deduplicated); the locked test period}
+A model is said to read information that another does not
+when its balanced accuracy on the validation day exceeds the other's \emph{on the same
+samples}, after the same post-hoc calibration, by a margin whose 95\% hour-block bootstrap
+interval excludes zero, both on the full stream and on a deduplicated subset of independent
+samples (\cref{sec:data:protocol}).  The reference competitor is first the best causal
+rule found on the data, ``predict that the price will move back against its recent
+change'', and then, once it exists, the best stateless learner on hand-made features.  The
+final numbers on a locked test period are produced once, after every choice has been made
+(\cref{sec:horizons:test}).  A difference whose interval includes zero is reported as a tie, and a
+result that holds on one of the two views of the samples only, the full stream or the
+deduplicated subset, is reported as such.
 
 \subsection{Rules of inclusion and exclusion}
 \label{sec:meth:rules}
 
-\todo{to expand, one paragraph each:}
+Six rules decided which approaches were built and which were left out.
+
 \begin{enumerate}[nosep]
-  \item \textbf{Causal inputs only.}  Everything an approach reads at time $t$ is
-  computed from data strictly before $t$, and every label from data after it.
-  \item \textbf{Public information that the dataset contains}, plus two public external
-  sources that could be aligned to it (the news flow, a pretrained forecaster); no
-  external reference prices.
-  \item \textbf{One model for all markets}, never one model per market.
+  \item \textbf{Causal inputs only.}  An approach is admissible only if every input it
+  reads at time $t$ is computed from data strictly before $t$ and every label from data
+  after it.  Approaches that would need the outcome, the resolution time or the last trade
+  of a market as an input are excluded; the last-trade time defines the sample population
+  and is never an input (\cref{sec:data:tensors}).
+  \item \textbf{Public information that the dataset contains.}  The inputs are the three
+  streams and the public market metadata, plus two public external sources that could be
+  aligned to them, the news flow of the GDELT project and a pretrained time-series
+  forecaster.  External reference prices, the spot price of Bitcoin for the crypto
+  contracts or the score of the game for in-play sports, are not in the data; their
+  absence is measured in the results by kind of market (\cref{sec:horizons:where}), not
+  modelled.
+  \item \textbf{One model for all markets.}  Every learned approach is one model pooled
+  over all markets, never one model per market: the predictive relation between a book
+  and its next move is to a large extent universal (\cref{sec:bg:lob}), and most markets
+  have too few samples of their own.
   \item \textbf{Every approach is measured against the best simpler one on the same
-  inputs}, and where possible contains it as a special case.
-  \item \textbf{Families that span the questions}: each research question has a paired
-  comparison.  Out of scope: outcome forecasting with language models, trading
-  strategies, per-market models.
-  \item \textbf{A fixed compute budget}: one run per GPU, hours per run; short tests to
-  screen the variants, full-length runs behind every claim.
+  inputs.}  A learned model is admitted only if it can be compared, on the same samples
+  and with the same calibration, with the best causal rule and, once it exists, with the
+  best stateless learner; where possible it contains the rule as a special case
+  (\cref{sec:models:skip}), and where a deep model and a tabular learner read the same
+  table, a second tabular learner is trained to separate the effect of the learner from
+  that of the training regime.
+  \item \textbf{Families that span the questions.}  The families were chosen so that each
+  question of \cref{sec:intro:questions} has a paired comparison: a learner with a
+  sequential state against one without, on the same inputs; the same stateful model with
+  and without the transaction edges; the same stateless learner with and without each
+  external source.  Approaches that would not add such a comparison are outside the
+  scope: outcome forecasting with language models, the subject of most prior work on
+  Polymarket (\cref{sec:pm:related}), trading strategies and their profitability, and
+  per-market models.
+  \item \textbf{A fixed compute budget.}  A full-length run of the stateful model takes
+  nine to seventeen hours on one GPU of a shared server, one run per GPU
+  (\cref{app:runs}).  Variants were therefore screened with two-day short tests and
+  confirmed with full-length runs, every claim rests on the latter, hyper-parameters were
+  set by a small number of screening runs rather than by a systematic search, and the
+  combinations that the budget did not cover (the residual construction at fifteen
+  minutes and at the long horizons, the hand-made features at six and twelve hours, a
+  wallet memory at a slower time scale) are reported as not run rather than guessed.
+\end{enumerate}
+
+\subsection{Principles}
+\label{sec:intro:principles}
+
+Three methodological principles run through the thesis.
+
+\begin{enumerate}[nosep]
+  \item \textbf{Causality first.}  Every feature and every label is computed from data
+  strictly before the prediction time, and the evaluation protocol is chronological.
+  \item \textbf{Strong baselines, the same calibration for everybody.}  The reference
+  competitor is not a random classifier but the best simple rule found on the data and,
+  once it exists, the best stateless learner on the same inputs.  Every model is reported
+  as a difference from the reference with a confidence interval obtained by resampling
+  validation hours, and every model receives the same post-hoc calibration before it is
+  compared, because at short horizons a decision threshold is worth more than a model.
+  \item \textbf{Negative results are results.}  Several components that are reasonable
+  a priori (the transaction graph, a mean-reversion initialisation, wallet-skill
+  features, zero-shot foundation models, news features, sibling features) do not help,
+  and the thesis reports them with the same care as the components that do, with the
+  reason the data give for each.
 \end{enumerate}
 
 \section{Baselines: causal rules on the price}
@@ -59,87 +124,564 @@ All baselines are causal rules on the mid price of the market itself.  With
 $\Delta^{-}_{L} = \operatorname{mid}(t) - \operatorname{mid}(t-L)$ the change over the
 past lookback $L$:
 \begin{itemize}[nosep]
-  \item \textbf{Constant}: always \textsc{const}; balanced accuracy $1/3$ by construction.
+  \item \textbf{Constant}: always \textsc{const}.  Balanced accuracy $1/3$ by construction.
   \item \textbf{Momentum-$L$}: predict $\operatorname{sign}(\Delta^{-}_{L})$.
   \item \textbf{Mean Reversion-$L$}: predict $-\operatorname{sign}(\Delta^{-}_{L})$, and
   \textsc{const} if the price did not move.
 \end{itemize}
+With $L = H$, Mean Reversion is the strongest rule at every horizon
+(\cref{tab:exp:baselines}); it is the reference of every comparison in the thesis.
+Its strength has the reading of \cref{sec:expl:level}: on a bounded, discrete price most
+moves are one-tick oscillations that revert, and a market that did not move in the last $H$
+is likely not to move in the next $H$.
 
-\paragraph{Advantages and limits.}  \todo{to write}
+\Cref{fig:models:rule} draws the rule in the notation used for every model of this
+chapter: dashed boxes are the inputs, orange boxes are computations or trained modules,
+blue boxes are quantities kept or produced inside the model, green boxes are the output,
+and every box states the size of what passes through it.
+
+\begin{figure}[t]
+\centering
+\input{figures/fig_models_rule}
+\caption{Mean Reversion-$H$ as a block diagram.  Two numbers enter, one class comes out.}
+\label{fig:models:rule}
+\end{figure}
+
+\paragraph{Advantages and limits.}  A rule needs no training, cannot leak, costs nothing
+and is readable; on a bounded, discrete price that mostly oscillates by one tick it is
+also a strong competitor, which is why it is the first reference of every comparison.  It
+reads one number: it cannot combine the recent change with the price level, the activity
+of the market or the shape of the book, and it has no way to say \emph{whether} the price
+will move other than by the price not having moved.
 
 \section{Stateless learners on hand-made features}
 \label{sec:models:stateless}
 
-A LightGBM classifier \cite{ke2017lightgbm} on the sixty-one features of
-\cref{sec:prep:features}, trained with class-balanced weights on 7--11 March and
-early-stopped on 12 March, adding one group of features at a time.  On the same table,
-an MLP and a TabM ensemble, trained as tabular models should be (\cref{sec:bg:tabular}),
-to tell whether a difference between the trees and a deep model is the learner or the
-training regime.  \todo{hyper-parameters}
+The strongest test of whether a recurrent state is where the information lives is a model
+that has none.  The inputs are the sixty-one causal features of \cref{sec:prep:features},
+in five groups: price history (the inputs of the direct path), book shape, activity and
+clock, on-chain trades, and the static fields of the market.  A LightGBM classifier
+\cite{ke2017lightgbm} with class-balanced weights was trained on one row in ten of
+7--11 March and early-stopped on 12 March, adding one group at a time
+(\cref{tab:exp:nostate}); the LightGBM parameters (learning rate 0.05, 63 leaves, 500
+rows per leaf, feature and row subsampling 0.8, 600 rounds at most, early stopping on
+12 March) are the same at every horizon.
 
-\paragraph{Advantages and limits.}  \todo{to write}
+On the same table, two neural tabular learners are trained as a tabular model should be
+(\cref{sec:bg:tabular}): an MLP of three layers of 512 units on a piecewise-linear encoding
+of every numeric feature (sixteen quantile bins), with shuffled mini-batches of 8{,}192 rows,
+a one-cycle schedule over sixteen epochs and early stopping on 12 March, and the TabM
+ensemble of sixteen members on the same backbone; both with the class-balanced
+cross-entropy of the trees, three seeds each.  They serve one purpose: to tell whether a
+difference between the trees and the stateful model is the learner or the training regime.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig_models_stateless}}
+\caption{The stateless learners as block diagrams.  (a) LightGBM: the 61 features of the
+sample enter as they are, one tree per class is added at every round, and the three
+class scores pass through a softmax and the two calibration offsets.  (b) MLP and TabM:
+the same features are first expanded into 674 numbers (at 1 h; 706 at 1 min), then pass
+through three layers of 512 units; TabM runs sixteen members through the same body and
+averages their outputs.}
+\label{fig:models:stateless}
+\end{figure}
+
+\paragraph{Reading the diagram (\cref{fig:models:stateless}).}  Both learners read the same
+row: sixty numbers and the category of the market, which LightGBM treats as a categorical
+column and the networks as eight indicators.  In LightGBM every round adds three trees, one
+per class, each with at most 63 leaves and at least 500 rows per leaf; early stopping on
+12 March chooses the number of rounds (536 at one hour, hence 1{,}608 trees; 324 at one
+minute, 280 at six hours, 260 at twelve), and the sum of the trees of a class is that
+class's score.  A softmax turns the three scores into probabilities, two logit offsets fitted
+on the validation day shift \textsc{down} and \textsc{up} against \textsc{const}, and the
+largest probability is the answer.  The networks first expand the row: every number is cut
+into sixteen quantile bins and encoded piecewise-linearly, the hour becomes a sine and a
+cosine, the category eight indicators, and a flag marks each missing value, 674 numbers at
+one hour.  The MLP is three layers of 512 units with SiLU activations and dropout 0.15 and a
+linear head to three scores (0.87 million parameters).  TabM keeps the same body and runs
+sixteen members through it, each with its own learned scaling of the input (initialised at
+$\pm 1$) and its own head; the prediction is the mean of the sixteen softmax outputs (0.91
+million parameters).  Both are trained on shuffled mini-batches of 8{,}192 rows for at most
+sixteen epochs, with the class-balanced cross-entropy of the trees, and their output is
+calibrated and read exactly as the trees' is.
+
+\paragraph{Advantages and limits.}  A stateless learner reads whatever can be computed
+at the sample time, including the quantities that a window of book events hides, the time
+since the last move, the number of recent moves, the price level, the age of the market;
+gradient-boosted trees handle thresholds and interactions between them without any
+scaling, train in minutes on a CPU, and can be trained the way tabular models are best
+trained, on shuffled rows with early stopping.  The family's limit is its blindness to
+order: it sees a summary of the past and never the sequence of events that produced it,
+and what is not computed by hand is not seen at all.  Its rows are also millions of
+near-duplicates of one another, which is why every result is read on the deduplicated
+samples as well.
 
 \section{Sequence models of the order-book stream}
 \label{sec:models:sequence}
 
+The third family keeps a state per market, updated from the stream of book events, and
+asks the state for the prediction.  Its main member is a continuous-time stateful model
+built for this thesis; the family also contains the same model given the trees as a base,
+and a pretrained time-series forecaster used without training.
+
 \subsection{The continuous-time stateful model}
 \label{sec:models:ctdgnn}
 
-The model (CT-DGNN in the code) processes the stream block by block.  At block time $t$
-it receives the markets that updated their book since the previous block, with a window
-of their last $K$ book states, and the transactions of the block as edges between
-wallets and markets; it keeps a state vector for every market and every wallet.
-\todo{one step of the model, with the architecture figure from the old chapter:}
-\begin{itemize}[nosep]
-  \item states and initialisation; continuous-time decay of the states;
-  \item order-book update: the window encoders (space first, or time first);
-  \item hierarchical memory at three rates; global state;
-  \item long-lookback price features and the direct path, which contains the
-  mean-reversion rule as a special case;
-  \item predictor, loss and training (truncated BPTT, one pass through the stream).
-\end{itemize}
+The model, called CT-DGNN in the code, processes the stream block by block.  At block
+time $t$ it receives the markets that updated their book since the previous block, with
+a window of their last $K$ book states ($K = 10$ in the reference configuration), and
+the transactions of the block as
+edges between wallets and markets.  It keeps a state vector of dimension $d = 128$ for
+every market and every wallet.  One step has four parts
+(\cref{fig:models:architecture}).
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig_architecture}}
+\caption{One block step of the stateful model, with the sizes of the two-pass model on the
+hand features (\cref{tab:models:variants} gives the sizes of the other configurations).
+Dashed boxes are inputs of the step, blue boxes are states kept between steps, orange
+boxes are trained modules, the green box is the output.  The edges and the wallet states
+exist only in the graph variant; the hand features and the tree log-probabilities only in
+the runs that use them.}
+\label{fig:models:architecture}
+\end{figure}
+
+\subsubsection{States and initialisation}
+\label{sec:models:state}
+
+Market states are initialised by a fixed random projection of the 390-dimensional
+static features (\cref{sec:data:tensors}); wallet states start near zero.  The
+projection is not trained: the states are detached at every truncation window, so a
+gradient could only ever reach it through the first window.  States live outside the
+model, in two matrices on the GPU, and are updated in place; a \emph{sparse} engine
+keeps, for the nodes touched in the current window, an overlay of their new values and
+the time of their last event, so that a step costs time proportional to the number of
+active nodes rather than to the 820{,}000 nodes of the graph.
+
+\subsubsection{Continuous-time decay}
+\label{sec:models:decay}
+
+Between two events a state decays as $\mathbf{h} \leftarrow e^{-r\,\Delta t}\,\mathbf{h}$,
+with a single learned rate $r$ shared by all dimensions and node types
+(\cref{sec:bg:notation}).  Because
+$e^{-ra}e^{-rb} = e^{-r(a+b)}$, applying the decay lazily at a node's next event is
+identical to applying it at every block.  In every trained model $r$ converges to about
+$0.04$ per second, a half-life of 17~seconds: the fast state is, by its own choice, a
+very short memory.  Two alternatives were tested: no decay, and a fixed multi-scale
+decay with groups of dimensions at half-lives of one minute, one hour, one day and
+infinity (\cref{sec:stateful:chain}).
+
+\subsubsection{Order-book update}
+
+For each active market the window of $K$ book states (each 52 features plus the
+appended price features of \cref{sec:models:lookback}) is encoded by a GRU over the
+$K$ snapshots; its last output is the input of a GRU cell that updates the market
+state, followed by layer normalisation:
+\begin{equation}
+  \mathbf{h}_m(t) = \operatorname{LN}\Bigl(\operatorname{GRUCell}\bigl(\phi(\mathbf{W}_{m,t}),\;
+  e^{-r\,\Delta t}\,\mathbf{h}_m(t^{-})\bigr)\Bigr),
+  \label{eq:state-update}
+\end{equation}
+where $\mathbf{W}_{m,t}$ is the window, $\phi$ the window encoder (the GRU here, or the
+time-first encoder of the next paragraph), $t^{-}$ the time of the market's previous
+event, $\Delta t = t - t^{-}$, and $\operatorname{LN}$ layer normalisation.  This is the
+only part of the model that reads the order book, and it is the same in the graph and in
+the LOB-only variants.
+
+\subsubsection{Window encoders: space first, or time first}
+\label{sec:models:encoders}
+
+The GRU above reads the window one snapshot at a time: at every step it sees all 55
+channels of one book state (the 52 features and three momentum columns computed
+within the window) and condenses them into one vector, and only the sequence of these
+condensed vectors is a time series.  Space is read before time.  The alternative
+encoder, called \emph{time first} in the code, inverts the order, in the manner of the
+channel-independent models of \cref{sec:bg:lob}.  Each channel $c$ of the window is
+read as a univariate series $x_c \in \mathbb{R}^K$; it is normalised within the window
+by subtracting its last value and dividing by its standard deviation over the real
+snapshots (the zero-padded rows at the start of a young market's history are masked),
+and mapped by one linear layer $\mathbb{R}^K \to \mathbb{R}^{32}$, shared by all
+channels, to which a learned channel embedding and a projection of three scalars (the
+last value, the log standard deviation, the fraction of real snapshots) are added.  The
+55 channel tokens then pass through one multi-head self-attention layer over the
+channels and a linear map to the state dimension; this vector replaces the last GRU
+output as the input of the state-update cell.  The columns that are constant along the
+window (lookback and forecast features, \cref{sec:models:lookback,sec:models:tsfm})
+enter through a separate linear map from the last row.  Nothing downstream changes.
+
+The shared time map means that the encoder learns one notion of ``shape of a recent
+series'' for all 55 quantities and lets the attention decide which quantities matter
+together; a GRU over 64 snapshots of 55 channels, by contrast, does not fit on the
+available GPU memory with thousands of active markets and five-block truncated BPTT.
+The experiments of \cref{sec:stateful:encoders} compare the reference GRU over 10
+snapshots, the same GRU over 32 snapshots, and the time-first encoder over 64.
+
+\subsubsection{Hierarchical memory}
+\label{sec:models:memory}
+
+The per-block state is a 17-second memory.  To give the model a longer view without
+changing the fast dynamics, each market gets two additional states, a \emph{minute}
+state and an \emph{hour} state, each with its own GRU cell.  Once every 60~seconds the
+minute state reads the per-block state; once every 3600~seconds the hour state reads
+the minute state:
+\begin{equation}
+  \mathbf{h}^{\min}_m \leftarrow \operatorname{GRUCell}\bigl(\mathbf{h}_m, \mathbf{h}^{\min}_m\bigr)
+  \ \text{every 60 s}, \qquad
+  \mathbf{h}^{\mathrm{hr}}_m \leftarrow \operatorname{GRUCell}\bigl(\mathbf{h}^{\min}_m, \mathbf{h}^{\mathrm{hr}}_m\bigr)
+  \ \text{every 3600 s}.
+  \label{eq:memory}
+\end{equation}  Refreshes are event-driven (a market's slow state is refreshed at
+its first event after its period has elapsed) and each market has a random phase, so
+that refreshes are spread over time.  Message passing and the book update only ever
+touch the per-block state; the predictor reads the three states side by side.  This
+is the clockwork principle \cite{koutnik2014clockwork} adapted to irregular events.
+
+\subsubsection{Global state}
+
+The predictor also reads the mean of the per-block states of all markets active in the
+block, $\bar{\mathbf{h}}(t) = \frac{1}{|A_t|} \sum_{m \in A_t} \mathbf{h}_m(t)$ with $A_t$
+the set of markets active in block $t$, a market-wide context in the spirit of the
+virtual global node of \textcite{feldman2026navis}.
+
+\subsubsection{Long-lookback price features and the direct path}
+\label{sec:models:lookback}
+\label{sec:models:skip}
+
+The window of $K$ book states spans a few minutes.  To let the model see what the
+baselines see, every row of the window is extended with, for each lookback
+$L \in \{15\text{ min}, 1, 3, 6, 12\text{ h}\}$, three numbers: $10\,\Delta^{-}_{L}$,
+$\operatorname{sign}(\Delta^{-}_{L})$, and a flag that is zero when the price $L$ ago is
+not observable (market younger than $L$).  These features go through the GRU like the
+others, and they also enter a \emph{direct path}: a linear layer from the fifteen
+numbers (plus their five absolute signs) to the three logits, added to the predictor's
+output.  The layer is initialised to zero, so at the start the model is exactly the one
+without the path; but with weights $a$ on the sign of $\Delta^{-}_{H}$ and $-a$ on its
+absolute value it reproduces Mean Reversion-$H$ exactly.  The model therefore
+\emph{contains the heuristic it has to beat}, the recommendation of
+\textcite{feldman2026navis}, and can learn how far to depart from it.  Initialising
+the layer \emph{at} the heuristic instead of at zero was also tested
+(\cref{sec:stateful:chain}).
+
+\subsubsection{Foundation-model features}
+
+The eleven forecast features of \cref{sec:models:tsfm} enter the window rows and the direct
+path like the lookback features; the encoder reads them as constant columns from the last
+row (\cref{sec:models:encoders}).
+
+\subsubsection{Predictor and training}
+
+The predictor is a two-layer MLP with dropout on the concatenation of the per-block,
+minute, hour and global states; its output plus the direct path gives the three logits,
+\begin{equation}
+  \mathbf{z}_{m,t} = \operatorname{MLP}\bigl([\mathbf{h}_m, \mathbf{h}^{\min}_m,
+  \mathbf{h}^{\mathrm{hr}}_m, \bar{\mathbf{h}}, \mathbf{x}_{m,t}]\bigr) + \mathbf{D}\,\mathbf{u}_{m,t},
+  \qquad
+  \hat{\mathbf{p}}_{m,t} = \operatorname{softmax}(\mathbf{z}_{m,t} + \boldsymbol{\delta}),
+  \label{eq:predictor}
+\end{equation}
+where $[\cdot]$ is concatenation, $\mathbf{x}_{m,t}$ are the hand-made features (present
+only in the runs of \cref{sec:models:handinputs}), $\mathbf{u}_{m,t}$ collects the inputs
+of the direct path (the fifteen lookback numbers, their five absolute signs and, when
+present, the hand-made features), $\mathbf{D}$ is the zero-initialised matrix of the
+direct path and $\boldsymbol{\delta}$ the calibration offset of \cref{sec:models:protocol}.  The loss is the focal loss with $\gamma = 2$ and class weights $2/1/2$ for
+\textsc{down}/\textsc{const}/\textsc{up}; alternatives (automatic weights,
+undersampling of \textsc{const}, regression of the signed change with a calibrated
+threshold) are in \cref{sec:stateful:variants}.  Gradients flow through five consecutive
+blocks (truncated BPTT), the optimiser is AdamW with learning rate $10^{-4}$, and one
+pass over the seven training days is one epoch; the reference results use a single epoch,
+and the \emph{two-pass} runs of \cref{sec:stateful:regime} make a second pass with the
+states reset and the optimiser kept.  Every run writes its validation predictions and
+probabilities to disk so that the models can be compared on exactly the same samples.
+
+\subsubsection{Hand-made features as inputs of the stateful model}
+\label{sec:models:handinputs}
+
+The sixty-one features of \cref{sec:prep:features} can also be given to the stateful
+model.  They are computed for every tensor row (117.7 million rows over 6--13 March) and, at
+every block, the standardised features of the market's last row (69 columns once the category
+is one-hot encoded and the time-dependent ones are recomputed at the block time) are
+appended to the window.  They enter in three places: the window rows read by the encoder,
+the zero-initialised direct path, and the predictor, which reads them next to the states so
+that an interaction such as ``time since the last move $\times$ price level'' does not have
+to survive the recurrent update.  Nothing else changes.
+
+\subsubsection{What passes through the model, and the runs by name}
+\label{sec:models:sizes}
+
+\Cref{fig:models:architecture} carries the sizes of the two-pass model on the hand
+features, the configuration of the main results.  At every block the model receives, for
+each active market, a window of the last $K = 64$ stored book snapshots; every snapshot is
+a row of 55 channels (ten levels of bid and ask prices and sizes, 40 numbers; the mid,
+spread, best quotes, order-flow and depth statistics, 12 numbers; three momentum columns
+computed within the window), and the same constant columns are appended to every row of
+the window: the 15 lookback numbers of \cref{sec:models:lookback} and the 69 columns of
+the hand-made features (the sixty-one features of \cref{app:features} with the hour as a
+sine and a cosine, the category as eight indicators and an availability flag), 139 numbers
+per row.  The window encoder condenses the $64 \times 139$ window into one vector of 128
+numbers: the time-first encoder maps each of the 55 channel series to 32 numbers with one
+shared linear layer, adds a learned embedding of the channel and a projection of its last
+value, scale and fill, mixes the 55 tokens with one self-attention layer (4 heads, width
+32) and projects the $55 \times 32$ result to 128, adding a linear map of the 84 constant
+columns of the last row; the GRU encoder of the reference configuration reads the $K = 10$
+rows one after the other with a hidden size of 128 and keeps its last output.  A linear
+map and a GRU cell of size 128 turn that vector and the market's previous state into the
+new per-block state, normalised by LayerNorm; the minute and hour states are two more
+vectors of 128 numbers, each updated by its own GRU cell from the state one level below;
+the global state is the mean of the per-block states of the markets active in the block,
+128 numbers.  The predictor concatenates the four states and the 69 hand columns of the
+last row, 581 numbers, and passes them through one hidden layer of 64 units (SiLU, dropout
+0.1) to the three logits; the direct path is one linear layer from the 89 numbers of the
+last row (15 lookback, their five absolute signs, 69 hand) to the same three logits,
+initialised at zero and added.  The model has 0.60 million trained parameters (0.75 in the
+checkpoint, 0.15 of which belong to the message-passing module that the LOB-only runs
+build but never call); the states, two matrices of $175{,}292 \times 128$ and
+$646{,}394 \times 128$ numbers, are not parameters.  \Cref{tab:models:variants} lists the
+configurations that appear in the result tables, with the name each carries there and
+the sizes that change.
+
+\begin{table}[t]
+\centering
+\caption{The configurations of the stateful model that appear in the result tables, with
+the name used for them.  All share the state of 128 numbers per market, the three-rate
+memory, the global state, the five lookbacks and the direct path; ``columns'' is the width
+of one row of the order-book window (55 book channels plus the constant columns), and the
+sizes are those of the direct path and of the predictor.}
+\label{tab:models:variants}
+\footnotesize
+\begin{fittable}\begin{tabular}{lllcll}
+\toprule
+Name in the results & Encoder, $K$ & Extra inputs & Columns & Direct path / predictor & Trained \\
+\midrule
+GRU reference                         & GRU, 10        & none                      & 70  & $20 \to 3$ / $512 \to 64 \to 3$ & 1 pass; 1 h, 6 h, 12 h \\
+GRU reference with the transaction graph & GRU, 10     & edges, 7 numbers each     & 70  & same                    & 1 pass; 1 h, 6 h, 12 h \\
+GRU reference + Chronos-2 features    & GRU, 10        & 11 forecast columns       & 81  & $31 \to 3$ / same       & 1 pass; 1 h \\
+Time-first, no hand features          & time-first, 64 & none                      & 70  & $20 \to 3$ / same       & 1 pass; 1 h, 6 h \\
+Stateful, 1 pass                      & time-first, 64 & 69 hand columns           & 139 & $89 \to 3$ / $581 \to 64 \to 3$ & 1 pass; 1 h \\
+Stateful, 1 pass, weight averaging    & time-first, 64 & 69 hand columns           & 139 & same                    & 1 pass, averaged weights; 1 h \\
+Stateful, 2 passes                    & time-first, 64 & 69 hand columns           & 139 & same                    & 2 passes; 1 min, 15 min, 1 h \\
+Stateful, 2 passes, residual of the trees & time-first, 64 & 69 hand + 4 tree columns & 143 & $93 \to 3$ / $585 \to 64 \to 3$ & 2 passes; 1 min, 1 h \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
 
 \subsection{The stateful model as the residual of the trees}
 \label{sec:models:residual}
 
-\todo{cross-fitted tree log-probabilities added to the output logits; at initialisation
-the model is the tree model, and the number that measures the state is the gain over it}
+The combination of two models that know different things suggests a trained one.  LightGBM
+with the control's hyper-parameters is fitted on the 55 inputs that the stateful model
+receives through the hand-made features, and its class log-probabilities are computed at every
+tensor row of the eight days, \emph{cross-fitted by day}: the rows of a training day are
+predicted by a model fitted on the other six training days, the rows of 13 March by the model
+fitted on all seven, so that no row is ever predicted by trees that saw its day.  The stateful
+model then receives the three log-probabilities of the last row before the block as three more
+inputs and adds them to its output logits, in the manner of a boosting stage,
+\begin{equation}
+  \mathbf{z}_{m,t} = \log \mathbf{p}^{\mathrm{tree}}_{m,t} + \operatorname{MLP}(\cdots) + \mathbf{D}\,\mathbf{u}_{m,t},
+  \label{eq:residual}
+\end{equation}
+with the same MLP and direct path as in \cref{eq:predictor}: at initialisation it is the
+tree model, and training moves it only where the state and the book history change the
+answer.  The number that measures the state is then the gain over the tree base.  In
+sizes, the residual run differs from the two-pass model by four columns in every window row
+(the three log-probabilities and an availability flag), by 585 inputs to the predictor and
+93 to the direct path instead of 581 and 89, and by the three log-probabilities added to the
+three output logits.
 
 \subsection{A pretrained forecaster used zero-shot}
 \label{sec:models:zeroshot}
 
-\todo{Chronos-2 on the last 512 mids of the market; three decision rules; the same
-quantiles as features of the stateful model}
+The last member of the family needs no training.  Chronos-2 \cite{ansari2025chronos2}, a
+time-series foundation model (\cref{sec:bg:tsfm}), is given the last 512 mids of a
+market on a one-minute grid (a five-minute grid at the longest horizon), ending at the
+sample time, and asked for the quantiles of the mid at $t + H$.  The forecast is turned
+into a decision in three ways: the sign of the median, the sign of the median with a dead
+zone of half a tick for \textsc{const}, and the position of the current mid in the
+forecast's quantile bands.  The same quantiles, computed for every active market on a
+five-minute grid, are the eleven forecast features of \cref{sec:prep:features} that the
+stateful model can read.
 
-\paragraph{Advantages and limits.}  \todo{to write}
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig_models_chronos}}
+\caption{The pretrained forecaster as a block diagram.  (a) Zero-shot: 512 mid prices
+enter, nine quantiles of the mid at $t+H$ come out, and a rule turns them into a class.
+(b) The same quantiles, computed on a five-minute grid for every active market, become
+eleven inputs of the stateful model.}
+\label{fig:models:chronos}
+\end{figure}
+
+\paragraph{Reading the diagram (\cref{fig:models:chronos}).}  Nothing in this member is
+trained: Chronos-2 is used with its published weights, on one series at a time, with a
+context of 512 values and a forecast of $H$ steps ahead.  The half-tick dead zone is
+$\pm 0.0005$ around the current mid, half of the tick of 0.001; the band rules answer
+\textsc{up} when a lower quantile is above the current mid and \textsc{down} when an
+upper one is below it.  As features, the three quantiles at three horizons are expressed
+as ten times their distance from the current mid, so that they are on the scale of the
+lookback changes, and a forecast is reused for at most eight minutes.
+
+\paragraph{Advantages and limits.}  A model with a state reads the raw stream and can, in
+principle, keep what a summary throws away: the order in which depth appeared and
+disappeared, the pattern of the last minute of a quiet market; its memories at three rates
+give it a view from seconds to hours, and the direct path lets it start from the rule it
+has to beat.  It pays for this in three ways.  It is trained once through the stream, in
+time order, with the gradient truncated to a few blocks, a regime under which the same
+learner on the same table is known to do worse than when it is trained on shuffled rows
+(\cref{sec:bg:tabular}); a full-length run costs hours on a GPU, so few variants can be
+tried; and its window is on an event clock, so that it is never told how much wall-clock
+time its last twenty events span unless the time is given to it as a feature.  The
+pretrained forecaster has the opposite profile: no training and a long context, but
+weights fitted to other domains, a per-window normalisation that treats a one-tick
+oscillation as a signal, and no notion of ``no change''.
 
 \section{Graph models}
 \label{sec:models:graph}
 
+The fourth family is the one the project started from: the bipartite graph between
+wallets and markets, read by message passing at every block of the stateful model, and,
+in a second view, the graph between the contracts of the same event.
+
 \subsection{Message passing on transactions}
 \label{sec:models:mp}
 
-\todo{edges $(w, m)$ with a 7-dimensional feature; attention over the incident edges
-and a GRU update; the token-orientation feature; the enrichments (wallet skill, placebo
-skill, past behaviour); the ablation without edges}
+The transactions of the block form the set of edges $E_t$ (\cref{sec:bg:notation}), each
+a fill $e = (w, m, t, \mathbf{a}_e)$ with seven attributes $\mathbf{a}_e \in \mathbb{R}^7$:
+the logarithms of the collateral and of the number of tokens, the price, the fee rate,
+buy or sell ($\pm 1$), the token orientation ($\pm 1$) and maker or taker.  Messages go
+from wallets to markets and from markets to wallets through attention over the incident
+edges \cite{velickovic2018gat}, and the receiving state is updated by a GRU cell.  For a
+market $m$ with incoming edges $N_t(m)$, $w$ being the wallet of edge $e$,
+\begin{align}
+  \mathbf{e}_e &= \operatorname{MLP}_{e}(\mathbf{a}_e), \qquad
+  \alpha_e = \operatorname{softmax}_{e \in N_t(m)}\Bigl(\operatorname{LeakyReLU}\bigl(
+  \mathbf{q}^{\top}[\mathbf{h}_w, \mathbf{h}_m, \mathbf{e}_e]\bigr)\Bigr),
+  \label{eq:mp-attention} \\
+  \mathbf{h}_m &\leftarrow \operatorname{LN}\Bigl(\operatorname{GRUCell}\Bigl(
+  \sum_{e \in N_t(m)} \alpha_e \, \tanh(\mathbf{V}\mathbf{e}_e) \odot \mathbf{U}\mathbf{h}_w,
+  \; \mathbf{h}_m\Bigr)\Bigr),
+  \label{eq:mp-update}
+\end{align}
+with $\mathbf{q} \in \mathbb{R}^{3d}$ and $\mathbf{U}, \mathbf{V} \in \mathbb{R}^{d \times d}$
+trained, and $\odot$ the element-wise product; the same update, with the same weights,
+then runs from markets to wallets.  The \emph{token orientation} attribute is $+1$ when
+the traded token is the one the order book refers to and $-1$ otherwise
+(\cref{sec:data:quality}), so that a buy of the No token counts as a sell of the Yes
+token.  Several
+edge enrichments were tested: a causal record of the wallet's past accuracy at the
+horizon (``skill''), a placebo skill (another wallet's record), and the wallet's past
+behaviour (activity, maker share, one-sidedness, size, breadth).  Setting
+\texttt{--ablation} removes the edges entirely and gives the LOB-only model.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig_models_graph}}
+\caption{Message passing on the transactions of one block.  Each fill is an edge between
+a wallet and a market with seven numbers; the receiving state is updated by a GRU cell,
+first on the market side, then on the wallet side.}
+\label{fig:models:graph}
+\end{figure}
+
+\paragraph{Reading the diagram (\cref{fig:models:graph}).}  The seven numbers of an edge
+(log collateral, log tokens, price, fee rate, buy or sell, the side of the traded token,
+maker or taker) are mapped by two linear layers to an edge vector of 128 numbers.  For
+every node that received edges in the block, one attention head scores each incoming edge
+from the states of its two ends and the edge vector, normalises the scores over the node's
+edges, and sums the messages, each the product of a gated edge vector, its attention
+weight and a linear map of the sender's state.  A GRU cell of size 128 with LayerNorm
+writes the sum into the receiving state.  The module runs twice per block with the same
+weights, wallets to markets and then markets to wallets, and the updated market state is
+the one the book update of \cref{fig:models:architecture} continues from.  The graph adds
+0.15 million parameters to the model and a state of 128 numbers for each of the 646{,}394
+wallets.
 
 \subsection{The two graphs}
 \label{sec:models:twographs}
 
-\todo{the wallet--market graph, read by message passing, and the market--market graph
-between the contracts of the same event, measured first through the sibling features}
+Two graphs are considered.  The first is the bipartite \emph{wallet--market} transaction
+graph of \cref{sec:models:mp}: the stateful model with its message passing active is the
+graph model, and the same model with \texttt{--ablation} (no edges) is its LOB-only
+counterpart, so that the contribution of the graph is a paired difference at every stage of
+the design.  The second is the \emph{market--market} graph between the contracts of the same
+event.  It was not built as a message-passing layer; its information was measured first in
+the stateless learner, through the ten sibling features of \cref{sec:prep:features}.  If
+the trees find nothing in those features, a message-passing layer over the same edges has
+nothing to carry, and the lead--lag statistic of \cref{sec:expl:siblings} says why.
 
-\paragraph{Advantages and limits.}  \todo{to write}
+\paragraph{Advantages and limits.}  The graph is the only family that can use what makes
+this dataset unusual, the identity of every counterparty: a wallet's history across
+markets, its past accuracy, and the co-movement of the contracts of one event are visible
+to no other family.  Because the graph variant and the LOB-only variant are the same model
+with and without edges, its contribution is a paired difference at every stage of the
+design.  Its limits are in the data more than in the method: most wallets trade once and
+have no history to carry (\cref{sec:expl:graph}); a trade is a book event before it is an
+edge, so the order-flow features see it first; the shared decay erases a wallet's state
+within a minute of its last trade; and keeping a state for 820{,}000 nodes is what makes
+the sparse engine of \cref{sec:models:state} necessary.
 
 \section{Information outside the book}
 \label{sec:models:external}
 
-\todo{the foundation-model forecasts, the news flow, the text of the market; each
-measured first in the stateless learner}
+Three sources were tried, none of which changes the learner.  The \emph{foundation-model
+forecasts} of \cref{sec:models:tsfm}, used zero-shot as a forecaster of the mid in their own
+right and then as inputs of the stateful model.  The \emph{news flow} about the entities of
+a market, as the twelve features of \cref{sec:prep:features}, measured in the stateless
+learner.  And the \emph{text} of the market, as the sentence embedding that initialises the
+market state (\cref{sec:models:state}) and as a category indicator among the static
+features (\cref{sec:expl:templates}).
 
-\paragraph{Advantages and limits.}  \todo{to write}
+\paragraph{Advantages and limits.}  These sources are the only way to reach what moves a
+price from outside the book, and each is measured first in the stateless learner, where
+adding a group of features costs minutes rather than hours.  Their limits are coverage and
+alignment: three samples in four have a market with a named entity, the news flow counts
+articles rather than reading them, the forecaster is noise at extreme prices
+(\cref{sec:bg:tsfm}), and the text enters through a frozen embedding and a category.
 
 \section{The families at a glance}
 \label{sec:models:summary}
 
-\todo{table: family, members, what it reads, where its state lives, reference}
+\Cref{tab:models:families} summarises the families, what each reads, where its state
+lives and what it is measured against; \cref{tab:models:shapes} what enters and what leaves
+each model, with sizes; \cref{ch:experiments} reports what each did.
+
+\begin{table}[t]
+\centering
+\caption{The five families of approaches compared in the thesis.}
+\label{tab:models:families}
+\small
+\begin{tabular}{p{1.9cm}p{3.0cm}p{3.9cm}p{1.8cm}p{2.6cm}}
+\toprule
+Family & Members & Reads & State & Reference \\
+\midrule
+Causal rules & Constant, Momentum-$L$, Mean Reversion-$L$ & the market's own mid & none & --- \\
+Stateless learners & LightGBM, MLP, TabM & the 61 hand-made features at the sample time & none & Mean Reversion-$H$ \\
+Sequence models & CT-DGNN (LOB-only), residual model, Chronos-2 zero-shot & the window of book states, the lookbacks, the hand-made features, the tree log-probabilities & per market, at three rates & the stateless learner \\
+Graph models & CT-DGNN with edges, sibling features, smart money & the above plus the transaction edges and the siblings' rows & per market and per wallet & the LOB-only model \\
+Outside the book & forecast, news and text features & the above plus forecasts, news counts, the question text & that of the host model & the host model without the source \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{What enters and what leaves each model, with sizes.  A sample is a market at a
+block time; the output of every learned model is three class scores, read through the same
+calibration (two logit offsets fitted on the validation day) and the largest score.}
+\label{tab:models:shapes}
+\footnotesize
+\begin{fittable}\begin{tabular}{p{2.9cm}p{4.0cm}p{5.4cm}p{2.0cm}}
+\toprule
+Model & Input per sample & Inside & Output \\
+\midrule
+Mean Reversion-$H$ & the mid now and $H$ ago (2 numbers) & a difference and a sign & class \\
+LightGBM & the 61 hand-made features (60 numbers and the category) & 536 rounds $\times$ 3 trees of $\le 63$ leaves at 1 h, the number of rounds chosen by early stopping & 3 scores \\
+MLP & the 61 features expanded to 674 numbers & $3 \times 512$ units, SiLU, dropout 0.15; 0.87 M parameters & 3 scores \\
+TabM & the same 674 numbers & the same body shared by 16 members with their own input scaling and heads; mean of 16 softmaxes; 0.91 M parameters & 3 scores \\
+Stateful model (two passes, hand features) & a $64 \times 139$ window of book snapshots, the 84 constant columns of its last row, the market's three states (128 each) & encoder $\to 128$; GRU cell 128; minute and hour cells 128; global mean 128; predictor $581 \to 64 \to 3$; direct path $89 \to 3$; 0.60 M trained parameters & 3 logits \\
+\ldots as the residual of the trees & the same, plus 4 tree columns (log-probabilities and a flag) & the same with 585 and 93 inputs; the tree log-probabilities added to the logits & 3 logits = trees + correction \\
+GRU reference & a $10 \times 70$ window and the market's states & GRU encoder (hidden 128); predictor $512 \to 64 \to 3$; direct path $20 \to 3$; 0.42 M trained parameters & 3 logits \\
+\ldots with the transaction graph & the same, plus the fills of the block (7 numbers per edge) & edge encoder $7 \to 128$, one-head attention, GRU cells on markets and wallets; 0.57 M parameters; wallet states $646{,}394 \times 128$ & 3 logits \\
+Chronos-2 zero-shot & 512 mid prices on a one-minute grid & a pretrained forecaster, frozen; 9 quantiles of the mid at $t + H$ & class, by a rule \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}

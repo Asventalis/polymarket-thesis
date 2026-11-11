@@ -1,0 +1,26 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm,
+  st/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=3pt, minimum height=8mm, minimum width=14mm, fill=vizA!12},
+  inp/.style={draw=vizInk, dashed, rounded corners=2pt, align=center, font=\scriptsize, inner sep=2pt, minimum height=6mm, minimum width=14mm, fill=white},
+  outp/.style={draw=vizInk, rounded corners=2pt, align=center, font=\scriptsize, inner sep=2pt, minimum height=6mm, minimum width=14mm, fill=vizC!15},
+  arr/.style={->, draw=vizInk, line width=0.8pt},
+  grad/.style={->, draw=vizB, line width=0.8pt, dashed},
+  cut/.style={draw=vizB, line width=1.2pt},
+  lab/.style={font=\scriptsize, text=vizInk, align=center}]
+\foreach \i/\t in {0/t-4, 1/t-3, 2/t-2, 3/t-1, 4/t} {
+  \node[st]  (h\i) at (2.2*\i, 0)    {$\mathbf{h}_{\t}$};
+  \node[inp]  (x\i) at (2.2*\i, 1.4)  {$\mathbf{W}_{\t}$};
+  \node[outp] (y\i) at (2.2*\i, -1.4) {$\ell_{\t}$};
+  \draw[arr] (x\i) -- (h\i);
+  \draw[arr] (h\i) -- (y\i);
+}
+\node[st] (hprev) at (-2.2, 0) {$\mathbf{h}_{t-5}$};
+\draw[arr] (hprev) -- (h0);
+\foreach \i/\j in {0/1, 1/2, 2/3, 3/4} { \draw[arr] (h\i) -- (h\j); }
+% gradients flow backwards inside the window
+\foreach \i/\j in {1/0, 2/1, 3/2, 4/3} { \draw[grad] (h\i.north west) ++(0.1,0.05) to[bend right=25] ([xshift=-0.1cm, yshift=0.05cm]h\j.north east); }
+\foreach \i in {0,1,2,3,4} { \draw[grad] (y\i.north) ++(-0.25,0) -- ++(0,0.55); }
+% detach at the window boundary
+\draw[cut] (-1.1,-1.9) -- (-1.1,2.0);
+\node[lab, text=vizB, anchor=south] at (-1.1,2.05) {detach: no gradient\\into the previous window};
+\node[lab, anchor=north] at (4.4,-2.0) {one truncation window of five blocks: the losses $\ell_{t-4}, \ldots, \ell_t$ are summed,\\the gradient (dashed) flows back through the five states and stops at the boundary};
+\end{tikzpicture}

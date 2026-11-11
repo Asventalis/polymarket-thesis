@@ -1,0 +1,14 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, width=0.62\textwidth, height=5.4cm, xmode=log, log basis x=10, xlabel={$k$ (neighbours)}, ylabel={balanced accuracy, all samples}, xmin=3, xmax=1600, ymin=0.44, ymax=0.70, legend pos=outer north east, legend columns=1, legend cell align=left]
+\addplot[vizA, thick, mark=*, mark size=1.6pt] coordinates {(5,0.4913) (20,0.5084) (50,0.5015) (200,0.4919) (1000,0.4692)};
+\addlegendentry{kNN 1 min}
+\addplot[vizB, thick, mark=square*, mark size=1.6pt] coordinates {(5,0.5324) (20,0.5597) (50,0.5702) (200,0.5743) (1000,0.5719)};
+\addlegendentry{kNN 15 min}
+\addplot[vizC, thick, mark=triangle*, mark size=1.6pt] coordinates {(5,0.5200) (20,0.5498) (50,0.5593) (200,0.5664) (1000,0.5646)};
+\addlegendentry{kNN 1 h}
+\addplot[vizD, thick, mark=diamond*, mark size=1.6pt] coordinates {(5,0.4972) (20,0.5197) (50,0.5323) (200,0.5402) (1000,0.5431)};
+\addlegendentry{kNN 6 h}
+\addplot[vizInk, thick, mark=pentagon*, mark size=1.6pt] coordinates {(5,0.5023) (20,0.5272) (50,0.5370) (200,0.5460) (1000,0.5460)};
+\addlegendentry{kNN 12 h}
+\end{axis}
+\end{tikzpicture}

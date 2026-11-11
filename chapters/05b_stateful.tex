@@ -1,0 +1,477 @@
+\section{Stateful models}
+\label{ch:stateful}
+
+The sequence models keep a state per market, updated at every block from the stream of book
+events, and ask the state for the prediction.  This section follows the stateful model of
+\cref{sec:models:sequence} from its first version to its last, with, at each step, what changed, what it
+gained and why.  Unless stated otherwise the numbers are those of the LOB-only model, with
+no edges; the contribution of the edges is the subject of \cref{ch:graph}.
+
+\subsection{First models}
+\label{sec:stateful:first}
+
+\Cref{tab:exp:retrain} gives the first numbers: the dynamic model, with or without the graph, beats
+the blind baselines and momentum but loses to Mean Reversion by 3--8 points.  Adding
+the lookback features of \cref{sec:models:lookback} to the window (without the direct
+path) gains about one point at every horizon, and three seeds put the seed-to-seed
+standard deviation at $0.001$--$0.002$.  The graph contributes nothing at 1h, $+0.1$ at
+6h with mixed sign across seeds, and $+0.3$ at 12h with the same sign on all seeds.
+
+\begin{table}[t]
+\centering
+\caption{Models before the direct path (seed 0; the lookback rows are the mean of three seeds).}
+\label{tab:exp:retrain}
+\begin{fittable}\begin{tabular}{lccc}
+\toprule
+Model & 1h & 6h & 12h \\
+\midrule
+Mean Reversion-$H$                    & 0.527 & 0.501 & 0.507 \\
+CT-DGNN, graph                        & 0.496 & 0.471 & 0.430 \\
+CT-DGNN, LOB-only                     & 0.492 & 0.466 & 0.430 \\
++ lookback 1/6/12h, graph (3 seeds)   & 0.5035 & 0.4769 & 0.4389 \\
++ lookback 1/6/12h, LOB-only (3 seeds) & 0.5037 & 0.4759 & 0.4358 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\subsection{Loss and imbalance variants}
+\label{sec:stateful:variants}
+
+
+With the LOB-only lookback model as reference, \cref{tab:exp:variants} compares the
+fixed class weights with automatic (inverse-frequency) weights, with undersampling of
+the \textsc{const} class during training, and with regression of the signed change
+followed by a threshold calibrated on the last training day.  At 1h and 6h the fixed
+weights are best; at 12h, where \textsc{const} is a third of the samples instead of a
+half, undersampling gains five points.  Regression is far worse at every horizon: the
+Huber loss is dominated by the few large moves and the threshold calibrated on
+training data does not transfer.  The continuous-time anti-symmetric update
+(CTAN, \cite{gravina2024ctan}) in place of the GRU gives no gain and is much worse
+without the decay; the wallet behaviour features give $\pm0.3$ with no consistent sign.
+
+\begin{table}[t]
+\centering
+\caption{Loss and imbalance variants, LOB-only model with lookback 1/6/12h, seed 0.}
+\label{tab:exp:variants}
+\begin{fittable}\begin{tabular}{lccc}
+\toprule
+Variant & 1h & 6h & 12h \\
+\midrule
+Focal, weights 2/1/2 (reference) & 0.504 & 0.476 & 0.437 \\
+Focal, automatic weights          & 0.487 & 0.475 & 0.479 \\
+Undersampling of \textsc{const}   & 0.486 & 0.467 & 0.488 \\
+Regression + calibrated threshold & 0.410 & 0.428 & 0.410 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\subsection{Memory, direct path and lookbacks: the chain of improvements}
+\label{sec:stateful:chain}
+
+
+Starting from the lookback model, three additions were made one at a time and
+evaluated at full length (\cref{tab:exp:chain,fig:stateful:chain}).  The hierarchical memory gains
+$+1.2$ [$+0.9$, $+1.5$] at 1h and $+3.4$ [$+3.1$, $+3.7$] at 12h.  The direct path with
+the global state gains $+2.9$ [$+2.6$, $+3.3$] at 1h and $+0.2$ [$0.0$, $+0.4$] at 12h.
+Five lookbacks instead of three gain $+1.0$ [$+0.8$, $+1.1$] and $+1.9$ [$+1.7$,
+$+2.0$].  The final LOB-only model is $+2.4$ [$+1.9$, $+2.8$] above Mean Reversion at 1h
+and $-1.6$ [$-2.1$, $-1.1$] below it at 12h on all samples; on the deduplicated subset
+it is above at both horizons ($+2.0$ and $+1.7$).  At 6h (\cref{tab:exp:6h}) it is
+$+1.5$ [$+0.9$, $+2.1$] above on all samples and $+3.3$ above deduplicated.
+
+\begin{table}[t]
+\centering
+\caption{Chain of improvements, LOB-only, seed 0, all samples.  Each $\Delta$ is the gain over the previous row with its 95\% hour-block bootstrap interval.}
+\label{tab:exp:chain}
+\begin{fittable}\begin{tabular}{lcccc}
+\toprule
+Configuration & 1h & $\Delta$ & 12h & $\Delta$ \\
+\midrule
+Mean Reversion-$H$                 & 0.5311 & & 0.5071 & \\
+\midrule
+lookback 1/6/12h                   & 0.5038 & & 0.4368 & \\
++ hierarchical memory (60 s, 1 h)  & 0.5161 & $+1.23$ [$+0.92$, $+1.50$] & 0.4706 & $+3.38$ [$+3.08$, $+3.67$] \\
++ direct path + global state       & 0.5452 & $+2.91$ [$+2.61$, $+3.25$] & 0.4727 & $+0.21$ [$+0.01$, $+0.39$] \\
++ five lookbacks (0.25/1/3/6/12 h) & 0.5547 & $+0.95$ [$+0.81$, $+1.08$] & 0.4914 & $+1.87$ [$+1.73$, $+2.01$] \\
+\midrule
+best $-$ Mean Reversion            & & $+2.36$ [$+1.93$, $+2.76$] & & $-1.57$ [$-2.13$, $-1.09$] \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Best configuration at 6h (seed 0).}
+\label{tab:exp:6h}
+\begin{fittable}\begin{tabular}{lccc}
+\toprule
+Subset & Mean Reversion & LOB-only & graph \\
+\midrule
+all (9.3 M)           & 0.5069 & 0.5214 ($+1.45$ [$+0.89$, $+2.06$]) & 0.5279 ($+2.10$ [$+1.69$, $+2.51$]) \\
+deduplicated (1.2 M)  & 0.5002 & 0.5333 ($+3.31$)                      & 0.5278 ($+2.76$) \\
+extreme prices        & 0.4879 & 0.5136                                & 0.5154 \\
+central prices        & 0.5199 & 0.5260                                & 0.5355 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\paragraph{Variants that did not help.}  Removing the decay ($0.475$ at 1h) or
+replacing it with the fixed multi-scale decay ($0.509$, $0.427$) is worse than the
+learned decay.  Initialising the direct path \emph{at} Mean Reversion instead of at
+zero is $-2.1$ [$-2.7$, $-1.6$] at 1h; log-odds price features have no effect.  The
+Mean-Reversion initialisation is also the clearest case in which a two-day short test
+predicted the wrong sign ($+0.7$ and $+2.0$ in the short test, negative at full
+length), which is why every claim in this section rests on full-length runs.
+
+\paragraph{Seeds.}  Three seeds of the best LOB-only configuration give $0.5547$,
+$0.5546$, $0.5549$ at 1h (deduplicated $0.538$--$0.544$): the gain over Mean Reversion
+is stable to the third decimal.  At 12h they give $0.4914$, $0.4843$, $0.4695$
+(standard deviation $0.009$), all below Mean Reversion on all samples and all above it
+on the deduplicated subset: the 12h result is real on independent samples and fragile on
+the full stream.
+
+\begin{figure}[t]
+\centering
+\input{figures/fig_chain}
+\caption{The chain of improvements of the LOB-only stateful model at 1 h and 12 h (seed 0,
+all samples; error bars are the 95\% hour-block bootstrap intervals of each step's gain).
+The direct path is the large step at 1 h, the hierarchical memory at 12 h; at 12 h the
+model stays below Mean Reversion on the full stream.}
+\label{fig:stateful:chain}
+\end{figure}
+
+\subsubsection{Why the direct path matters}
+
+Before the direct path, the model had to \emph{learn} mean reversion through a GRU over
+window rows that contained the lookback change as one feature among fifty-five, and it
+never fully did: it stayed three points below the rule.  With the direct path the rule is
+a two-weight solution reachable by gradient descent, and the recurrent part only has to
+learn the \emph{residual}: when not to revert.  The $+2.9$-point jump at 1h is the size
+of what the recurrent part had been failing to express.  Initialising the path at the
+rule instead of at zero is worse, which is instructive: starting from the rule puts the
+model in a region where the gradient of the focal loss pushes the recurrent part toward
+agreeing with the rule, and the residual is never learned; starting from zero lets both
+parts grow together.
+
+\subsubsection{Why the hierarchical memory matters, and why the decay stays short}
+
+The learned decay rate converges to a 17-second half-life in every run.  This is not a
+failure: at the two-second time scale of the stream, the per-block state is best used
+as a sharp description of the last few updates, and a slow decay would blur it.  What
+the fast state cannot do is remember the morning; the minute and hour states do, each
+with its own GRU, and the gain is largest at 12h ($+3.4$ points), the horizon at which
+the morning matters most.  A fixed multi-scale decay inside one state (the alternative
+tested) is worse because it forces one set of weights to serve all time scales, which is
+the problem the clockwork design avoids \cite{koutnik2014clockwork}.
+
+\subsubsection{Why five lookbacks beat three}
+
+The three lookbacks (1, 6, 12 h) describe the day; the two added ones (15 min and 3 h)
+describe the recent past, where the dynamics of a prediction market are fastest.
+A 15-minute change is close to the natural time scale of the one-tick oscillation and
+lets the direct path revert \emph{that}, while reading the longer changes as trend.
+The gain is consistent across seeds.
+
+\subsection{Window encoders: space first, or time first}
+\label{sec:stateful:encoders}
+
+
+The order-book window of the best 1h model was encoded in three ways
+(\cref{sec:models:encoders}): the reference GRU over the last 10 snapshots, the same
+GRU over 32 snapshots (the longest that fits in memory) as a window-length control, and
+the time-first encoder over 64 snapshots.  \Cref{tab:exp:encoders} compares the three
+runs on the same validation samples.  The longer GRU window gains a quarter of a point;
+the time-first encoder gains three quarters of a point more, to $0.5643$, the best
+one-hour balanced accuracy of the study, one point above the reference with an interval
+that excludes zero by a wide margin and thirty times the seed spread of the reference.
+The gain is concentrated in the central price range ($+1.5$ points over the reference);
+at extreme prices and on the deduplicated samples the three encoders are within their
+intervals of each other, and the longer GRU is in fact the best on the deduplicated
+samples.  The time-first encoder costs 14 milliseconds per block in the order-book
+stage against 10 for the longer GRU and 5 for the reference.  A second seed and the
+6h horizon (\cref{tab:exp:encoders:more}) confirm the result: seed 1 reproduces seed 0
+to within a tenth of a point on every subset (two-seed means $0.5639$ against $0.5547$),
+and at 6h the time-first encoder is $1.8$ points above the reference and $3.3$ above
+Mean Reversion, this time on every subset, the deduplicated samples and the extreme
+prices included, and above the best 6h graph run of \cref{sec:exp:graph}.
+
+\begin{table}[t]
+\centering
+\caption{Three window encoders in the best 1h configuration, seed 0 (balanced accuracy;
+differences in points with 95\% hour-block bootstrap intervals).}
+\label{tab:exp:encoders}
+\small
+\begin{fittable}\begin{tabular}{lrcccccc}
+\toprule
+Subset & $n$ & MR & GRU $K{=}10$ & GRU $K{=}32$ & Time-first $K{=}64$ & $\Delta$ vs $K{=}10$ & 95\% CI \\
+\midrule
+All samples    & 9{,}864{,}125 & 0.5311 & 0.5547 & 0.5571 & 0.5643 & $+0.97$ & [$+0.63$, $+1.28$] \\
+Deduplicated   & 1{,}255{,}651 & 0.5180 & 0.5382 & 0.5435 & 0.5410 & $+0.29$ & [$-0.06$, $+0.62$] \\
+Extreme prices & 3{,}787{,}202 & 0.5230 & 0.5385 & 0.5420 & 0.5377 & $-0.07$ & [$-0.51$, $+0.34$] \\
+Central prices & 6{,}076{,}923 & 0.5348 & 0.5602 & 0.5619 & 0.5748 & $+1.46$ & [$+1.15$, $+1.75$] \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Time-first encoder against the reference GRU: seed 1 at 1h and seed 0 at 6h
+(balanced accuracy; differences in points with 95\% hour-block bootstrap intervals).}
+\label{tab:exp:encoders:more}
+\small
+\begin{fittable}\begin{tabular}{llrcccc}
+\toprule
+Horizon & Subset & $n$ & MR & GRU $K{=}10$ & Time-first $K{=}64$ & $\Delta$ [95\% CI] \\
+\midrule
+1h, seed 1 & All samples    & 9{,}864{,}125 & 0.5311 & 0.5546 & 0.5635 & $+0.89$ [$+0.54$, $+1.22$] \\
+           & Deduplicated   & 1{,}255{,}651 & 0.5180 & 0.5437 & 0.5450 & $+0.13$ [$-0.19$, $+0.46$] \\
+           & Extreme prices & 3{,}787{,}202 & 0.5230 & 0.5409 & 0.5403 & $-0.06$ [$-0.48$, $+0.34$] \\
+           & Central prices & 6{,}076{,}923 & 0.5348 & 0.5588 & 0.5725 & $+1.37$ [$+1.04$, $+1.70$] \\
+\midrule
+6h, seed 0 & All samples    & 9{,}321{,}125 & 0.5069 & 0.5214 & \textbf{0.5396} & $+1.83$ [$+1.41$, $+2.21$] \\
+           & Deduplicated   & 1{,}234{,}892 & 0.5002 & 0.5333 & 0.5370 & $+0.38$ [$+0.13$, $+0.64$] \\
+           & Extreme prices & 3{,}744{,}385 & 0.4879 & 0.5136 & 0.5285 & $+1.49$ [$+0.94$, $+2.05$] \\
+           & Central prices & 5{,}576{,}740 & 0.5199 & 0.5260 & 0.5468 & $+2.08$ [$+1.81$, $+2.36$] \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+Two caveats belong with this result.  The three momentum columns of the window are
+computed over its $K$ snapshots, so they change meaning with $K$; and the snapshots are
+on an event clock, one every 20 book updates, with no channel for the time elapsed
+between them, so a 64-snapshot window covers seconds for a busy market and hours for a
+quiet one.  The time gap between snapshots is the obvious channel to add next.
+
+\subsubsection{Why reading time before space helps}
+\label{sec:analysis:encoders}
+
+
+The reference GRU condenses each book state into one vector before it sees any
+sequence, so the temporal pattern of a single quantity (the ask depth draining over
+the last minute, say) must survive a 55-to-128 compression at every step before the
+recurrence can notice it.  The time-first encoder gives each quantity its own series
+and a shared map from series to features, so such a pattern is represented directly,
+and the attention across channels then decides which patterns matter together.  This
+is the channel-independence argument of \textcite{nie2023patchtst} applied to an
+order book, and the evidence that it is the order of operations and not the window
+length is the control: a GRU over three times as many snapshots gets a quarter of the
+gain.  The gain lives where the order-book series carry information, the central price
+range, and vanishes at the extremes, where the book is one tick wide and the series
+are noise; the deduplicated samples are dominated by the extremes
+(\cref{sec:analysis:extreme}), which is why they show little.  The shared linear time
+map also makes the encoder a cousin of the linear model of
+\textcite{zeng2023transformers}: per channel it \emph{is} a linear model on the
+normalised window, and the attention only mixes its outputs.
+
+\subsection{The state given the control's inputs}
+\label{sec:stateful:hand}
+\label{sec:exp:handfeatures}
+
+If the control of \cref{sec:stateless:control} wins because of what it reads and not because
+of what it is, the stateful model should recover most of the gap once it reads the same
+things.  The sixty-one features were therefore given to the best 1h model, the time-first
+encoder with five lookbacks, as described in \cref{sec:models:handinputs}.
+\Cref{tab:exp:handfeatures} gives the result on the model's own validation samples and
+against the control on the control's samples.
+
+\begin{table}[t]
+\centering
+\caption{The best 1h model with and without the control's features, seed 0 (balanced
+accuracy; differences in points with 95\% hour-block bootstrap intervals).}
+\label{tab:exp:handfeatures}
+\small
+\begin{fittable}\begin{tabular}{lcccccc}
+\toprule
+Subset & MR & Time-first & \textbf{+ features} & $\Delta$ vs time-first & LightGBM & $\Delta$ vs LightGBM \\
+\midrule
+All samples    & 0.5311 & 0.5643 & \textbf{0.5842} & $+1.99$ [$+1.65$, $+2.37$] & 0.6015 & $-1.73$ [$-2.28$, $-1.15$] \\
+Deduplicated   & 0.5180 & 0.5410 & \textbf{0.5708} & $+2.97$ [$+2.78$, $+3.16$] & 0.5827 & $-1.20$ [$-1.57$, $-0.79$] \\
+Extreme prices & 0.5230 & 0.5377 & \textbf{0.5667} & $+2.90$ [$+2.51$, $+3.29$] & 0.5804 & $-1.36$ [$-1.84$, $-0.79$] \\
+Central prices & 0.5348 & 0.5748 & \textbf{0.5910} & $+1.62$ [$+1.28$, $+2.00$] & 0.6107 & $-1.97$ [$-2.58$, $-1.29$] \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+The features are worth two points on the full stream and three on the deduplicated and
+extreme samples, the largest single gain of the study and the first one that is larger
+on the independent samples than on the full stream: what the model lacked at the extreme
+prices was the activity clock and the price level, and both are now in front of it.  The
+gap to the trees is halved, not closed.  Calibration is not where the remaining
+$1.7$ points are.  The model trained with the focal loss predicts a move for $53\%$ of
+the samples against $45\%$ in the labels, but the post-hoc logit adjustment by the
+training class prior \cite{menon2021logitadjustment}, which is consistent for the
+balanced error when the probabilities are calibrated, is destructive here ($0.527$): the
+focal weights already shift the probabilities towards the rare classes, and the
+adjustment counts the shift twice.  The cross-fitted version, two logit offsets fitted on the
+even validation hours and applied to the odd ones and vice versa, comes out at
+$(-0.1, -0.1)$ and changes nothing ($0.5837$).  The decision rule of the model is already
+balanced-accuracy-optimal to within a tenth of a point; what is missing is in the
+function it has learned.
+
+Two follow-up runs, each paired against the run with the features, exclude the two
+obvious explanations of the residual.  Training with the control's objective, a
+class-balanced cross-entropy in place of the focal loss, loses $0.47$ points
+[$-0.74$, $-0.22$] on the full stream and $1.95$ [$-2.13$, $-1.78$] on the deduplicated
+samples.  A predictor head four times wider and one layer deeper (256 units, two
+layers), motivated by the 581 inputs that the default head maps through 64 units, loses
+$0.37$ [$-0.70$, $-0.08$] and $1.90$ [$-2.12$, $-1.69$].  Both lose exactly where the
+features had gained most, the deduplicated and the extreme samples, and tie on the
+central prices; both predict fewer moves than the focal-loss run, a class mix within a
+point of the labels', and on the sparse subsets that is what balanced accuracy
+punishes.  With two logit offsets fitted crosswise on the validation hours the three runs
+become indistinguishable ($0.5837$, $0.5848$, $0.5849$): the loss and the head moved the
+decision bias of the model, not the function it learned.
+
+The experiment of \cref{sec:exp:handfeatures} confirms the first reading and sharpens the
+third.  Given the control's inputs, the recurrent model recovers half of the gap at once
+(two points on the full stream, three on the independent samples), so most of what the
+trees knew was indeed a matter of inputs.  The half that remains is not a matter of
+calibration, since the decision rule is already optimal, and it is not obviously a matter
+of capacity either: it is a difference between a model that sees every training row once,
+in time order, through a 64-unit head, and six hundred rounds of boosting over the same
+seven million rows.  Which of the two it is, the training regime or the head, is the
+question the follow-up runs are meant to answer.
+
+\subsection{The cost of the online regime}
+\label{sec:stateful:regime}
+
+A learner comparison on the control's own table, its 61 features, its training rows and
+its validation samples (\cref{tab:exp:learners}), separates the candidate causes.  An MLP
+of the shape of the wide head, trained as a tabular model is trained (shuffled
+mini-batches, four passes, early stopping on 12 March), is $0.77$ points below the trees;
+with a piecewise-linear encoding of each numeric feature over its training quantile bins
+\cite{gorishniy2022embeddings} it is $0.41$ below.  The same MLP trained as the deep model
+is trained, one pass over the rows in time order at the same learning rate, is $2.77$
+below, and the deep model sits between the two.  Neither the learning rate nor the number
+of steps explains it: a ten times larger rate in time order makes the one-pass MLP worse,
+while one shuffled pass at the same rate recovers $0.8$ points and a second pass in time
+order $0.6$.  The regime that the state imposes, one pass in time order, costs about two
+points on this table; the learner itself costs less than one.  The combination of LightGBM
+with the deep model's probabilities, a geometric mean with the weight chosen on the even
+validation hours and applied to the odd ones and vice versa, is the first number of the
+study above the trees, $+0.19$ [$+0.12$, $+0.27$] on all samples and $+0.23$ on the
+deduplicated ones, whereas the same combination with the tabular MLP gives nothing
+($+0.05$ [$-0.02$, $+0.11$]).  What the state adds is small, but it is there, and it is not
+what another learner on the same table would add.
+
+\begin{table}[t]
+\centering
+\caption{The control's table (61 features, training rows of 7--11 March, validation
+samples of 13 March) under different learners, and the combination of LightGBM with other
+models (geometric mean of the probabilities, weight cross-fitted on the validation hours).
+Balanced accuracy; differences from LightGBM in points with 95\% hour-block bootstrap
+intervals.}
+\label{tab:exp:learners}
+\small
+\begin{fittable}\begin{tabular}{lcccc}
+\toprule
+Learner & All & $\Delta$ & Dedup. & $\Delta$ \\
+\midrule
+LightGBM & 0.6015 & & 0.5827 & \\
+MLP, shuffled, four passes, early stopping & 0.5938 & $-0.77$ [$-0.99$, $-0.54$] & 0.5757 & $-0.70$ \\
+MLP + piecewise-linear encoding & 0.5974 & $-0.41$ [$-0.65$, $-0.17$] & 0.5783 & $-0.44$ \\
+MLP, one pass in time order (the deep model's regime) & 0.5738 & $-2.77$ [$-3.27$, $-2.18$] & 0.5623 & $-2.04$ \\
+MLP, one pass in time order, rate $\times 10$ & 0.5675 & $-3.40$ [$-3.79$, $-2.97$] & 0.5355 & $-4.72$ \\
+MLP, one pass shuffled & 0.5818 & $-1.97$ [$-2.34$, $-1.59$] & 0.5649 & $-1.79$ \\
+MLP, two passes in time order & 0.5802 & $-2.13$ [$-2.62$, $-1.61$] & 0.5701 & $-1.26$ \\
+Deep model + features & 0.5842 & $-1.73$ [$-2.27$, $-1.13$] & 0.5708 & $-1.20$ \\
+\midrule
+LightGBM $\oplus$ deep model + features & \textbf{0.6035} & $+0.19$ [$+0.12$, $+0.27$] & \textbf{0.5850} & $+0.23$ \\
+LightGBM $\oplus$ MLP + piecewise-linear encoding & 0.6020 & $+0.05$ [$-0.02$, $+0.11$] & 0.5829 & $+0.02$ \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\paragraph{Two passes and weight averaging.}
+The two regime levers that the comparison suggests were then tried on the deep model
+itself.  A second pass over the seven training days (states reset between the passes,
+optimizer kept) gives $0.5907$, $1.08$ [$-1.56$, $-0.59$] below the trees on all samples
+and $0.46$ [$-0.75$, $-0.14$] below on the deduplicated ones: the largest standalone
+improvement after the features, and in the direction the tabular comparison predicted.
+An exponential moving average of the weights along the pass (decay $0.998$ and $0.999$
+per optimizer step, horizons of about $500$ and $1{,}000$ steps out of $3{,}000$), swapped
+in before validation, does not help on its own: $0.5819$ and $0.5795$ on all samples, with
+a decision bias toward DOWN that two cross-fitted offsets only partly remove ($0.5876$ and
+$0.5859$), while on the deduplicated samples both tie with the trees ($0.5805$, $-0.22$
+[$-0.68$, $+0.28$]).  What the averaged weights change is their complementarity: combined
+with LightGBM as above they give $+0.68$ [$+0.57$, $+0.81$] and $+0.72$ [$+0.62$, $+0.84$]
+on the deduplicated samples, three times the $+0.23$ of the run with features, and the
+two-pass run combined gives $+0.26$ [$+0.16$, $+0.37$] on all samples.  The sequential
+state is worth most exactly where the trees are weakest, on the sparse markets, and the
+smoother weights carry that part better than the last ones.
+
+\subsection{The state as the residual of the trees}
+\label{sec:stateful:residual}
+
+The residual model of \cref{sec:models:residual} stays paired with the run with features
+(same loss, same seed, same samples).
+The cross-fitted trees reproduce the control on its own samples once their fit rows follow the
+control's rule (markets of the model's universe, last event at or after $t+H$): 0.6020 on all
+samples and 0.5811 on the deduplicated ones against 0.6015 and 0.5827, with 94.6\% of the
+decisions in common; fitted on every tensor row they were 1.6 points below, a reminder that the
+population of the fit matters as much as the learner.
+
+Table~\ref{tab:exp:residual} gives the result.  The residual model is the first run of the study
+at or above the control on every subset: 0.6024 on all samples (+0.08, inside the interval) and
+0.5862 on the deduplicated ones (+0.35 [+0.18, +0.51]); against the run with features the gain is
++1.5 to +2.0 points on every subset, paired, more than every other lever combined.  A second pass
+over the training days moves the gain where the trees are weakest, +1.18 [+0.94, +1.42] on the
+deduplicated samples and +0.50 [+0.21, +0.81] on the extreme ones, at no cost on all samples; with
+two cross-fitted logit offsets the two-pass residual model is at or above the control on every
+subset (0.6048 on all samples, +0.33 [$-0.01$, +0.64]).  This is
+trees plus state, not a network beating the trees, and the number that measures the state is the
+gain over the tree base (from 0.6020 / 0.5811 to 0.6024 / 0.5945), concentrated on the sparse and
+extreme markets where a tabular model has least to work with.  The post-hoc combination of the
+residual model with LightGBM adds a further +0.27 [+0.10, +0.43].
+
+\begin{table}[t]
+\centering
+\caption{The deep model as the residual of the trees (1\,h, validation samples of the control).
+Balanced accuracy; differences from LightGBM in points with 95\% hour-block bootstrap intervals;
+``offsets'' = two logit offsets (DOWN, UP) fitted on the even validation hours for the odd ones and
+vice versa.}
+\label{tab:exp:residual}
+\small
+\begin{fittable}\begin{tabular}{lcccccc}
+\toprule
+Subset & LightGBM & Residual & $\Delta$ & Residual, 2 passes & $\Delta$ & 2 passes + offsets \\
+\midrule
+All      & 0.6015 & 0.6024 & $+0.08$ [$-0.17$, $+0.34$] & 0.6024 & $+0.09$ [$-0.24$, $+0.46$] & 0.6048 \\
+Dedup.   & 0.5827 & 0.5862 & $+0.35$ [$+0.18$, $+0.51$] & \textbf{0.5945} & $+1.18$ [$+0.94$, $+1.42$] & 0.5933 \\
+Extreme  & 0.5804 & 0.5817 & $+0.13$ [$-0.13$, $+0.40$] & \textbf{0.5854} & $+0.50$ [$+0.21$, $+0.81$] & 0.5865 \\
+Central  & 0.6107 & 0.6112 & $+0.05$ [$-0.25$, $+0.37$] & 0.6093 & $-0.14$ [$-0.52$, $+0.33$] & 0.6123 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\subsubsection{The same calibration for everybody}
+\label{sec:stateful:calibration}
+
+The offsets are a post-hoc calibration that any model can have, and the comparison is only fair
+when every model has it.  Applied to LightGBM they are worth +0.29 on all samples and +1.15 on the
+deduplicated ones (0.6044 and 0.5943): most of what the residual runs gained on the sparse markets
+was a better-placed decision threshold.  Calibrated against calibrated, the two-pass residual
+model ties the trees on every subset (+0.04 [$-0.18$, +0.24] on all samples, $-0.10$ [$-0.26$,
++0.05] on the deduplicated ones), the one-pass residual model is at $-0.05$ and $-0.38$, and the
+two-pass model without trees at $-1.42$.  At a one-hour horizon, then, the sequential state does
+not add measurable balanced accuracy on top of calibrated trees; it adds a combination gain of the
+same size as the calibration gain, which may be the same thing.  This is the result the thesis
+reports at one hour, and the reason \cref{ch:external} looks for information the book does not
+contain rather than for a better learner of the same table; \cref{ch:horizons} shows that the
+answer is different at one minute.
+
+\subsection{What the state is worth}
+\label{sec:stateful:worth}
+
+Read together, the section gives a precise account of the stateful family.  Its own
+improvements are real and explicable: a direct path that contains the rule, a memory at three
+rates, five lookbacks and an encoder that reads time before space take the LOB-only model
+from eight points below Mean Reversion to three above it at one hour.  Its inputs were its
+main handicap: the activity clock and the price level, which the event-clock tensor hides,
+are worth two to three points once they are put in front of it.  Its training regime, one
+pass in time order, costs about two points against the same learner trained as a tabular
+model, and a second pass recovers a third of that.  And on top of calibrated trees that read
+the same inputs, at one hour, the state adds nothing measurable on its own and a small
+combination gain.  Where a state should matter is where a summary of the recent past is not
+enough, the next minute of a quiet market, and \cref{ch:horizons} finds it exactly there.
+

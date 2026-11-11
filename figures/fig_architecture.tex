@@ -1,0 +1,43 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=4pt, minimum height=9mm, text width=46mm, fill=white},
+  state/.style={box, fill=vizA!12},
+  input/.style={box, dashed},
+  op/.style={box, fill=vizB!12},
+  outbox/.style={box, fill=vizC!15},
+  arr/.style={->, draw=vizInk, line width=0.8pt},
+  lbl/.style={font=\scriptsize, color=vizInk, fill=white, inner sep=1pt}]
+% column 1: inputs of the step
+\node[input] (book) at (0, 3.2) {order-book window:\\$K = 64$ snapshots $\times$ 55 channels\\(+ 15 lookback, 69 hand, 4 tree columns)};
+\node[input] (tx)   at (0, 1.3) {fills of the block:\\(wallet, market) edges, 7 numbers each};
+\node[input] (hand) at (0,-2.6) {last row of the window:\\15 lookback + 69 hand (+ 4 tree) numbers};
+% column 2: states and modules
+\node[state] (hb)  at (5.4, 4.9) {per-block state $h_m \in \mathbb{R}^{128}$\\decay $e^{-r\Delta t}$};
+\node[op]    (enc) at (5.4, 3.2) {window encoder $\to \mathbb{R}^{128}$\\GRU (hidden 128) or time-first};
+\node[op]    (mp)  at (5.4, 1.3) {message passing: one-head attention over the edges, messages in $\mathbb{R}^{128}$};
+\node[state] (hw)  at (5.4,-0.5) {wallet states $h_w \in \mathbb{R}^{128}$\\decay $e^{-r\Delta t}$};
+\node[op]    (dp)  at (5.4,-2.6) {direct path: linear $89 \to 3$\\(93 with the trees), zero-initialised};
+% column 3: update and memory
+\node[state] (upd) at (10.8, 2.3) {GRU cell (128) + LayerNorm:\\updated $h_m \in \mathbb{R}^{128}$};
+\node[state] (mem) at (10.8, 0.3) {hierarchical memory, GRU cells:\\$h^{\min}_m$ (60 s), $h^{\mathrm{hr}}_m$ (3600 s), 128 each};
+% column 4: global state, predictor, output
+\node[state]  (glob)   at (16.2, 2.3) {global state $g \in \mathbb{R}^{128}$:\\mean of the active $h_m$};
+\node[op]     (pred)   at (16.2, 0.3) {predictor MLP $581 \to 64 \to 3$\\on $[h_m, h^{\min}_m, h^{\mathrm{hr}}_m, g, \text{hand}]$};
+\node[outbox] (logits) at (16.2,-2.6) {three logits: \textsc{down}, \textsc{const}, \textsc{up}\\(+ the 3 tree log-probabilities in the residual runs)};
+% arrows (orthogonal, no crossings)
+\draw[arr] (book) -- (enc);
+\draw[arr] (hb) -- (enc);
+\draw[arr] (tx) -- (mp);
+\draw[arr, <->] (hw) -- (mp);
+\draw[arr] (enc.east) -- ++(0.5,0) |- (upd.west);
+\draw[arr] (mp.east)  -- ++(0.5,0) |- (upd.west);
+\draw[arr] (upd) -- (mem);
+\draw[arr] (upd) -- (glob);
+\draw[arr] (glob) -- (pred);
+\draw[arr] (mem) -- (pred);
+\draw[arr] ([xshift=8mm]pred.south) -- ([xshift=8mm]logits.north);
+\draw[arr] (hand) -- (dp);
+\draw[arr] (dp) -- (logits);
+\draw[arr] (hand.north) -- ++(0,0.5) -| ([xshift=-8mm]pred.south);
+\node[lbl] at (10.8,-1.75) {hand features read by the predictor};
+\node[lbl, anchor=north] at (0,-3.45) {also appended to every window row};
+\end{tikzpicture}

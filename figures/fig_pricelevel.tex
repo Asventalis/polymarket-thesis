@@ -1,0 +1,8 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, ylabel={balanced accuracy at 1 h}, symbolic x coords={$<0.05$, $0.05$--$0.2$, $0.2$--$0.4$, $0.4$--$0.6$, $0.6$--$0.8$, $0.8$--$0.95$, $>0.95$},
+  xtick=data, xlabel={mid price at the sample time}, ymin=0.40, ymax=0.65, legend pos=north west, enlarge x limits=0.1]
+\addplot[vizA, mark=*, mark size=1.8pt] coordinates {($<0.05$,0.477) ($0.05$--$0.2$,0.534) ($0.2$--$0.4$,0.494) ($0.4$--$0.6$,0.468) ($0.6$--$0.8$,0.476) ($0.8$--$0.95$,0.557) ($>0.95$,0.430)};
+\addplot[vizB, mark=square*, mark size=1.8pt] coordinates {($<0.05$,0.521) ($0.05$--$0.2$,0.552) ($0.2$--$0.4$,0.525) ($0.4$--$0.6$,0.508) ($0.6$--$0.8$,0.503) ($0.8$--$0.95$,0.572) ($>0.95$,0.535)};
+\legend{stateful model (lookback), Mean Reversion}
+\end{axis}
+\end{tikzpicture}

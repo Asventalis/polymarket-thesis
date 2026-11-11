@@ -1,46 +1,170 @@
 \chapter{Introduction}
 \label{ch:intro}
 
-% da scrivere per ultima; la descrizione di Polymarket non va qui ma nel background
-\todo{to be written last, once the other chapters are stable.  Only the outline for now.}
-
 \section{Context}
 \label{sec:intro:object}
 
-Prediction markets as aggregators of dispersed information
-\cite{wolfers2004prediction,arrow2008promise}; a decentralised one, Polymarket, exposes
-the whole order book and every trade with the wallet behind it, at a resolution of about
-two seconds, on tens of thousands of markets at once.  \todo{one page on why this is a
-different object for a data scientist; the mechanics stay in \cref{ch:pm}}
+A prediction market trades contracts whose payoff depends on the outcome of a future
+event, and the price of a contract that pays one dollar if the event occurs can be read
+as the market's probability for that event.  Prediction markets have been studied for
+decades as aggregators of dispersed information \cite{wolfers2004prediction,arrow2008promise},
+almost always through their prices at a daily or coarser resolution.  A decentralised
+prediction market is a different kind of object for a data scientist.  On Polymarket,
+the venue studied in this thesis, tens of thousands of markets on politics, sports,
+cryptocurrency prices, weather and culture are open at the same time; each is traded
+through a limit order book whose every update is published, and every trade is settled
+on a public blockchain under a persistent wallet address.  What the data contain is
+therefore a complete market-microstructure record, the book at every price level and
+every fill, \emph{and} the identity of every counterparty, at a resolution of about two
+seconds, across contracts that range from five-minute bets on the next move of Bitcoin to
+months-long political questions.  \Cref{fig:intro:graph} shows what three weeks of that
+object look like when every trade is drawn as an edge between the wallet that made it and
+the market it was made on.
 
-\section{The problem}
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{figures/graph/graph_map_category.png}
+\caption{Three weeks of Polymarket as a graph: 646 thousand wallets (blue) and 158
+thousand markets (orange), joined by 32 million distinct trading relations built from
+219 million on-chain fill legs, 6--26 March 2026.  Markets are placed by the similarity of
+the wallets that trade them and by their category; wallets at the centre of the markets
+they trade.  The labels name the largest islands.  \Cref{sec:expl:graph} explains the map.}
+\label{fig:intro:graph}
+\end{figure}
+
+This thesis treats that object as a data-analysis and data-mining problem.  The question
+is not whether one particular model can be made to work but what the price process of a
+prediction market looks like, how its trading is organised, which of the publicly
+observable information predicts the direction of a price over the next minute, hour or
+half day, and which families of models are able to read that information.  The answers are
+empirical and they are given with their intervals.
+
+\section{The problem and why it is difficult}
 \label{sec:intro:difficulty}
 
-\todo{the task (direction of the mid price over one minute to twelve hours) and why it is
-hard: a price consolidates information; it is bounded and discrete; it is mostly still;
-much of what moves it is outside the data}
+The prediction task of the thesis is the direction of the mid price of a market, down,
+unchanged or up, over a horizon from one minute to twelve hours, at every moment at which
+the market's book changes.
+
+Four properties of the object make the task hard, and each of them is measured in the
+thesis before any model meets it.  First, a market price is designed to
+\emph{consolidate} information: whatever is publicly known about the event is already in
+the price, and in its weak form the efficient-market hypothesis says that the past of the
+price carries nothing about its future (\cref{sec:bg:lob}); what remains at short horizons
+is microstructure, the mechanics of a thin book, not knowledge of the event.  Second, the
+price is \emph{bounded and discrete}: it lives in $[0, 1]$ with a tick of a thousandth,
+four samples in ten (a \emph{sample} is one market at one moment at which a prediction
+is asked, \cref{sec:bg:notation}) sit within five cents of a boundary, and most of its changes are
+one-tick oscillations that revert (\cref{sec:expl:level}).  Third, the price is
+\emph{mostly still}: over one hour the mid of more than half of the samples does not move
+at all, over one minute nine in ten, so the task is as much ``will it move'' as ``which
+way'' (\cref{sec:expl:classes}), and a classifier is judged as much by where it puts its
+thresholds as by what it knows.  Fourth, much of what moves a price is \emph{outside the
+data}: the spot price of Bitcoin for the crypto contracts, the score of the game for
+in-play sports, the headline for politics; the order book shows their effect, not their
+cause.  Against these, the data offer two things that most financial datasets do not: the
+complete book rather than its top, and the identity of every counterparty.  Whether either
+is worth anything for prediction is the empirical question.
 
 \section{Research questions}
 \label{sec:intro:questions}
 
+The thesis asks four questions and answers each of them with a measurement.
+
 \begin{enumerate}[nosep,label=\textbf{Q\arabic*},ref=Q\arabic*]
-  \item \label{q:process} What regularities does the price process of a prediction
-  market have, and how is its trading organised?
-  \item \label{q:information} Which publicly observable information predicts the
-  direction of the mid price?
-  \item \label{q:models} Which families of models can read that information, and what
-  is a sequential state or a neighbourhood worth over a stateless learner on the same
-  inputs?
-  \item \label{q:horizon} How do the answers change with the horizon and with the kind
-  of market?
+  \item \label{q:process} \textbf{What regularities does the price process of a prediction
+  market have, and how is its trading organised?}  Which share of the price changes is
+  information and which is noise, what the price level and the kind of contract do to the
+  dynamics, whether related contracts lead one another, how the wallets and the markets are
+  connected, and what structure the observable features have (\cref{ch:exploration}).
+  \item \label{q:information} \textbf{Which publicly observable information predicts the
+  direction of the mid price?}  The market's own price history, the shape of its book, its
+  activity, the on-chain trades, the wallets behind them, the contracts of the same event,
+  the news flow, the text of the question, and the forecast of a pretrained time-series
+  model (\cref{ch:stateless,ch:graph,ch:external}).
+  \item \label{q:models} \textbf{Which families of models can read that information, and
+  what is a sequential state or a neighbourhood worth over a stateless learner on the same
+  inputs?}  Causal rules, gradient-boosted trees and tabular networks, a continuous-time
+  stateful model of the order-book stream, and message passing on the wallet--market graph
+  (\cref{ch:stateless,ch:stateful,ch:graph}).
+  \item \label{q:horizon} \textbf{How do the answers change with the horizon}, from one
+  minute to twelve hours, and with the kind of market (\cref{ch:horizons})?
 \end{enumerate}
+
+What counts as an answer, the same samples, the same post-hoc calibration, an interval
+that excludes zero, a locked test period, is fixed in \cref{sec:meth:criteria}.
+
+\section{Approach}
+\label{sec:intro:approach}
+
+The study proceeds in four steps, which are also the chapters of the thesis.  Twenty-one
+days of Polymarket were collected from three public sources, audited and prepared into a
+leakage-free dataset with a three-class label, and read with the tools of exploratory
+analysis and classical data mining before any model was trained (\cref{ch:data}).  Five
+families of approaches were built under explicit rules of inclusion and comparison, from
+causal rules on the price to a continuous-time model with message passing on the
+wallet--market graph (\cref{ch:models}).  They were compared on the same samples at five
+horizons, with hour-block bootstrap intervals and the same calibration for every model,
+against the best rule and the best stateless learner on the data (\cref{ch:experiments}).
+The conclusions say where short-horizon predictability lives in a prediction market and
+what a model of it should be made of (\cref{ch:conclusions}).
 
 \section{Contributions}
 \label{sec:intro:contributions}
 
-\todo{list, once the results chapter is in place}
+\begin{itemize}[nosep]
+  \item A description of Polymarket as a data source, from the mechanics of the market
+  (outcome tokens, the hybrid order book, settlement, resolution) to the collection and
+  audit of a three-week dataset of order books, on-chain fills and market metadata
+  (\cref{ch:pm,ch:data}).
+  \item An exploratory characterisation of the price process: the event clock, the
+  weight of the price level, the activity clock as the main regularity, the role of the
+  contract type, the co-movement of sibling contracts without lead or lag, and the
+  persistence of wallet skill (\cref{sec:expl:price}).
+  \item A characterisation of the wallet--market transaction graph as an object: its
+  size, density, degree distributions, single connected component and dense core, its
+  growth, a large-graph map of it organised by category, contract type and date, and the
+  coordinated publics of single markets (\cref{sec:expl:graph}).
+  \item A data-mining study of the feature space: its dimensionality, its organisation by
+  market and activity rather than by label, the migration of the information from the
+  activity clock to the shape of the book as the horizon grows, and families of markets
+  that cut across the categories (\cref{ch:structure}).
+  \item A leakage-free preparation of the data into a benchmark with causal baselines,
+  hour-block bootstrap intervals, a locked test period and a calibration rule applied to
+  every model (\cref{ch:prep}), and the comparison on it of five model families at five
+  horizons from one minute to twelve hours
+  (\cref{ch:stateless,ch:stateful,ch:graph,ch:external,ch:horizons}).
+  \item A continuous-time stateful model with a three-rate hierarchical memory, a
+  time-first order-book encoder and a direct path that contains the mean-reversion rule
+  as a special case, and the measurement of what its state is worth over the best
+  stateless learner on the same inputs: nothing at one hour, a small, significant gain
+  at one minute (\cref{ch:stateful,ch:horizons}).
+  \item A per-family and per-horizon account of where short-horizon predictability lives
+  in a prediction market and of why each family can or cannot reach it
+  (\cref{ch:horizons,ch:conclusions}).
+\end{itemize}
 
 \section{Structure of the thesis}
 \label{sec:intro:structure}
 
-\todo{one paragraph per chapter}
+\Cref{ch:background} gives the background: how a prediction market and Polymarket work,
+what is known about Polymarket, and the notions of time series, graphs, learners and
+evaluation that the thesis uses.  \Cref{ch:data} follows the data from the three sources
+through the preprocessing to the final dataset and closes with its exploratory and
+statistical analysis, as a price process, a transaction graph and a feature space.
+\Cref{ch:models} is the methodology: the objective, the criteria and the rules that
+decided which approaches were included, and the five families of approaches with their
+advantages and limits.  \Cref{ch:experiments} gives the experimental setup, the
+experiments and the results, family by family and then across horizons, kinds of market
+and seeds, and discusses them against the four questions.  \Cref{ch:conclusions} draws
+the conclusions, states the limits of the study and what a deployment would need, and
+lists the future work.  The appendices list the features, the run configurations and the
+steps that reproduce the numbers; a glossary closes the thesis.
+
+\paragraph{Code and data.}  Everything in the thesis is produced by one repository: a
+Python package (\texttt{polymarket\_gnn}) with the data pipeline in DuckDB and NumPy and
+the models in PyTorch, the collection and preprocessing scripts, the audit, graph and
+comparison scripts, a test suite for the label construction and the feature indices, and
+the reports from which every table is taken.  \Cref{app:runs,app:reproduction} give the
+run labels, the configurations and the steps that reproduce each number; the raw data are
+never modified and every derived dataset is rebuilt from them.

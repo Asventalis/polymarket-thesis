@@ -1,0 +1,30 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm,
+  wal/.style={circle, draw=vizInk, fill=vizA!25, minimum size=7mm, font=\scriptsize, inner sep=1pt},
+  mkt/.style={rectangle, draw=vizInk, fill=vizB!25, minimum size=7mm, font=\scriptsize, inner sep=2pt, rounded corners=1pt},
+  edge/.style={draw=vizInk, line width=0.7pt},
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=3pt, minimum height=9mm, text width=46mm, fill=white},
+  op/.style={box, fill=vizB!12}, state/.style={box, fill=vizA!12},
+  arr/.style={->, draw=vizInk, line width=0.8pt}, lab/.style={font=\scriptsize, text=vizInk, align=center}]
+% the bipartite graph of one block
+\node[wal] (w1) at (0,2.0)  {$w_1$};
+\node[wal] (w2) at (0,0.8)  {$w_2$};
+\node[wal] (w3) at (0,-0.4) {$w_3$};
+\node[wal] (w4) at (0,-1.6) {$w_4$};
+\node[mkt] (m1) at (3,1.4)  {$m_1$};
+\node[mkt] (m2) at (3,-1.0) {$m_2$};
+\draw[edge] (w1) -- node[lab, above, sloped] {$\mathbf{a}_{e_1}$} (m1);
+\draw[edge] (w2) -- node[lab, below, sloped] {$\mathbf{a}_{e_2}$} (m1);
+\draw[edge] (w3) -- (m1);
+\draw[edge] (w3) -- (m2);
+\draw[edge] (w4) -- (m2);
+\node[lab, anchor=north] at (1.5,-2.3) {the fills of one block: wallets (circles),\\markets (squares), one edge per fill\\with its attributes $\mathbf{a}_e$};
+% the update of one market, as a vertical chain
+\node[state] (hm)  at (8.6,3.0)  {state of $m_1$ before the block, $\mathbf{h}_{m_1}$};
+\node[op]    (msg) at (8.6,1.5)  {one message per incoming edge\\$\mathbf{msg}_e = M(\mathbf{h}_{w}, \mathbf{h}_{m_1}, \mathbf{a}_e)$ for $e \in N_t(m_1)$};
+\node[op]    (agg) at (8.6,-0.2) {aggregation, invariant to the order of the edges\\$\mathbf{s} = \sum_{e \in N_t(m_1)} \alpha_e\, \mathbf{msg}_e$};
+\node[op]    (upd) at (8.6,-1.9) {update (a GRU cell)\\$\mathbf{h}_{m_1} \leftarrow U(\mathbf{h}_{m_1}, \mathbf{s})$};
+\node[state] (hm2) at (8.6,-3.4) {state of $m_1$ after the block, $\mathbf{h}'_{m_1}$};
+\draw[arr] (hm) -- (msg); \draw[arr] (msg) -- (agg); \draw[arr] (agg) -- (upd); \draw[arr] (upd) -- (hm2);
+\draw[arr, dashed] (m1.east) -- (msg.west |- m1.east);
+\node[lab, anchor=west, text width=28mm] at (11.6,-1.9) {then the same for every wallet, from the markets it traded in the block};
+\end{tikzpicture}

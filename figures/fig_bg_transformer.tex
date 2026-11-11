@@ -1,0 +1,17 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm, node distance=5mm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=4pt, minimum height=9mm, text width=66mm, fill=white},
+  input/.style={box, dashed}, op/.style={box, fill=vizB!12}, outbox/.style={box, fill=vizC!15},
+  arr/.style={->, draw=vizInk, line width=0.8pt}, lab/.style={font=\scriptsize, text=vizInk, align=left}]
+\node[input] (in)  {$n$ tokens, each a vector of $d$ numbers\\$\mathbf{X} \in \mathbb{R}^{n \times d}$ (here: one token per book channel)};
+\node[op, below=of in] (qkv) {three linear maps\\$\mathbf{Q} = \mathbf{X}\mathbf{W}_Q,\ \mathbf{K} = \mathbf{X}\mathbf{W}_K,\ \mathbf{V} = \mathbf{X}\mathbf{W}_V$};
+\node[op, below=of qkv] (att) {scaled dot-product attention, one head\\$\operatorname{Attn}(\mathbf{X}) = \operatorname{softmax}\!\bigl(\mathbf{Q}\mathbf{K}^{\top}/\sqrt{d_k}\bigr)\mathbf{V}$\\(rows: for each token, a weighted average of all tokens)};
+\node[op, below=of att] (mh) {$h$ heads in parallel, concatenated and mixed\\$\operatorname{MultiHead} = [\operatorname{Attn}_1, \ldots, \operatorname{Attn}_h]\,\mathbf{W}_O$};
+\node[op, below=of mh] (an1) {residual connection and layer normalisation\\$\mathbf{X}' = \operatorname{LN}(\mathbf{X} + \operatorname{MultiHead}(\mathbf{X}))$};
+\node[op, below=of an1] (ff) {position-wise feed-forward network\\$\operatorname{FF}(\mathbf{x}) = \mathbf{W}_2\, \sigma(\mathbf{W}_1 \mathbf{x} + \mathbf{b}_1) + \mathbf{b}_2$, applied to each token};
+\node[op, below=of ff] (an2) {residual connection and layer normalisation\\$\mathbf{X}'' = \operatorname{LN}(\mathbf{X}' + \operatorname{FF}(\mathbf{X}'))$};
+\node[outbox, below=of an2] (out) {$n$ tokens of $d$ numbers, each now informed by the others\\$\mathbf{X}'' \in \mathbb{R}^{n \times d}$};
+\draw[arr] (in) -- (qkv); \draw[arr] (qkv) -- (att); \draw[arr] (att) -- (mh); \draw[arr] (mh) -- (an1);
+\draw[arr] (an1) -- (ff); \draw[arr] (ff) -- (an2); \draw[arr] (an2) -- (out);
+\draw[arr] (in.east) -- ++(0.5,0) |- (an1.east);
+\draw[arr] (an1.east) -- ++(0.5,0) |- (an2.east);
+\end{tikzpicture}

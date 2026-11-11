@@ -1,0 +1,11 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, ybar, bar width=7pt, ymin=0.45, ymax=0.65, ylabel={balanced accuracy, all samples},
+  symbolic x coords={1 min, 15 min, 1 h, 6 h, 12 h}, xtick=data, enlarge x limits=0.14,
+  legend columns=4, legend style={at={(0.5,1.03)}, anchor=south}, ytick={0.45,0.50,0.55,0.60,0.65}]
+\addplot[fill=vizD, draw=white, line width=0.5pt] coordinates {(1 min,0.5363) (15 min,0.5373) (1 h,0.5311) (6 h,0.5069) (12 h,0.5071)};
+\addplot[fill=vizA, draw=white, line width=0.5pt] coordinates {(1 min,0.5022) (15 min,0.5689) (1 h,0.5617) (6 h,0.5380) (12 h,0.5446)};
+\addplot[fill=vizB, draw=white, line width=0.5pt] coordinates {(1 min,0.6065) (15 min,0.6116) (1 h,0.5929) (6 h,0.5606) (12 h,0.5616)};
+\addplot[fill=vizC, draw=white, line width=0.5pt] coordinates {(1 min,0.6086) (15 min,0.6160) (1 h,0.6015) (6 h,0.5716) (12 h,0.5715)};
+\legend{Mean Reversion, G1 price history, G3 + book + activity, G5 all 61}
+\end{axis}
+\end{tikzpicture}

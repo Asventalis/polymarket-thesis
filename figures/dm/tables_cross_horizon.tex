@@ -1,0 +1,91 @@
+% dimensionality by horizon
+\begin{tabular}{lccccc}
+\toprule
+& 1 min & 15 min & 1 h & 6 h & 12 h \\
+\midrule
+components for 50\% of the variance & 4 & 4 & 4 & 4 & 4 \\
+components for 80\% & 10 & 10 & 10 & 10 & 10 \\
+components for 95\% & 22 & 23 & 23 & 23 & 23 \\
+participation ratio of the PCA spectrum & 9.6 & 9.7 & 9.7 & 10.0 & 10.0 \\
+effective number of features (correlation) & 16.9 & 16.8 & 16.9 & 18.1 & 18.3 \\
+blocks at $|\rho| \ge 0.7$ & 15 & 15 & 15 & 16 & 16 \\
+pairs at $|\rho| \ge 0.9$ & 13 & 14 & 14 & 13 & 13 \\
+RP to 20-D: s.d.\ of the distance ratio & 0.18 & 0.18 & 0.19 & 0.19 & 0.19 \\
+MDS 2-D stress-1 & 0.300 & 0.309 & 0.300 & 0.309 & 0.300 \\
+PCA 2-D stress-1 & 0.475 & 0.475 & 0.476 & 0.481 & 0.473 \\
+\bottomrule
+\end{tabular}
+
+% separability by horizon (all / dedup)
+\begin{tabular}{lcccccccccc}
+\toprule
+& \multicolumn{2}{c}{1 min} & \multicolumn{2}{c}{15 min} & \multicolumn{2}{c}{1 h} & \multicolumn{2}{c}{6 h} & \multicolumn{2}{c}{12 h} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+Model & all & dedup & all & dedup & all & dedup & all & dedup & all & dedup \\
+\midrule
+Mean Reversion-$H$ & 0.536 & 0.501 & 0.537 & 0.525 & 0.531 & 0.518 & 0.507 & 0.500 & 0.507 & 0.500 \\
+LDA & 0.462 & 0.362 & 0.561 & 0.495 & 0.563 & 0.546 & 0.541 & 0.517 & 0.539 & 0.516 \\
+Logistic regression & 0.504 & 0.376 & 0.568 & 0.505 & 0.562 & 0.525 & 0.544 & 0.518 & 0.543 & 0.519 \\
+Decision tree, depth 3 & 0.558 & 0.474 & 0.548 & 0.549 & 0.534 & 0.503 & 0.513 & 0.492 & 0.499 & 0.497 \\
+Decision tree, depth 6 & 0.575 & 0.479 & 0.571 & 0.562 & 0.554 & 0.535 & 0.531 & 0.512 & 0.531 & 0.523 \\
+kNN, best $k$ (300k rows) & 0.508 & 0.400 & 0.574 & 0.553 & 0.566 & 0.549 & 0.543 & 0.528 & 0.546 & 0.533 \\
+\quad best $k$; $\Delta$ vs control [CI] & \multicolumn{2}{c}{20; $-10.2$ [$-11.2$, $-9.5$]} & \multicolumn{2}{c}{200; $-4.0$ [$-4.3$, $-3.8$]} & \multicolumn{2}{c}{200; $-3.6$ [$-4.0$, $-3.2$]} & \multicolumn{2}{c}{1000; $-3.0$ [$-3.3$, $-2.6$]} & \multicolumn{2}{c}{1000; $-2.5$ [$-2.8$, $-2.2$]} \\
+LightGBM G5 (control) & 0.609 & 0.474 & 0.616 & 0.600 & 0.602 & 0.583 & 0.572 & 0.567 & 0.572 & 0.568 \\
+\bottomrule
+\end{tabular}
+
+% purity lifts (original space / UMAP)
+\begin{tabular}{lccccc}
+\toprule
+Lift of & 1 min & 15 min & 1 h & 6 h & 12 h \\
+\midrule
+prediction label & 1.06 / 1.05 & 1.26 / 1.24 & 1.39 / 1.36 & 1.45 / 1.39 & 1.42 / 1.35 \\
+Gamma category & 1.68 / 1.48 & 1.69 / 1.48 & 1.69 / 1.48 & 1.64 / 1.41 & 1.64 / 1.41 \\
+price-level bucket & 1.63 / 1.43 & 1.63 / 1.43 & 1.64 / 1.44 & 1.61 / 1.41 & 1.60 / 1.38 \\
+activity quartile & 1.90 / 1.66 & 1.95 / 1.69 & 1.95 / 1.70 & 1.95 / 1.66 & 1.96 / 1.66 \\
+market identity & 216 / 114 & 202 / 104 & 202 / 106 & 198 / 101 & 200 / 102 \\
+\bottomrule
+\end{tabular}
+
+% mutual information: top six features per horizon (nats)
+\begin{tabular}{llllllllll}
+\toprule
+\multicolumn{2}{c}{1 min} & \multicolumn{2}{c}{15 min} & \multicolumn{2}{c}{1 h} & \multicolumn{2}{c}{6 h} & \multicolumn{2}{c}{12 h} \\
+\midrule
+\path{moves_60m} & 0.149 & \path{rv_60m} & 0.229 & \path{micro_minus_mid_ticks} & 0.270 & \path{micro_minus_mid_ticks} & 0.410 & \path{micro_minus_mid_ticks} & 0.457 \\
+\path{rv_60m} & 0.142 & \path{moves_60m} & 0.221 & \path{imb1} & 0.233 & \path{imb1} & 0.362 & \path{imb1} & 0.408 \\
+\path{range_pos_60m} & 0.132 & \path{since_move} & 0.209 & \path{rv_60m} & 0.225 & \path{log_bid_sz0} & 0.290 & \path{log_bid_sz0} & 0.334 \\
+\path{since_move} & 0.123 & \path{mid_minus_mean60} & 0.187 & \path{moves_60m} & 0.212 & \path{log_ask_sz0} & 0.261 & \path{log_ask_sz0} & 0.303 \\
+\path{usd_15m} & 0.112 & \path{range_pos_60m} & 0.182 & \path{since_move} & 0.211 & \path{log_duration_h} & 0.223 & \path{log_duration_h} & 0.262 \\
+\path{ntr_15m} & 0.105 & \path{micro_minus_mid_ticks} & 0.166 & \path{mid_minus_mean60} & 0.190 & \path{log_bid_sz10} & 0.217 & \path{log_bid_sz10} & 0.242 \\
+\midrule
+\multicolumn{2}{l}{G1 0.63; G2 0.38; G3 1.15; G4 0.60; G5 0.28} & \multicolumn{2}{l}{G1 1.16; G2 1.10; G3 1.45; G4 0.75; G5 0.37} & \multicolumn{2}{l}{G1 1.31; G2 1.68; G3 1.38; G4 0.76; G5 0.42} & \multicolumn{2}{l}{G1 1.16; G2 2.51; G3 0.87; G4 0.51; G5 0.45} & \multicolumn{2}{l}{G1 1.10; G2 2.81; G3 0.73; G4 0.46; G5 0.49} \\
+\bottomrule
+\end{tabular}
+
+% market clusters per horizon
+% 1m: AMI ward 0.064 kmeans 0.071 hdbscan 0.101
+%   cluster 1: 368 markets, 309221 samples, p_move 0.02, MR 0.527, LGB 0.412; politics 170, sports 133, culture 31
+%   cluster 2: 8129 markets, 6747195 samples, p_move 0.04, MR 0.495, LGB 0.494; politics 3518, sports 2818, economy_tech 806
+%   cluster 3: 304 markets, 493955 samples, p_move 0.58, MR 0.502, LGB 0.573; sports 256, esports 45, crypto 3
+%   cluster 4: 2524 markets, 2185264 samples, p_move 0.22, MR 0.516, LGB 0.603; sports 1045, politics 505, culture 221
+% 15m: AMI ward 0.083 kmeans 0.069 hdbscan 0.099
+%   cluster 1: 355 markets, 748462 samples, p_move 0.79, MR 0.513, LGB 0.550; sports 288, esports 52, culture 9
+%   cluster 2: 1670 markets, 753239 samples, p_move 0.44, MR 0.511, LGB 0.586; sports 859, weather 179, esports 153
+%   cluster 3: 4802 markets, 6332934 samples, p_move 0.29, MR 0.523, LGB 0.606; politics 2213, sports 1357, economy_tech 569
+%   cluster 4: 4467 markets, 1891154 samples, p_move 0.16, MR 0.529, LGB 0.611; politics 1857, sports 1731, economy_tech 339
+% 1h: AMI ward 0.076 kmeans 0.065 hdbscan 0.094
+%   cluster 1: 356 markets, 755926 samples, p_move 0.89, MR 0.493, LGB 0.548, stateful(Oct) 0.532; sports 281, esports 53, crypto 8
+%   cluster 2: 1605 markets, 710051 samples, p_move 0.61, MR 0.486, LGB 0.557, stateful(Oct) 0.523; sports 834, weather 179, economy_tech 138
+%   cluster 3: 4671 markets, 6252143 samples, p_move 0.48, MR 0.512, LGB 0.582, stateful(Oct) 0.547; politics 2062, sports 1343, economy_tech 562
+%   cluster 4: 4573 markets, 1967409 samples, p_move 0.15, MR 0.505, LGB 0.524, stateful(Oct) 0.464; politics 1996, sports 1736, economy_tech 337
+% 6h: AMI ward 0.068 kmeans 0.064 hdbscan 0.075
+%   cluster 1: 557 markets, 499433 samples, p_move 0.53, MR 0.556, LGB 0.627, stateful(Oct) 0.554; politics 239, sports 206, culture 49
+%   cluster 2: 7244 markets, 5156914 samples, p_move 0.54, MR 0.498, LGB 0.548, stateful(Oct) 0.519; politics 3216, sports 2431, economy_tech 747
+%   cluster 3: 648 markets, 371073 samples, p_move 0.75, MR 0.424, LGB 0.476, stateful(Oct) 0.429; sports 539, esports 62, crypto 24
+%   cluster 4: 2350 markets, 3129179 samples, p_move 0.83, MR 0.479, LGB 0.542, stateful(Oct) 0.466; politics 727, sports 726, culture 287
+% 12h: AMI ward 0.059 kmeans 0.043 hdbscan 0.067
+%   cluster 1: 527 markets, 482416 samples, p_move 0.57, MR 0.548, LGB 0.614, stateful(Oct) 0.533; politics 222, sports 197, culture 53
+%   cluster 2: 6111 markets, 3826546 samples, p_move 0.56, MR 0.520, LGB 0.540, stateful(Oct) 0.514; politics 2743, sports 2104, economy_tech 593
+%   cluster 3: 566 markets, 306134 samples, p_move 0.80, MR 0.375, LGB 0.488, stateful(Oct) 0.370; sports 477, esports 43, crypto 23
+%   cluster 4: 3411 markets, 4389372 samples, p_move 0.88, MR 0.437, LGB 0.490, stateful(Oct) 0.410; politics 1199, sports 1001, economy_tech 389

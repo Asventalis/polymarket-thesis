@@ -1,0 +1,125 @@
+\section{Graphs and graph neural networks}
+\label{sec:bg:graphs}
+\label{sec:bg:graphs:concepts}
+
+The transactions of the market, read as a whole, form a graph between wallets and markets,
+and one of the families of the thesis reads it with message passing.  This section fixes
+the vocabulary of graphs, gives the general form of a graph neural network and of the two
+operators used here, attention over the neighbours and a gated update, and describes how
+the same machinery is applied to a graph whose edges arrive one at a time.
+
+\subsection{Graphs, bipartite graphs, dynamic graphs}
+
+A \emph{graph} $G = (V, E)$ is a set of nodes $V$ and a set of edges $E \subseteq V \times
+V$; its \emph{adjacency matrix} $\mathbf{A} \in \{0, 1\}^{|V| \times |V|}$ has $A_{uv} = 1$
+when $(u, v) \in E$, and the \emph{neighbourhood} $N(v) = \{u : (u, v) \in E\}$ of a node
+is the set of nodes joined to it.  The \emph{degree} of a node is the size of its
+neighbourhood; a \emph{connected component} is a maximal set of nodes between which a
+path exists; the \emph{$k$-core} is the largest sub-graph in which every node has at least
+$k$ neighbours inside it, which isolates the dense centre of a graph with a long tail of
+sparse nodes.  The transactions of a prediction market define a \emph{bipartite} graph:
+$V = \mathcal{W} \cup \mathcal{M}$, wallets on one side and markets on the other, with an
+edge between a wallet and a market for every trade of the first on the second and no edge
+joining two wallets or two markets; its adjacency is a rectangular \emph{biadjacency}
+matrix $\mathbf{B} \in \mathbb{R}^{|\mathcal{W}| \times |\mathcal{M}|}$, whose entries can
+carry the number of fills between the pair.  A graph whose edges arrive one at a time,
+each with a timestamp, is a \emph{dynamic} graph \cite{kazemi2020survey,gravina2024dynamic};
+it can be read as a sequence of \emph{snapshots}, the graph of each hour, say, or as a
+\emph{stream of events}, and the second reading is the one that matches the block-by-block
+arrival of the fills.
+
+\subsection{Message passing}
+\label{sec:bg:gnn}
+
+A \emph{graph neural network} computes a vector representation $\mathbf{h}_v$ of every
+node from its own features and from the representations of its neighbours
+\cite{scarselli2009gnn,micheli2009nn4g,kipf2017gcn,bacciu2020gentle}.  The general form,
+the \emph{message-passing neural network} \cite{gilmer2017mpnn}, is one round of three
+operations (\cref{fig:bg:mp}):
+\begin{equation}
+  \mathbf{msg}_{u \to v} = M(\mathbf{h}_v, \mathbf{h}_u, \mathbf{a}_{uv}), \qquad
+  \mathbf{s}_v = \operatorname{AGG}_{u \in N(v)} \mathbf{msg}_{u \to v}, \qquad
+  \mathbf{h}'_v = U(\mathbf{h}_v, \mathbf{s}_v),
+  \label{eq:mpnn}
+\end{equation}
+a \emph{message} computed for every edge from the two ends and the edge's attributes
+$\mathbf{a}_{uv}$ by a learned function $M$ (an MLP), an \emph{aggregation} of the
+messages a node receives by a function that does not depend on their order or their
+number, a sum, a mean or a maximum, and an \emph{update} of the node's representation
+from its old value and the aggregate by a learned function $U$.  The aggregation is what
+makes the network a function of the graph rather than of a particular listing of it: the
+nodes of a neighbourhood have no natural order, and a sum or a mean gives the same result
+in any order (\emph{permutation invariance}).  Several rounds let information travel
+across the graph, one hop per round; the parameters of $M$ and $U$ are shared by all nodes
+and all rounds in the simplest designs, so that the network can be applied to a graph of
+any size and to nodes it has never seen (\emph{inductive} learning), which is necessary
+here, where thirteen hundred new wallets appear every hour.  Training is backpropagation
+through the three operations: the gradient of the loss at a node flows back through its
+update, through the aggregation to every message, and through every message to the
+representations of its neighbours and to the edge attributes, so that a node's parameters
+are shaped by the predictions made at its neighbours as well as at itself.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig_bg_message_passing}}
+\caption{Message passing on a bipartite graph of one block.  For a market, every incoming
+fill produces a message from the wallet's state, the market's state and the fill's
+attributes; the messages are aggregated in an order-independent way and written into the
+market's state by an update function; the same is then done for every wallet from the
+markets it traded.}
+\label{fig:bg:mp}
+\end{figure}
+
+\paragraph{Attention over the neighbours.}  A plain sum treats every neighbour alike.
+The \emph{graph attention network} \cite{velickovic2018gat} weighs the messages by a
+learned relevance: for every edge a score is computed from the two ends (and, here, the
+edge), the scores of the edges incident to a node are normalised with a softmax, and the
+aggregation is the weighted sum,
+\begin{equation}
+  \alpha_{uv} = \frac{\exp\bigl(\operatorname{LeakyReLU}(\mathbf{q}^{\top} [\mathbf{h}_u, \mathbf{h}_v, \mathbf{e}_{uv}])\bigr)}
+  {\sum_{u' \in N(v)} \exp\bigl(\operatorname{LeakyReLU}(\mathbf{q}^{\top} [\mathbf{h}_{u'}, \mathbf{h}_v, \mathbf{e}_{u'v}])\bigr)},
+  \qquad
+  \mathbf{s}_v = \sum_{u \in N(v)} \alpha_{uv}\, \mathbf{msg}_{u \to v},
+  \label{eq:gat}
+\end{equation}
+where $[\cdot]$ is concatenation, $\mathbf{q}$ a learned vector and $\mathbf{e}_{uv}$ an
+encoding of the edge attributes.  This is the attention of \cref{eq:attention} restricted
+to the neighbours of a node, with one head.  \emph{Gated graph networks} \cite{li2016ggnn}
+first used a GRU as the update function $U$, so that a node's representation is a state
+that each round of message passing updates by \cref{eq:gru}, with the aggregate as input;
+this is the update used in the stateful model, where a market's state is updated by the
+book (\cref{sec:models:ctdgnn}) and, in the graph variant, by the fills of the block
+(\cref{sec:models:mp}).  The depth of message passing raises stability questions that
+\textcite{gravina2023antisymmetric} and \textcite{ceni2025mpssm} address with
+anti-symmetric and dissipative updates; one of these, the continuous-time anti-symmetric
+update, is tested in \cref{sec:stateful:variants}.
+
+\subsection{Dynamic graphs: memories and messages in time}
+\label{sec:bg:dyn}
+
+A transaction stream is a \emph{continuous-time dynamic graph}: a sequence of timed events,
+each adding an edge between a wallet and a market.  The event-based models of this family
+keep a \emph{memory} vector per node and update it at every event.  Temporal Graph
+Networks \cite{rossi2020tgn} give the general recipe, of which the earlier event-based
+models \cite{kumar2019jodie,trivedi2019dyrep,xu2020tgat} are special cases: when an edge
+$(u, v, t, \mathbf{a})$ arrives, a message is computed for each end from the two memories,
+the elapsed time since the node's last event and the attributes, $\mathbf{msg}_v =
+M(\mathbf{s}_v, \mathbf{s}_u, \Delta t_v, \mathbf{a})$; the messages a node receives in
+a batch of events are aggregated; the memory is updated by a recurrent cell, $\mathbf{s}_v
+\leftarrow \operatorname{GRUCell}(\bar{\mathbf{msg}}_v, \mathbf{s}_v)$; and the prediction
+for a node is read from its memory, possibly after one more round of message passing over
+the recent neighbours.  Training follows the stream in time order with truncated
+backpropagation, exactly as in \cref{sec:bg:tbptt}, the batch being the events of a block.
+The model of \cref{ch:models} is in this family: market and wallet states are memories,
+the order-book window is a message a market sends to itself, and the transactions are
+messages between wallets and markets.
+
+Three results shaped the design.  \textcite{gravina2024ctan} (CTAN) propose a
+non-dissipative update for continuous-time dynamic graphs that propagates information over
+long ranges.  \textcite{feldman2026navis} revisit node-affinity prediction on temporal
+graphs and show that a strong heuristic, the recent interaction history, beats most
+learned models, and that a model should contain the heuristic as a special case; this is
+the origin of the direct path of \cref{sec:models:skip}.  And benchmarks of spatiotemporal
+forecasting raise the same warning: per-node baselines are competitive and must be reported
+\cite{martin2026audit}, and when the graph is not given it can be learned sparsely from the
+series \cite{cini2023sparse}.

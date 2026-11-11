@@ -1,0 +1,10 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=4pt, minimum height=9mm, minimum width=30mm, fill=white},
+  input/.style={box, dashed}, op/.style={box, fill=vizB!12}, outbox/.style={box, fill=vizC!15},
+  arr/.style={->, draw=vizInk, line width=0.8pt}]
+\node[input]  (in)   at (0,0)    {mid price now and $H$ ago\\2 numbers};
+\node[op]     (diff) at (4.0,0)  {difference $\Delta^{-}_{H}$\\1 number};
+\node[op]     (sign) at (7.8,0)  {sign, reversed\\($0 \to$ \textsc{const})};
+\node[outbox] (out)  at (11.6,0) {class\\\textsc{down} / \textsc{const} / \textsc{up}};
+\draw[arr] (in) -- (diff); \draw[arr] (diff) -- (sign); \draw[arr] (sign) -- (out);
+\end{tikzpicture}

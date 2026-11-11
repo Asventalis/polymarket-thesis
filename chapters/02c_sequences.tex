@@ -1,0 +1,245 @@
+\section{Neural networks for sequences}
+\label{sec:bg:sequences}
+
+The stateful models of the thesis read a stream of book events and keep a state per
+market.  This section builds them up from their parts: the multilayer perceptron, the
+recurrent network and the gated recurrent unit that updates a state, the way such a
+network is trained through time, the attention mechanism and the transformer encoder that
+read a window of book states, the continuous-time treatment of a state between irregular
+events, and the pretrained time-series models that are used without training.
+
+\subsection{The multilayer perceptron}
+\label{sec:bg:mlp}
+
+The multilayer perceptron (MLP) is the building block of every network here: a sequence
+of \emph{layers}, each a linear map followed by an activation function $\sigma$ applied
+element by element, with the last layer linear.  With one hidden layer,
+\begin{equation}
+  \mathbf{a} = \mathbf{W}_1 \mathbf{x} + \mathbf{b}_1, \qquad
+  \mathbf{h} = \sigma(\mathbf{a}), \qquad
+  \mathbf{z} = \mathbf{W}_2 \mathbf{h} + \mathbf{b}_2, \qquad
+  \hat{\mathbf{p}} = \operatorname{softmax}(\mathbf{z}),
+  \label{eq:mlp}
+\end{equation}
+where $\mathbf{W}_1 \in \mathbb{R}^{d \times n}$ and $\mathbf{W}_2 \in \mathbb{R}^{3
+\times d}$ are matrices of weights and $\mathbf{b}_1$, $\mathbf{b}_2$ vectors of biases;
+deeper networks stack more layers, $\mathbf{h}^{(l)} = \sigma(\mathbf{W}^{(l)}
+\mathbf{h}^{(l-1)} + \mathbf{b}^{(l)})$ with $\mathbf{h}^{(0)} = \mathbf{x}$, and
+without the non-linear $\sigma$ the layers would collapse into one linear map.  The
+gradient of the loss with respect to the parameters of \cref{eq:mlp} is the backward pass
+of \cref{sec:bg:learning:backprop} written out: $\partial \ell / \partial \mathbf{z} =
+\hat{\mathbf{p}} - \mathbf{e}_y$, then $\partial \ell / \partial \mathbf{W}_2 =
+(\partial \ell / \partial \mathbf{z})\, \mathbf{h}^{\top}$, $\partial \ell / \partial
+\mathbf{h} = \mathbf{W}_2^{\top}\, \partial \ell / \partial \mathbf{z}$, $\partial \ell /
+\partial \mathbf{a} = \partial \ell / \partial \mathbf{h} \odot \sigma'(\mathbf{a})$ and
+$\partial \ell / \partial \mathbf{W}_1 = (\partial \ell / \partial \mathbf{a})\,
+\mathbf{x}^{\top}$, each line reusing the one before.  A layer
+with $d$ units maps its input to $d$ numbers; the \emph{width} $d$ and the number of
+layers, the \emph{depth}, are the two sizes of an MLP, and its parameters are the entries
+of the matrices and biases, $\sum_l d_l (d_{l-1} + 1)$ in all.  With one hidden layer of
+enough units an MLP can approximate any continuous function on a bounded domain, but the
+functions it learns easily are the smooth ones: an MLP is a poor learner of sharp
+thresholds on single inputs, which is where decision trees are strong
+(\cref{sec:bg:tabular}), and a good learner of smooth interactions between many inputs.
+The predictor of the stateful model is an MLP of one hidden layer of 64 units on the
+concatenation of its states; the tabular networks of \cref{sec:bg:tabular} are MLPs of
+three layers of 512 units.
+
+\subsection{Recurrent networks and the gated recurrent unit}
+\label{sec:bg:rnn}
+
+An MLP reads one vector and forgets it.  A \emph{recurrent neural network} reads a
+sequence $\mathbf{x}_1, \mathbf{x}_2, \ldots$ one element at a time and keeps a
+\emph{state} $\mathbf{h}_t \in \mathbb{R}^{d}$ that summarises what it has read so far,
+updated at every step from the previous state and the new input by the same function with
+the same parameters,
+\begin{equation}
+  \mathbf{h}_t = \tanh(\mathbf{W} \mathbf{x}_t + \mathbf{U} \mathbf{h}_{t-1} + \mathbf{b}),
+  \label{eq:rnn}
+\end{equation}
+and the prediction at step $t$ is read from $\mathbf{h}_t$.  The state is the memory of
+the network: whatever the prediction at step $t$ needs from the past has to be in
+$\mathbf{h}_t$, written there by the updates of the previous steps.  The simple update of
+\cref{eq:rnn} has a well-known flaw.  The gradient of a loss at step $t$ with respect to
+the state at step $t - k$ is a product of $k$ Jacobians $\partial \mathbf{h}_{s} /
+\partial \mathbf{h}_{s-1}$, each of which contains $\mathbf{U}$ and the derivative of the
+$\tanh$; a product of $k$ matrices shrinks or grows geometrically with $k$, so the
+gradient either \emph{vanishes}, and the network cannot learn to use anything more than a
+few steps back, or \emph{explodes} \cite{bengio1994vanishing,pascanu2013difficulty}.
+Exploding gradients are tamed by \emph{clipping}, rescaling the gradient vector whenever
+its norm exceeds a threshold (1.0 in the stateful model); vanishing ones are the reason for
+gated units.
+
+The \emph{gated recurrent unit} (GRU) \cite{cho2014gru}, a lighter cousin of the LSTM
+\cite{hochreiter1997lstm}, replaces \cref{eq:rnn} with an update in which the network
+decides, at every step and for every component of the state, how much of the old state to
+keep and how much of a new candidate to write (\cref{fig:bg:gru}):
+\begin{align}
+  \mathbf{r}_t &= \sigma(\mathbf{W}_r \mathbf{x}_t + \mathbf{U}_r \mathbf{h}_{t-1} + \mathbf{b}_r)
+  && \text{(reset gate)}, \notag \\
+  \mathbf{z}_t &= \sigma(\mathbf{W}_z \mathbf{x}_t + \mathbf{U}_z \mathbf{h}_{t-1} + \mathbf{b}_z)
+  && \text{(update gate)}, \notag \\
+  \tilde{\mathbf{h}}_t &= \tanh\bigl(\mathbf{W}_h \mathbf{x}_t + \mathbf{U}_h (\mathbf{r}_t \odot \mathbf{h}_{t-1}) + \mathbf{b}_h\bigr)
+  && \text{(candidate)}, \notag \\
+  \mathbf{h}_t &= (1 - \mathbf{z}_t) \odot \mathbf{h}_{t-1} + \mathbf{z}_t \odot \tilde{\mathbf{h}}_t
+  && \text{(interpolation)},
+  \label{eq:gru}
+\end{align}
+where $\sigma$ is the logistic sigmoid, so that the gates are vectors of numbers in
+$(0, 1)$.  A component of the state whose update gate is near zero is copied unchanged
+from one step to the next, and the gradient flows back through that copy without
+shrinking, which is what lets a GRU keep information over many steps; the reset gate lets
+the candidate ignore the old state where that is useful.  A GRU has three times the
+parameters of \cref{eq:rnn}, $3 d (n + d + 1)$ for an input of size $n$.  In the thesis a
+GRU appears in two roles: as an \emph{encoder} that reads the $K$ book states of a window
+one after the other and returns its last state (\cref{sec:models:encoders}), and as a
+\emph{cell} that performs one update of a market's state from one input vector
+(\cref{sec:models:ctdgnn}); in the second role it is written $\operatorname{GRUCell}(\mathbf{x},
+\mathbf{h})$ and \cref{eq:gru} is applied once.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig_bg_gru}}
+\caption{The gated recurrent unit.  From the input $\mathbf{x}_t$ and the previous state
+$\mathbf{h}_{t-1}$ the two gates and the candidate are computed in parallel; the new state
+is an interpolation between the old state and the candidate, component by component,
+controlled by the update gate.}
+\label{fig:bg:gru}
+\end{figure}
+
+\subsection{Training through time}
+\label{sec:bg:tbptt}
+
+A recurrent network is trained like any other: the loss is summed over the steps and
+backpropagation computes its gradient.  Because the state at step $t$ depends on the
+parameters through every previous step, the computation is first \emph{unrolled}, that
+is, written as one long chain of copies of the same update, one per step, and the backward
+pass runs through the whole chain, summing at each copy the gradient with respect to the
+shared parameters (\emph{backpropagation through time}).  On a stream that is days long,
+millions of steps, the chain cannot be kept in memory, and the gradient would in any case
+vanish beyond a few hundred steps.  \emph{Truncated} backpropagation through time
+\cite{williams1990tbptt} cuts the chain into windows of a fixed number of steps
+(\cref{fig:bg:tbptt}): the forward pass runs through the whole stream and carries the state
+across windows, but the backward pass runs only inside the current window, and the state at
+the start of the window is treated as a constant (\emph{detached}), so that no gradient
+flows into the previous windows.  The stateful model of the thesis uses windows of five
+blocks and accumulates the gradients of twenty windows before an optimiser step; what the
+model can learn about dependencies longer than five blocks it learns through the state
+itself, which is why the state has to be a good memory on its own, and why the thesis adds
+to it the slow memories of \cref{sec:bg:ctime}.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig_bg_tbptt}}
+\caption{Truncated backpropagation through time.  The state is carried forward through
+the whole stream, but the gradient of the summed losses of a window flows back only through
+the states of that window and stops at its boundary, where the incoming state is treated as
+a constant.}
+\label{fig:bg:tbptt}
+\end{figure}
+
+This training regime differs from that of a tabular model in a way that matters for the
+results.  A tabular model sees its training rows in random order, several times, in
+mini-batches that mix markets and hours; a stateful model sees the stream once, in time
+order, and the mini-batch of a step is whatever markets happen to be active in that block.
+The gradient estimates of the second regime are far more correlated from one step to the
+next, so the optimiser takes a noisier path, and the model has seen every row once when
+training ends.  \Cref{sec:stateful:regime} measures what this costs on the same table.
+
+\subsection{Attention and the transformer encoder}
+\label{sec:bg:attention}
+
+A recurrent network reads a window of $K$ book states in order and compresses them step by
+step; \emph{attention} reads all of them at once and lets every element look at every
+other.  Given $n$ vectors, the \emph{tokens} $\mathbf{X} \in \mathbb{R}^{n \times d}$
+(the rows), three learned linear maps produce for every token a query
+$\mathbf{q}$, a key $\mathbf{k}$ and a value $\mathbf{v}$, and the output for token $i$ is a
+weighted average of the values of all tokens, the weights being a softmax of how well its
+query matches their keys:
+\begin{equation}
+  \operatorname{Attn}(\mathbf{X}) = \operatorname{softmax}\!\Bigl(\frac{\mathbf{Q}\mathbf{K}^{\top}}{\sqrt{d_k}}\Bigr)\mathbf{V},
+  \qquad
+  \mathbf{Q} = \mathbf{X}\mathbf{W}_Q,\ \mathbf{K} = \mathbf{X}\mathbf{W}_K,\ \mathbf{V} = \mathbf{X}\mathbf{W}_V,
+  \label{eq:attention}
+\end{equation}
+where the softmax is taken row by row and $\sqrt{d_k}$ keeps the dot products on a
+scale at which the softmax is not saturated \cite{vaswani2017attention}.  Row $i$ of the
+result is a mixture of the values of the tokens that are relevant to token $i$, with
+weights that the network learns; the operation does not depend on the order of the tokens,
+and when the order matters it is added as a \emph{positional encoding} to the inputs.
+Several attentions with different weight matrices, the \emph{heads}, run in parallel and
+their outputs are concatenated, so that different heads can attend to different things.  A
+\emph{transformer encoder layer} (\cref{fig:bg:transformer}) is a multi-head attention
+followed by a small MLP applied to each token, each of the two wrapped in a \emph{residual
+connection} (the input is added to the output, so that the layer learns a correction
+rather than a replacement, and the gradient has a direct path back) and a layer
+normalisation.  Stacking such layers gives the transformer, the architecture of large
+language models and of the time-series foundation models of \cref{sec:bg:tsfm}.
+
+\begin{figure}[t]
+\centering
+\input{figures/fig_bg_transformer}
+\caption{One transformer encoder layer.  Every token produces a query, a key and a value;
+attention mixes the values of all tokens with weights given by the match between queries
+and keys; a feed-forward MLP is then applied to every token; residual connections and
+layer normalisation wrap both.}
+\label{fig:bg:transformer}
+\end{figure}
+
+In the thesis the tokens are not the time steps of a series but its \emph{channels}: the
+time-first encoder of \cref{sec:models:encoders} maps each of the 55 book quantities, read
+as a series of $K$ values, to one token with a linear map shared by all channels, adds a
+learned embedding that says which channel the token is, and lets one attention layer mix
+the 55 tokens.  This is the channel-independence pattern of \cref{sec:bg:lob}: time is
+read first, within each channel, by a map that is the same for all of them, and the
+channels are mixed afterwards.  With 55 tokens of 32 numbers, four heads and one layer the
+encoder is small (about 40 thousand parameters); its cost is in the attention matrix,
+$55 \times 55$ per market per block.
+
+\subsection{Continuous time: decay and multi-rate memories}
+\label{sec:bg:ctime}
+
+The updates above assume a sequence of steps with no notion of how much time passes between
+them, whereas a market's book events arrive at irregular times and a block may contain an
+update for a market whose previous event was a second or a day ago.  Two devices give the
+state a sense of time.  The first is a \emph{decay}: between two events the state is
+multiplied by $e^{-r \Delta t}$, where $\Delta t$ is the elapsed time and $r > 0$ a rate,
+so that an old state fades towards zero and the network reads a faded state as ``little is
+known''.  This is the solution of the differential equation $\mathrm{d}\mathbf{h} /
+\mathrm{d}t = -r \mathbf{h}$, the simplest continuous-time dynamics, and it has the useful
+property that decaying over $a$ and then over $b$ seconds is the same as decaying once over
+$a + b$, so the decay can be applied lazily, at a node's next event, without visiting the
+node at every block.  GRU-D \cite{che2018grud} introduced a learned decay of this kind for
+irregularly sampled medical series; in the stateful model the rate $r$ is a single learned
+scalar (\cref{sec:models:decay}), and it converges to a half-life of seventeen seconds.
+The second device gives the model several memories at several speeds.  A single state
+updated every two seconds and decaying in seconds cannot remember the morning; the
+\emph{clockwork} RNN \cite{koutnik2014clockwork} partitions the state into modules that
+update at different rates, so that a slow module keeps a summary of the distant past while
+a fast one tracks the present.  The hierarchical memory of \cref{sec:models:memory} is a
+continuous-time version of this idea: besides the per-block state, each market has a
+minute state and an hour state, each a GRU cell that reads the state one level below once
+per period, and the predictor reads the three side by side.
+
+\subsection{Time-series foundation models}
+\label{sec:bg:tsfm}
+
+A \emph{foundation model} for time series is a transformer pretrained once on a very large
+and varied corpus of series and then used on new series \emph{zero-shot}, that is, without
+any training on them: given a context window of past values it outputs a forecast of the
+next values.  Chronos \cite{ansari2024chronos} quantised the values of a series into
+tokens and trained a language model on them; Chronos-2 \cite{ansari2025chronos2}, the model
+used here, replaces the tokens with \emph{patches}, short segments of the series mapped to
+vectors, and is trained with a \emph{quantile loss}: for each quantile level $\tau$ among
+nine (0.1 to 0.9) and each future step, the output $\hat{q}$ is trained to minimise
+$\max\bigl(\tau (y - \hat{q}),\, (\tau - 1)(y - \hat{q})\bigr)$, the pinball loss, whose
+minimiser is the $\tau$-quantile of the distribution of $y$; the forecast is therefore
+not one number but a band of nine quantiles, from which a direction, a ``no change'' zone
+and a width can be read (\cref{sec:models:zeroshot}).  Every context window is standardised
+before it enters the model, which is what makes the model indifferent to the scale of a
+series and, on a one-tick process, what makes it read noise as signal
+(\cref{sec:external:tsfm}).  The evidence of such models in finance is sobering: zero-shot
+forecasts of returns are close to a random walk, with directional accuracy near 50\%, and
+the value found so far comes from a learned correction on top of a frozen model
+\cite{rahimikia2025revisiting,dewage2026hybrid}.  This is the setting tested in
+\cref{sec:external:tsfm}.

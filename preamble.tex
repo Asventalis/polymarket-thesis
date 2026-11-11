@@ -1,22 +1,44 @@
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[italian,english]{babel}
-\usepackage{csquotes}
 \usepackage{lmodern}
-\usepackage{amsmath,amssymb}
-\usepackage{booktabs,array}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm,bm}
+\usepackage{booktabs,multirow,array,longtable}
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+% chart palette (validated categorical slots: blue, orange, aqua, yellow; text in ink)
+\definecolor{vizA}{HTML}{2a78d6}
+\definecolor{vizB}{HTML}{eb6834}
+\definecolor{vizC}{HTML}{1baf7a}
+\definecolor{vizD}{HTML}{eda100}
+\definecolor{vizGrid}{HTML}{d9d8d3}
+\definecolor{vizInk}{HTML}{52514e}
+\pgfplotsset{thesis/.style={width=0.86\textwidth, height=5.6cm, tick label style={font=\footnotesize, color=black},
+  label style={font=\footnotesize}, legend style={font=\footnotesize, draw=none, fill=none},
+  axis line style={vizGrid}, ymajorgrids, grid style={vizGrid, very thin}, tick style={vizGrid},
+  every axis plot/.append style={line width=1.2pt}}}
+\usepackage{siunitx}
 \usepackage{xcolor}
 \usepackage[margin=2.8cm]{geometry}
-\usepackage{caption}
+\usepackage{caption,subcaption}
 \usepackage{enumitem}
+\usepackage{algorithm,algpseudocode}
 \usepackage[style=numeric-comp,sorting=none,backend=biber,maxbibnames=8,giveninits=true,doi=false,isbn=false,url=true]{biblatex}
 \usepackage[hidelinks]{hyperref}
-\usepackage{bookmark}
+% let \path and \url break also after a hyphen (long slugs and identifiers in narrow table cells)
+\renewcommand*{\UrlBreaks}{\do\.\do\@\do\\\do\/\do\!\do\_\do\|\do\;\do\>\do\]\do\)\do\,\do\?\do\&\do\'\do\+\do\=\do\#\do\-}
 \usepackage[capitalise,nameinlink]{cleveref}
 \graphicspath{{figures/}}
-% tikz/pgfplots per le figure: da aggiungere quando servono
+\newtheorem{definition}{Definition}[chapter]
 \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\usepackage{listings}
+\lstdefinestyle{json}{basicstyle=\footnotesize\ttfamily, columns=fullflexible, keepspaces=true,
+  breaklines=true, showstringspaces=false, frame=single, rulecolor=\color{vizGrid},
+  framerule=0.4pt, xleftmargin=8pt, xrightmargin=8pt, aboveskip=6pt, belowskip=6pt}
 
 % a tabular that is scaled down only when wider than the text width
 \newsavebox{\fittablebox}

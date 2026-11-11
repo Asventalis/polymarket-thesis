@@ -1,0 +1,68 @@
+\chapter{Run Labels and Configurations}
+\label{app:runs}
+
+Every stateful run is identified by a label that encodes its configuration, and every
+number in the thesis points to one.  The grammar of the labels of the final study
+(\path{run_hand_runs_v4.sh}) is
+\begin{center}
+\path{<H>_lb_hm_sg_lb5_<enc><K>_hand[_xp][_tree[_tro]][_ep<N>][_ema<d>]_ablation_pred_s<seed>}
+\end{center}
+with the components of \cref{tab:app:labels}.  Earlier runs use subsets of the same
+components (\path{1h_lb_pred_s0} is the lookback model with the graph,
+\path{1h_lb_ablation_pred_s0} its LOB-only counterpart, \path{1h_lb_hm_sg_lb5_ablation_pred_s0}
+the best LOB-only model before the time-first encoder).  Validation predictions are written
+to \path{val_predictions_<label>.parquet}, one row per sample with the time, the market,
+the true and predicted class, the probabilities and the deduplication flag, so that any two
+runs can be compared on exactly the same samples.
+
+\begin{table}[h]
+\centering
+\caption{Components of the run labels.}
+\label{tab:app:labels}
+\small
+\begin{fittable}\begin{tabular}{lp{10.5cm}}
+\toprule
+Component & Meaning \\
+\midrule
+\path{<H>} & horizon: \path{60s}, \path{900s}, \path{1h}, \path{6h}, \path{12h} \\
+\path{lb} & lookback price features appended to the window rows \\
+\path{hm} & hierarchical memory (minute and hour states, periods 60 and 3600 s) \\
+\path{sg} & zero-initialised direct path from the lookbacks to the logits, plus the global state \\
+\path{lb5} & five lookbacks (0.25, 1, 3, 6, 12 h) instead of three (1, 6, 12 h) \\
+\path{tf64} / \path{gru10} / \path{gru32} & window encoder and window length: time-first over 64 snapshots, or the GRU over 10 or 32 \\
+\path{hand} & the 61 hand-made features of \cref{app:features} in the window rows and the direct path \\
+\path{xp} & the hand features also read by the predictor (\path{--extra-to-predictor}) \\
+\path{tree} & the cross-fitted LightGBM log-probabilities as inputs (\path{--tree-dir}) \\
+\path{tro} & the log-probabilities added to the output logits (\path{--tree-offset}): the residual model \\
+\path{ep<N>} & $N$ passes over the training days (states reset, optimiser kept) \\
+\path{ema<d>} & exponential moving average of the weights with decay $d$, swapped in for validation \\
+\path{ablation} & no transaction edges (LOB-only); its absence means the graph variant \\
+\path{pred} & validation predictions saved \\
+\path{s<seed>} & random seed \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\section*{Training configuration of the stateful model}
+
+State dimension 128; per-block, minute and hour states per market, one per-block state per
+wallet; learned shared decay rate (converges to about $0.04\,\mathrm{s}^{-1}$); window of
+$K$ book states, 52 tensor features plus 3 within-window momentum columns plus the lookback
+and hand columns; time-first encoder with a shared $\mathbb{R}^{K} \to \mathbb{R}^{32}$ time
+map and one self-attention layer over the channels; predictor MLP of two layers of 64 units
+with dropout; focal loss $\gamma = 2$ with class weights 2/1/2; AdamW, learning rate
+$10^{-4}$; truncated backpropagation through five consecutive blocks; one or two passes over
+6--12 March in time order; validation on 13 March.  Runs take 9 to 17 hours on one GPU of
+the shared server depending on the horizon and the load.
+
+\section*{Configuration of the stateless control}
+
+LightGBM multiclass with class-balanced weights, learning rate 0.05, 63 leaves, at least 500
+rows per leaf, feature and row subsampling 0.8, L2 regularisation 1, at most 600 rounds with
+early stopping (patience 40) on 12 March, seed 0; fit rows: one tensor row in ten of 7--11
+March whose market belongs to the model's universe and whose last event is at or after
+$t + H$; validation samples: those of the stateful run at the same horizon.  The tabular
+networks (MLP and TabM-mini, $k = 16$) use three layers of 512 units, a piecewise-linear
+encoding with 16 quantile bins, dropout 0.15, batches of 8{,}192 rows, a one-cycle schedule
+at peak rate $10^{-3}$ over 16 epochs with patience 4, class-balanced cross-entropy, seeds
+0--2.

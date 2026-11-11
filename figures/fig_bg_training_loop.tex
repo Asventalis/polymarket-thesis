@@ -1,0 +1,20 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=4pt, minimum height=10mm, text width=27mm, fill=white},
+  input/.style={box, dashed}, op/.style={box, fill=vizB!12}, state/.style={box, fill=vizA!12}, outbox/.style={box, fill=vizC!15},
+  arr/.style={->, draw=vizInk, line width=0.8pt}, lab/.style={font=\scriptsize, text=vizInk, align=center}]
+\node[input] (data)  at (0,0)     {mini-batch of samples\\$(\mathbf{x}_i, y_i)$, $i \in B$};
+\node[state] (theta) at (0,-2.8)  {parameters $\boldsymbol{\theta}$\\(weights and biases)};
+\node[op]    (fwd)   at (3.8,0)   {forward pass\\$\hat{\mathbf{p}}_i = f(\mathbf{x}_i; \boldsymbol{\theta})$};
+\node[op]    (loss)  at (7.6,0)   {loss\\$L = \frac{1}{|B|}\sum_i \ell(\hat{\mathbf{p}}_i, y_i)$};
+\node[op]    (bwd)   at (11.4,0)  {backward pass\\$\nabla_{\boldsymbol{\theta}} L$ by the chain rule};
+\node[op]    (upd)   at (11.4,-2.8) {update\\$\boldsymbol{\theta} \leftarrow \boldsymbol{\theta} - \eta\, \tilde{\nabla}_{\boldsymbol{\theta}} L$};
+\node[outbox] (val)  at (5.7,-5.0) {after every epoch: score on the validation day;\\stop when it stops improving};
+\draw[arr] (data) -- (fwd);
+\draw[arr] (theta) -- (fwd);
+\draw[arr] (fwd) -- (loss);
+\draw[arr] (loss) -- (bwd);
+\draw[arr] (bwd) -- (upd);
+\draw[arr] (upd) -- node[lab, above] {new $\boldsymbol{\theta}$, next mini-batch} (theta);
+\draw[arr, dashed] (upd.south) |- (val.east);
+\draw[arr, dashed] (val.west) -| (theta.south);
+\end{tikzpicture}

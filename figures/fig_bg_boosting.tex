@@ -1,0 +1,14 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=4pt, minimum height=10mm, text width=36mm, fill=white},
+  input/.style={box, dashed, text width=28mm}, op/.style={box, fill=vizB!12}, state/.style={box, fill=vizA!12, text width=30mm}, outbox/.style={box, fill=vizC!15},
+  arr/.style={->, draw=vizInk, line width=0.8pt}, lab/.style={font=\scriptsize, text=vizInk, align=center}]
+\node[input] (data) at (0,1.2)     {training rows\\$(\mathbf{x}_i, y_i)$, $i = 1, \ldots, N$};
+\node[state] (F)    at (0,-1.6)    {current model $F_{k-1}(\mathbf{x})$,\\three scores\\(round 0: class log-frequencies)};
+\node[op]    (grad) at (4.8,-0.2)  {for every row, gradient and curvature of the loss\\$g_i = \partial \ell / \partial F$, $\;h_i = \partial^2 \ell / \partial F^2$\\(cross-entropy: $g_i = \hat{p}_i - [y_i = c]$)};
+\node[op]    (tree) at (9.6,-0.2)  {fit one small tree per class to the $g_i$:\\split where the gain of \cref{eq:leaf} is largest,\\leaf value $w_j = -G_j / (H_j + \lambda)$};
+\node[op]    (add)  at (14.4,-0.2) {add it with a small step\\$F_k = F_{k-1} + \eta\, h_k$, $\ \eta = 0.05$};
+\node[outbox] (stop) at (14.4,-3.2) {after each round: score on 12 March;\\stop after 40 rounds without improvement};
+\draw[arr] (data) -- (grad); \draw[arr] (F) -- (grad); \draw[arr] (grad) -- (tree); \draw[arr] (tree) -- (add);
+\draw[arr] (add) -- (stop);
+\draw[arr] (stop.west) -| node[lab, pos=0.25, above] {next round, $k \leftarrow k + 1$} (F.south);
+\end{tikzpicture}

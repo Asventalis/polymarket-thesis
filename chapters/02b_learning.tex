@@ -1,0 +1,232 @@
+\section[Learning a classifier]{Learning a classifier: likelihood, loss and training}
+\label{sec:bg:learning}
+
+Every learned model of the thesis, trees and networks alike, is trained in the same way:
+it is a function with parameters that turns the description of a sample into three
+probabilities, and the parameters are chosen to make the probabilities of the observed
+labels as large as possible on the training samples.  This section spells that out, in
+the order in which it happens: the model as a conditional distribution, the likelihood and
+the loss that comes from it, the gradient and the optimiser that follows it, the
+corrections for class imbalance, and the guards against overfitting.  \Cref{fig:bg:loop} is the loop that the
+rest of the section describes.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig_bg_training_loop}}
+\caption{The training loop of a neural classifier.  A mini-batch of samples goes through
+the model (forward pass), the loss measures how far the predicted probabilities are from
+the labels, backpropagation computes the gradient of the loss with respect to every
+parameter (backward pass), and the optimiser moves the parameters a small step against the
+gradient; after every pass over the training data the model is scored on the validation
+day, and training stops when that score stops improving.}
+\label{fig:bg:loop}
+\end{figure}
+
+\subsection{The model as a conditional distribution}
+\label{sec:bg:learning:model}
+
+A classifier with three classes is a function $f(\mathbf{x}; \boldsymbol{\theta})$ that
+maps the description $\mathbf{x}$ of a sample to a vector of three probabilities
+$\hat{\mathbf{p}} = (\hat{p}_1, \hat{p}_2, \hat{p}_3)$, one per class, that sum to one.
+Inside, the function first computes three unconstrained numbers, the \emph{logits}
+$\mathbf{z} = (z_1, z_2, z_3)$, and then turns them into probabilities with the
+\emph{softmax} function,
+\begin{equation}
+  \hat{p}_c = \operatorname{softmax}(\mathbf{z})_c = \frac{e^{z_c}}{\sum_{c'} e^{z_{c'}}},
+  \qquad c = 1, 2, 3,
+  \label{eq:softmax}
+\end{equation}
+which makes every $\hat{p}_c$ positive and the three sum to one, and which preserves the
+order of the logits: the largest logit is the most probable class.  Adding the same
+constant to every logit changes nothing; adding a constant to one logit raises that
+class's probability at the expense of the others, which is what the calibration offsets
+$\boldsymbol{\delta}$ of \cref{sec:bg:notation} do.  The model is therefore a
+\emph{conditional probability distribution} of the label given the inputs,
+$p(y = c \mid \mathbf{x}; \boldsymbol{\theta}) = \hat{p}_c$, and training is the choice of
+$\boldsymbol{\theta}$.
+
+\subsection{Maximum likelihood and the cross-entropy loss}
+\label{sec:bg:learning:likelihood}
+
+Given $N$ training samples $(\mathbf{x}_i, y_i)$ that are treated as independent, the
+probability that the model assigns to the observed labels, the \emph{likelihood}, is the
+product of the probabilities it gives to each true class,
+\begin{equation}
+  \mathcal{L}(\boldsymbol{\theta}) = \prod_{i=1}^{N} p(y_i \mid \mathbf{x}_i; \boldsymbol{\theta})
+  = \prod_{i=1}^{N} \hat{p}_{i, y_i},
+\end{equation}
+where $\hat{p}_{i, y_i}$ is the probability that the model gives, for sample $i$, to the
+class $y_i$ that actually occurred.  The \emph{maximum-likelihood} principle chooses the
+parameters that make this product largest \cite{bishop2006prml}.  A product of millions
+of numbers below one is unusable as it stands, so one takes its logarithm, which turns the
+product into a sum and does not change where the maximum is, and one changes its sign, so
+that the quantity is to be minimised and is a \emph{loss}:
+\begin{equation}
+  L(\boldsymbol{\theta}) = -\frac{1}{N} \sum_{i=1}^{N} \log \hat{p}_{i, y_i}
+  = \frac{1}{N} \sum_{i=1}^{N} \ell(\hat{\mathbf{p}}_i, y_i),
+  \qquad
+  \ell(\hat{\mathbf{p}}, y) = -\log \hat{p}_{y} = -\sum_{c} [y = c] \log \hat{p}_c .
+  \label{eq:xent}
+\end{equation}
+This is the \emph{cross-entropy} loss: it is zero when the model gives probability one to
+the true class and grows without bound as that probability goes to zero, so a confident
+mistake is punished far more than a hesitant one.  The $1/N$ makes the loss an average
+per sample.  Minimising the cross-entropy is the same as maximising the likelihood, and it
+has a second reading: it is the average number of nats of surprise that the labels cause
+the model, which is why a model with a lower cross-entropy is said to ``fit'' the data
+better.  The cross-entropy is also what makes the outputs of the model \emph{probabilities}
+in the useful sense: among all functions, the one that minimises it on infinitely many
+samples is the true conditional distribution $p(y \mid \mathbf{x})$, a property called
+\emph{properness} that the squared error, say, does not have for classification.
+
+With the softmax of \cref{eq:softmax} the derivative of this loss with respect to the
+logits is remarkably simple,
+\begin{equation}
+  \frac{\partial \ell}{\partial z_c} = \hat{p}_c - [y = c],
+  \qquad \text{or in vector form} \qquad
+  \frac{\partial \ell}{\partial \mathbf{z}} = \hat{\mathbf{p}} - \mathbf{e}_{y},
+  \label{eq:xent-grad}
+\end{equation}
+the predicted probabilities minus the one-hot vector of the truth: the gradient pushes
+the logit of the true class up by the amount the model under-estimated it and the logits of
+the other classes down by the amount it over-estimated them.  Every gradient computed in
+the thesis starts from this vector.
+
+\subsection{Gradient descent and its stochastic version}
+\label{sec:bg:learning:sgd}
+
+The loss is a function of millions of parameters and cannot be minimised in closed form.
+\emph{Gradient descent} starts from random parameters and repeats a small step in the
+direction in which the loss decreases fastest, the negative of its gradient:
+\begin{equation}
+  \boldsymbol{\theta} \leftarrow \boldsymbol{\theta} - \eta\, \nabla_{\boldsymbol{\theta}} L(\boldsymbol{\theta}),
+  \label{eq:gd}
+\end{equation}
+where $\nabla_{\boldsymbol{\theta}} L$ is the vector of the partial derivatives of the loss
+with respect to every parameter and $\eta$, the \emph{learning rate}, is the size of the
+step.  Computing the gradient of the full loss \cref{eq:xent} would require a pass over
+all $N$ samples for every step, which is wasteful: the average over a random subset, a
+\emph{mini-batch} $B$ of a few thousand samples, is an unbiased estimate of the gradient
+and costs a thousandth of the time.  Replacing the full gradient with the mini-batch
+gradient gives \emph{stochastic gradient descent}, and one pass of mini-batches over the
+whole training set is an \emph{epoch}.  The noise of the estimate is not only harmless but
+useful: it lets the parameters escape the flat regions and poor minima in which the exact
+gradient would get stuck.
+
+Plain stochastic gradient descent uses the same learning rate for every parameter, a poor
+choice when the parameters live on very different scales, as they do in a deep network.
+\emph{Adam} \cite{kingma2015adam}, in its AdamW variant \cite{loshchilov2019adamw}, is
+the optimiser of every network in the thesis: it keeps for each parameter a running average
+of the gradient, which smooths the noise of the mini-batches, and a running average of its
+square, by whose root the step is divided, so that every parameter moves by about $\eta$
+whatever the scale of its gradient; \emph{weight decay} shrinks every parameter towards
+zero by a small fraction at every step and is the simplest guard against overfitting
+(\cref{sec:bg:learning:generalisation}).  The learning rate is the one quantity set by
+hand: the stateful model uses $\eta = 10^{-4}$ throughout, the tabular networks a
+\emph{one-cycle} schedule that raises $\eta$ from a small value to $10^{-3}$ and lowers
+it again over the epochs, so that the early steps are large and the last ones fine.
+
+\subsection{Backpropagation}
+\label{sec:bg:learning:backprop}
+
+The gradient $\nabla_{\boldsymbol{\theta}} L$ has one component per parameter, millions of
+them, and \emph{backpropagation} \cite{rumelhart1986backprop} computes all of them at the
+cost of about two forward passes.  A network is a chain of simple operations, each with a
+known derivative.  The forward pass computes every intermediate quantity from the input to
+the loss and keeps it; the backward pass applies the chain rule in reverse order, starting
+from the derivative of the loss with respect to the logits, \cref{eq:xent-grad}, and
+multiplying at each step back by the local derivative of the operation.  Each step reuses
+the result of the step before, and the derivative with respect to a weight matrix is the
+outer product of the gradient arriving at its output and the input it multiplied, which is
+why the forward quantities are kept.  A network with branches, such as the stateful model
+of \cref{ch:models}, in which the same state feeds several modules, sums the gradients
+that arrive along the different branches; a recurrent network applies the same rule
+through time (\cref{sec:bg:tbptt}).  In PyTorch \cite{paszke2019pytorch} every operation
+records its inputs as it runs and the backward pass is generated automatically for any
+composition of operations (\emph{automatic differentiation}), so no derivative is written
+by hand.  The computation of each model is given with the model, in
+\cref{sec:bg:sequences,sec:bg:graphs,sec:bg:tabular} and in \cref{ch:models}.
+
+\paragraph{Activation functions and normalisation.}  The activation $\sigma$ of a
+layer (\cref{sec:bg:mlp}) is, in the networks of the thesis, the SiLU, $\operatorname{SiLU}(a) = a /
+(1 + e^{-a})$ \cite{elfwing2018silu,hendrycks2016gelu}, a smooth version of the rectifier
+$\max(0, a)$ that passes positive inputs almost unchanged and suppresses negative ones;
+the logistic sigmoid $\sigma(a) = 1 / (1 + e^{-a})$, which maps any number into $(0, 1)$,
+and the hyperbolic tangent, which maps it into $(-1, 1)$, are the activations of the gates
+of recurrent units (\cref{sec:bg:rnn}).  \emph{Layer normalisation} \cite{ba2016layernorm}
+rescales a vector to zero mean and unit variance across its components and then applies a
+learned scale and shift, $\operatorname{LN}(\mathbf{h}) = \boldsymbol{\gamma} \odot
+(\mathbf{h} - \mu) / \sqrt{s^2 + \epsilon} + \boldsymbol{\beta}$ with $\mu$ and $s^2$ the
+mean and variance of the components of $\mathbf{h}$; it keeps the quantities that flow
+through a deep or recurrent network on a fixed scale, which keeps the gradients
+from vanishing or exploding as they are multiplied back through many layers.
+
+\subsection{Class imbalance: weights, the focal loss and the decision rule}
+\label{sec:bg:learning:imbalance}
+
+The cross-entropy treats every sample alike, so on data in which one class is far more
+frequent than the others (89\% \textsc{const} at one minute) the model learns first of all
+to predict that class, because that is where most of the loss is.  Three corrections are
+used in the thesis.  \emph{Class weights} multiply the loss of each sample by a weight
+$\alpha_{y}$ that depends on its class, $\ell = -\alpha_{y} \log \hat{p}_{y}$, larger for
+the rare classes (2 for \textsc{down} and \textsc{up}, 1 for \textsc{const} in the stateful
+model; the inverse of the class frequency in the trees and the tabular networks), so that
+the rare classes count as much as the frequent one in the gradient.  The \emph{focal loss}
+\cite{lin2017focal},
+\begin{equation}
+  \ell_{\mathrm{focal}}(\hat{\mathbf{p}}, y) = -\alpha_{y} (1 - \hat{p}_{y})^{\gamma} \log \hat{p}_{y},
+  \qquad \gamma = 2,
+  \label{eq:focal}
+\end{equation}
+multiplies the cross-entropy by $(1 - \hat{p}_y)^{\gamma}$, a factor that is close to one
+when the model is wrong and close to zero when it is already right: a sample that the model
+classifies with probability $0.9$ contributes one hundredth of what it would under the
+cross-entropy, so training concentrates on the samples it gets wrong, which under
+imbalance are mostly those of the rare classes.  Its gradient with respect to the logits is
+the cross-entropy gradient \cref{eq:xent-grad} scaled by the same factor and corrected by
+a term that vanishes as $\hat{p}_y \to 1$, so backpropagation proceeds unchanged.
+
+The third correction acts on the \emph{decision}, not on the training.  A classifier is
+scored by which class it predicts, $\hat{y} = \arg\max_c \hat{p}_c$, and the class that is
+most probable is not the one that maximises balanced accuracy.  Balanced accuracy weighs
+every class equally, which is the same as scoring the classifier on a population in which
+the three classes are equally frequent; on such a population the posterior probability of
+class $c$ is, by Bayes' rule, proportional to $p(y = c \mid \mathbf{x}) / \pi_c$, where
+$\pi_c$ is the frequency of the class in the data the model learned from.  The decision
+that maximises balanced accuracy is therefore
+\begin{equation}
+  \hat{y} = \arg\max_c \frac{\hat{p}_c}{\pi_c} = \arg\max_c \bigl( z_c - \log \pi_c \bigr),
+  \label{eq:logit-adjustment}
+\end{equation}
+the most probable class \emph{after} a constant has been subtracted from the logit of each
+class, larger for the frequent classes \cite{menon2021logitadjustment}.  The constants are
+exact when the probabilities $\hat{\mathbf{p}}$ are correct; when they are not, and the
+focal loss and the class weights already distort them, the constants are better fitted than
+computed.  The calibration rule of \cref{sec:models:protocol} is exactly this: two
+constants added to the \textsc{down} and \textsc{up} logits of every model,
+$\boldsymbol{\delta}$ in \cref{sec:bg:notation}, chosen on the validation day to maximise
+balanced accuracy and applied unchanged afterwards, so that every model is compared with
+its decision rule placed the same way.
+
+\subsection{Generalisation, overfitting and early stopping}
+\label{sec:bg:learning:generalisation}
+
+A model with millions of parameters can reach a very small loss on the training samples
+by memorising them, and such a model is useless on new data; what matters is the loss, or
+the balanced accuracy, on samples the model has not seen, its \emph{generalisation}.  The
+thesis guards against \emph{overfitting} in the standard ways \cite{goodfellow2016deep}.
+The data are split by date into training, validation and test periods
+(\cref{sec:data:splits}): the parameters are fitted on the training days, every choice
+about the model is made on the validation day, and the test days are read once at the end.
+\emph{Early stopping} scores the model on a held-out day after every epoch (12 March for
+the trees and the tabular networks) and keeps the parameters of the best epoch, stopping
+when the score has not improved for a fixed number of epochs; it is the main regulariser
+of the trees and of the tabular networks.  \emph{Weight decay}, the shrinkage
+term of AdamW (\cref{sec:bg:learning:sgd}), keeps the weights small.  \emph{Dropout} \cite{srivastava2014dropout}
+sets a random fraction of the hidden units to zero at every training step, so that no unit
+can rely on a specific other unit being present, and uses all of them, scaled, at
+prediction time; the tabular networks use a rate of $0.15$, the predictor of the stateful
+model $0.1$.  And the \emph{deduplicated} evaluation of \cref{sec:data:labels}, which
+keeps one sample per market per fifteen minutes, guards against a subtler form of the
+same problem: ten million samples that are near-copies of one another make a model look
+far better on the busy markets than it is on independent ones.
