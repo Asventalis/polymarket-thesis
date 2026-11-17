@@ -1,0 +1,10 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, xbar, width=0.47\textwidth, height=6.0cm, xmin=0, xmax=95,
+  ymajorgrids=false, xmajorgrids, y dir=reverse, ytick=data, symbolic y coords={{game over/under line},{Oscars award},{game winner},{tournament winner},{show season winner},{party nominee},{primary election},{club wins on a date}},
+  xlabel={samples whose mid moves within 1 h (\%)}, bar width=9pt, enlarge y limits=0.086, y axis line style={draw=none}, ytick style={draw=none},
+  yticklabel style={font=\footnotesize},
+  nodes near coords, nodes near coords align={horizontal}, every node near coord/.append style={font=\scriptsize, color=vizInk, /pgf/number format/fixed, /pgf/number format/precision=0},
+]
+\addplot[fill=vizA, draw=none] coordinates {(81.2,{game over/under line}) (69.7,{Oscars award}) (62.1,{game winner}) (47.8,{tournament winner}) (39.3,{show season winner}) (31.3,{party nominee}) (26.1,{primary election}) (24.2,{club wins on a date})};
+\end{axis}
+\end{tikzpicture}

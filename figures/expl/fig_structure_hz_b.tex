@@ -1,0 +1,14 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, width=0.6\textwidth, height=5.2cm, symbolic x coords={1 min, 15 min, 1 h, 6 h, 12 h}, xtick=data, enlarge x limits=0.12, ymin=0.48, ymax=0.64, ylabel={balanced accuracy, all samples}, xlabel={horizon $H$}, legend pos=outer north east, legend cell align=left, legend style={font=\scriptsize}]
+\addplot[vizInk, thick, mark=*, mark size=1.6pt] coordinates {(1 min,0.536) (15 min,0.537) (1 h,0.531) (6 h,0.507) (12 h,0.507)};
+\addlegendentry{Mean Reversion}
+\addplot[vizA, thick, mark=square*, mark size=1.6pt] coordinates {(1 min,0.504) (15 min,0.568) (1 h,0.563) (6 h,0.544) (12 h,0.543)};
+\addlegendentry{best linear model}
+\addplot[vizB, thick, mark=triangle*, mark size=1.6pt] coordinates {(1 min,0.575) (15 min,0.571) (1 h,0.554) (6 h,0.531) (12 h,0.531)};
+\addlegendentry{decision tree, depth 6}
+\addplot[vizC, thick, mark=diamond*, mark size=1.6pt] coordinates {(1 min,0.508) (15 min,0.574) (1 h,0.566) (6 h,0.543) (12 h,0.546)};
+\addlegendentry{nearest neighbours}
+\addplot[vizD, thick, mark=pentagon*, mark size=1.6pt] coordinates {(1 min,0.609) (15 min,0.616) (1 h,0.602) (6 h,0.572) (12 h,0.572)};
+\addlegendentry{LightGBM (the control)}
+\end{axis}
+\end{tikzpicture}

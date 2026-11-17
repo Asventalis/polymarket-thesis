@@ -1,0 +1,14 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, xbar, width=0.76\textwidth, height=5.3cm, xmin=0.33, xmax=0.66,
+  ymajorgrids=false, xmajorgrids, y dir=reverse, ytick=data, symbolic y coords={{Mean Reversion (the rule)},{linear discriminant analysis},{logistic regression},{decision tree, depth 3},{decision tree, depth 6},{nearest neighbours (200)},{LightGBM (the control)}},
+  xlabel={balanced accuracy at 15 min}, bar width=6pt, enlarge y limits=0.100, y axis line style={draw=none}, ytick style={draw=none},
+  yticklabel style={font=\footnotesize, text width=4.2cm, align=right},
+  nodes near coords, nodes near coords align={horizontal}, every node near coord/.append style={font=\scriptsize, color=vizInk, /pgf/number format/fixed, /pgf/number format/precision=3},
+  legend style={at={(0.5,1.02)}, anchor=south}, legend columns=2,
+  xtick={0.333,0.4,0.5,0.6}, xticklabels={chance,0.40,0.50,0.60},
+]
+\addplot[fill=vizA, draw=none] coordinates {(0.537,{Mean Reversion (the rule)}) (0.561,{linear discriminant analysis}) (0.568,{logistic regression}) (0.548,{decision tree, depth 3}) (0.571,{decision tree, depth 6}) (0.574,{nearest neighbours (200)}) (0.616,{LightGBM (the control)})};
+\addplot[fill=vizB, draw=none] coordinates {(0.525,{Mean Reversion (the rule)}) (0.495,{linear discriminant analysis}) (0.505,{logistic regression}) (0.549,{decision tree, depth 3}) (0.562,{decision tree, depth 6}) (0.553,{nearest neighbours (200)}) (0.6,{LightGBM (the control)})};
+\legend{all samples, deduplicated}
+\end{axis}
+\end{tikzpicture}

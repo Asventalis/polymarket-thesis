@@ -1,0 +1,10 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, xbar, width=0.47\textwidth, height=2.9cm, xmin=0, xmax=118,
+  ymajorgrids=false, xmajorgrids, y dir=reverse, ytick=data, symbolic y coords={{within 1 ms},{within 1 s},{within 1 min}},
+  xlabel={share of events (\%)}, bar width=11pt, enlarge y limits=0.300, y axis line style={draw=none}, ytick style={draw=none},
+  yticklabel style={font=\footnotesize},
+  nodes near coords, nodes near coords align={horizontal}, every node near coord/.append style={font=\scriptsize, color=vizInk, /pgf/number format/fixed, /pgf/number format/precision=0},
+]
+\addplot[fill=vizA, draw=none] coordinates {(30,{within 1 ms}) (79,{within 1 s}) (98,{within 1 min})};
+\end{axis}
+\end{tikzpicture}

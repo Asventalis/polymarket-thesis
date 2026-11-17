@@ -1,0 +1,8 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, xbar, width=0.78\textwidth, height=4.6cm, xmin=1, xmax=3.1, ymajorgrids=false, xmajorgrids, y dir=reverse, ytick=data,
+  symbolic y coords={{the label},{the price level},{the category},{the activity},{the market itself}}, xlabel={how much more often than chance the fifteen nearest neighbours of a sample share its value (1 = chance)}, bar width=9pt, enlarge y limits=0.15,
+  y axis line style={draw=none}, ytick style={draw=none}, yticklabel style={font=\footnotesize}, xtick={1,1.5,2,2.5}, clip=false,
+  nodes near coords, nodes near coords align={horizontal}, point meta=explicit symbolic, every node near coord/.append style={font=\scriptsize, color=vizInk}]
+\addplot[fill=vizA, draw=none] coordinates {(1.26,{the label}) [1.26] (1.63,{the price level}) [1.63] (1.69,{the category}) [1.69] (1.95,{the activity}) [1.95] (2.45,{the market itself}) [202, bar cut]};
+\end{axis}
+\end{tikzpicture}

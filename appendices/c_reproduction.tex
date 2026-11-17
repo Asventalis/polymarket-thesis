@@ -9,11 +9,10 @@ long, so the datasets that the models read are deposited as they are: the market
 orientation of every fill (11~GB), the order-book tensors (27~GB), the hand-made features
 (7.7~GB), the cross-fitted tree log-probabilities (6.6~GB), the foundation-model forecasts
 (0.7~GB), the news and sibling features and the identifier mappings, about 55~GB in all,
-together with the trained checkpoints and the reports from which every table is taken
-\todo{URL of the data repository once chosen}.  With them, every model of the thesis can be
+together with the trained checkpoints and the reports from which every table is taken.  With them, every model of the thesis can be
 retrained and evaluated on the same inputs without touching the raw streams.  The code is
 a Python package (\path{polymarket_gnn}) managed with \path{uv}, with the data pipeline in
-DuckDB and NumPy and the models in PyTorch \todo{URL of the code repository}; the raw data
+DuckDB and NumPy and the models in PyTorch; the raw data
 under \path{data/raw/} are never modified and every derived dataset lives under
 \path{data/derived/}.
 
@@ -76,7 +75,4 @@ under \path{data/raw/} are never modified and every derived dataset lives under
 \end{enumerate}
 
 Unit tests cover the label construction, the mid-price index, the hand-feature index and
-the news index (\path{tests/}).  The thesis is built with \path{latexmk} from the
-\path{thesis/} directory; the bibliography is tagged by the kind of verification of each
-entry (\path{[L]} a PDF in \path{literature/}, \path{[V]} checked online, \path{[A]}
-abstract only).
+the news index (\path{tests/}).  The thesis is built with \path{latexmk}.

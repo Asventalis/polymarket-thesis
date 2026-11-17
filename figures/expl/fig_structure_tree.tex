@@ -1,0 +1,22 @@
+\begin{tikzpicture}[
+  font=\footnotesize, level distance=16mm, edge from parent/.style={draw, vizGrid, line width=0.8pt},
+  q/.style={draw=vizInk, line width=0.6pt, rounded corners=3pt, align=center, inner sep=4pt, text width=34mm, fill=white},
+  leafD/.style={draw=none, fill=vizA, text=white, rounded corners=3pt, inner sep=4pt, minimum width=14mm, font=\footnotesize\scshape},
+  leafC/.style={draw=none, fill=vizB, text=white, rounded corners=3pt, inner sep=4pt, minimum width=14mm, font=\footnotesize\scshape},
+  leafU/.style={draw=none, fill=vizC, text=white, rounded corners=3pt, inner sep=4pt, minimum width=14mm, font=\footnotesize\scshape},
+  lab/.style={font=\scriptsize, color=vizInk, fill=white, inner sep=1pt},
+  level 1/.style={sibling distance=80mm}, level 2/.style={sibling distance=40mm}, level 3/.style={sibling distance=19mm}]
+\node[q] {has the mid moved in the last 17 minutes?}
+  child { node[q] {more than 8 moves in the last hour?}
+    child { node[q] {was the last move down?}
+      child { node[leafU] {up} edge from parent node[lab, left] {yes} }
+      child { node[leafD] {down} edge from parent node[lab, right] {no} }
+      edge from parent node[lab, left] {no} }
+    child { node[q] {last move less than 2 minutes ago?}
+      child { node[leafU] {up} edge from parent node[lab, left] {yes} }
+      child { node[leafD] {down} edge from parent node[lab, right] {no} }
+      edge from parent node[lab, right] {yes} }
+    edge from parent node[lab, left, xshift=-4pt] {yes} }
+  child { node[leafC, text width=30mm, align=center, font=\footnotesize] {\textsc{const}\\[1pt]{\scriptsize\normalfont on every branch below}}
+    edge from parent node[lab, right, xshift=4pt] {no} };
+\end{tikzpicture}

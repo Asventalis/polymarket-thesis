@@ -1,0 +1,10 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, xbar, width=0.47\textwidth, height=5.3cm, xmin=0, xmax=85,
+  ymajorgrids=false, xmajorgrids, y dir=reverse, ytick=data, symbolic y coords={{weather},{esports},{culture},{sports},{economy and tech},{crypto},{politics}},
+  xlabel={samples whose mid moves within 1 h (\%)}, bar width=9pt, enlarge y limits=0.100, y axis line style={draw=none}, ytick style={draw=none},
+  yticklabel style={font=\footnotesize},
+  nodes near coords, nodes near coords align={horizontal}, every node near coord/.append style={font=\scriptsize, color=vizInk, /pgf/number format/fixed, /pgf/number format/precision=0},
+]
+\addplot[fill=vizA, draw=none] coordinates {(69.9,{weather}) (67.3,{esports}) (62.7,{culture}) (45.9,{sports}) (45.2,{economy and tech}) (43.6,{crypto}) (35.8,{politics})};
+\end{axis}
+\end{tikzpicture}

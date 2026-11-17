@@ -1,0 +1,15 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, xmode=log, log basis x=10, xmin=3, xmax=400000, ymin=0, ymax=1.0, xlabel={time since the mid last moved}, ylabel={share of samples whose mid moves within $H$},
+  xtick={10,60,600,3600,21600,86400}, xticklabels={10 s,1 min,10 min,1 h,6 h,1 day}, legend style={at={(0.5,-0.28)}, anchor=north, font=\footnotesize}, legend columns=5]
+\addplot[hzA, thick, mark=*, mark size=1.3pt] coordinates {(5,0.7090) (17,0.5248) (42,0.3179) (85,0.2150) (190,0.1515) (424,0.0755) (849,0.0406) (1470,0.0208) (2546,0.0157) (5091,0.0093) (10182,0.0057) (20364,0.0031) (49883,0.0027) (160000,0.0004)};
+\addlegendentry{$H$ = 1 min}
+\addplot[hzB, thick, mark=*, mark size=1.3pt] coordinates {(5,0.8309) (17,0.8140) (42,0.7353) (85,0.6642) (190,0.5769) (424,0.4424) (849,0.3257) (1470,0.2479) (2546,0.1840) (5091,0.1125) (10182,0.0743) (20364,0.0406) (49883,0.0271) (160000,0.0043)};
+\addlegendentry{$H$ = 15 min}
+\addplot[hzC, thick, mark=*, mark size=1.3pt] coordinates {(5,0.8603) (17,0.8736) (42,0.8325) (85,0.8006) (190,0.7484) (424,0.6633) (849,0.5816) (1470,0.5092) (2546,0.4169) (5091,0.3033) (10182,0.2256) (20364,0.1319) (49883,0.0971) (160000,0.0174)};
+\addlegendentry{$H$ = 1 h}
+\addplot[hzD, thick, mark=*, mark size=1.3pt] coordinates {(5,0.9156) (17,0.9233) (42,0.9137) (85,0.9034) (190,0.8856) (424,0.8535) (849,0.8224) (1470,0.7868) (2546,0.7336) (5091,0.6547) (10182,0.5536) (20364,0.4703) (49883,0.3555) (160000,0.0876)};
+\addlegendentry{$H$ = 6 h}
+\addplot[hzE, thick, mark=*, mark size=1.3pt] coordinates {(5,0.9359) (17,0.9428) (42,0.9370) (85,0.9307) (190,0.9183) (424,0.8958) (849,0.8726) (1470,0.8528) (2546,0.8227) (5091,0.7707) (10182,0.7062) (20364,0.6307) (49883,0.5034) (160000,0.1426)};
+\addlegendentry{$H$ = 12 h}
+\end{axis}
+\end{tikzpicture}

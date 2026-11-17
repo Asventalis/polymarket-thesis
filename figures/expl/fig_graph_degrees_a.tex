@@ -1,0 +1,10 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, xbar, width=0.47\textwidth, height=4.7cm, xmin=0, xmax=40,
+  ymajorgrids=false, xmajorgrids, y dir=reverse, ytick=data, symbolic y coords={{one market},{two},{three to five},{six to twenty},{21 to 100},{more than 100}},
+  xlabel={share of the wallets (\%)}, bar width=9pt, enlarge y limits=0.120, y axis line style={draw=none}, ytick style={draw=none},
+  yticklabel style={font=\footnotesize},
+  nodes near coords, nodes near coords align={horizontal}, every node near coord/.append style={font=\scriptsize, color=vizInk, /pgf/number format/fixed, /pgf/number format/precision=0},
+]
+\addplot[fill=vizA, draw=none] coordinates {(22.5,{one market}) (13.0,{two}) (20.3,{three to five}) (24.2,{six to twenty}) (13.0,{21 to 100}) (7.0,{more than 100})};
+\end{axis}
+\end{tikzpicture}

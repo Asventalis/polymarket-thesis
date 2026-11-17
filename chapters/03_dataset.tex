@@ -215,10 +215,10 @@ rebuilt from them (\cref{app:reproduction}).
 
 Four properties of the data shape every later decision.
 
-\paragraph{Fabricated mid on one-sided books.}  When one side of the book is empty, the
-feature builder substitutes $0.49$ or $0.51$ for the missing price; 2.4\% of the rows have a
-fabricated mid and 2.1\% a crossed book.  Excluding those samples changes the headline
-metrics by less than $0.2$ points, so they were kept, but the thesis flags them.
+\paragraph{One-sided and crossed books.}  When one side of the book is empty, the
+missing price is set to $0.49$ or $0.51$ and the mid is computed from it; 2.4\% of the
+rows have such a mid and 2.1\% a crossed book.  Both kinds of row are kept: the results
+of \cref{ch:experiments} change by less than $0.2$ points when they are excluded.
 
 \paragraph{Token orientation.}  The order book, and therefore the label, refers to
 token~1 only in Yes/No markets and to token~2 in all other markets (Up/Down, Over/Under,
@@ -232,13 +232,13 @@ $0.95$ (\cref{tab:expl:classes}); their dynamics are those of a bounded, one-tic
 and they are where every model struggles most.  Every result is therefore reported
 separately on the extreme and the central samples (\cref{sec:data:protocol}).
 
-\paragraph{Gaps.}  The two streams have one dip in common.  Between 01:00 and 03:00 UTC
-on 20 March the hourly number of book events falls from about nine million to 1.3
-million and the hourly number of fill legs from about 500 thousand to 79 thousand, and
+\paragraph{Gaps.}  The activity of the venue has one dip in the window.  Between 01:00
+and 03:00 UTC on 20 March the hourly number of book events falls from about nine million
+to 1.3 million and the hourly number of fill legs from about 500 thousand to 79 thousand;
 both recover within three hours (\cref{fig:graph:summary}).  The two streams are
-collected independently, by the archive's collector and by my node scraper, so the dip
-is in the activity of the venue, not in the collection; Polymarket's public status
-history lists no incident for that day.  No model is trained or evaluated on 20 March.
+collected independently and show the same dip, so it belongs to the activity of the
+venue.  20 March lies between the validation day and the test period
+(\cref{sec:data:protocol}), and no model is trained or evaluated on it.
 
 \section{Preprocessing}
 \label{ch:prep}
@@ -415,65 +415,92 @@ of the transaction graph, covers the whole window.  The evaluation protocol that
 the split, the metric, the subsets, the bootstrap intervals and the calibration rule, is
 given with the experimental setup (\cref{sec:data:protocol}).
 
-\section{Exploratory and statistical analysis}
+\section{Exploratory analysis}
 \label{ch:exploration}
 
-Before any model is trained, the data say a great deal about what can and cannot be
-predicted.  This section reads the three streams with the tools of exploratory analysis
-and classical data mining, in three parts.  The first (\cref{sec:expl:price}) is the
-\emph{price process}: what the stream of book events looks like, how often a price moves
-over each horizon, how the price level bounds the dynamics, how regular the activity of a
-market is, what the kind of contract says, whether the contracts of the same event lead
-one another, and whether the wallets that trade carry information.  The second
-(\cref{sec:expl:graph}) is the \emph{transaction graph}: how large, how dense and how
-connected the bipartite graph between wallets and markets is, how it grows, and how its
-map is organised.  The third (\cref{ch:structure}) is the \emph{feature space}: how many
-quantities the hand-made features of \cref{sec:prep:features} contain, what organises the
-space they span, how much of the label is linear, local or made of thresholds, and which
-families of markets emerge from how they trade.  Every number of the first and third parts
-is computed on the training and validation days of \cref{sec:data:splits}, never on the
-locked test period; the second part is purely descriptive, uses no label, and covers the
-whole window.
+Before training anything, I put a series of plain questions to the data and answered each
+with one picture.  The questions go from the smallest unit of the data, a single
+order-book event, to the most abstract, the geometry of the feature space, and every
+answer narrows what a model can be expected to do.  The section has three parts.
+\Cref{sec:expl:price} is about the \emph{price process}: what the raw stream looks like,
+how often the price moves and whether that depends on how far ahead one looks, where the
+price sits, when it moves and which way, and whether the kind of contract, the related
+contracts or the traders say anything about it.  \Cref{sec:expl:graph} is about the
+\emph{transaction graph}: who trades what, how concentrated and how connected the trading
+is, and how the graph is organised.  \Cref{ch:structure} is about the \emph{feature
+space}: how many different things the features measure, what organises the space, how
+much of the label simple models can read and which features carry the information,
+whether the markets form families by how they trade, and how all of this changes with the
+horizon.  Each subsection states its question, shows a figure and ends with the answer.
+The numbers of the first and third parts are computed on the training and validation days
+of \cref{sec:data:splits}, never on the locked test period; the second part uses no label
+and reads the whole window.  These are exploratory findings: they say which regularities
+the data have, and \cref{ch:models} to \cref{ch:horizons} are where the models are held
+to them.  \Cref{sec:expl:limits} says what the analysis cannot say, and
+\cref{sec:expl:agenda} collects what it says.
 
 \input{chapters/03a_price_process}
 \input{chapters/03b_graph}
 \input{chapters/03c_feature_space}
 
+\subsection{What this analysis cannot say}
+\label{sec:expl:limits}
+
+Four limits bound everything above.  The data are one month of one venue, 6--26 March
+2026: the shapes of the figures, the activity clock, the U-shaped distribution of the
+price level, the symmetric lead--lag curve, are the kind of regularity that survives a
+change of month; the exact shares and lifts are not, and nothing here says how they would
+look in an election week or in a quiet August.  The feature-space study reads one
+validation day and the price-process numbers the training and validation days; the locked
+test days are untouched, which is the point, but it also means that every finding of this
+section is a hypothesis about the test days, not a result on them.  The samples are
+dominated by the busy markets, ten million samples a day from sixteen thousand markets,
+most of them consecutive samples of the same few hundred books; the deduplicated view is
+the counterweight, and a number that holds on all samples and not on the deduplicated ones
+is a number about the busy markets only.  Finally, co-movement is not causation: that
+siblings move together, or that skilled wallets exist, says what the data show and not
+what makes a price move; and the categories and templates used throughout are derived
+from tags and from masked question texts, convenient labels rather than ground truth.
+
 \subsection{What the data say before a model is trained}
 \label{sec:structure:agenda}
 \label{sec:expl:agenda}
 
-The findings of this chapter set the agenda of the methodology and the experiments and are, in the terms of
-\cref{sec:intro:questions}, a first answer to the first research question.
+Five findings carry over to the methodology and the experiments, and they are, in the
+terms of \cref{sec:intro:questions}, a first answer to the first research question.
 
-\paragraph{The price process.}  Predictability at short horizons is first of all
-\emph{whether} the price moves, and that is written in the market's own recent activity;
-the direction, when it moves, is weakly in the first level of the book and in the reversal
-of the recent change; the price level and the kind of contract condition everything; the
-neighbours of a market, whether the wallets that trade it or the contracts of its event, do
-not carry information that the market's own book does not already show.  A model that reads
-the activity clock, the first level, the long returns together with the price level and the
-contract type has most of what there is; the question for the stateful and graph families
-is whether a state or a neighbourhood adds anything on top, and the answer turns out to
-depend on the horizon.
+\begin{enumerate}[leftmargin=*, itemsep=3pt]
+\item \textbf{Whether comes before which way.}  Below one hour the task is mostly whether
+the price will move at all; the direction of a move is close to a coin toss at one minute
+and is the whole task at twelve hours.  The balance of the classes, and with it the
+calibration of every classifier, changes with the horizon.
+\item \textbf{The activity clock is the first thing to know; the price level and the kind
+of contract condition everything.}  How long ago the price last moved and how often it
+moved in the last hour predict whether it will move again; the price level bounds what it
+can do; the template of the question sets how often it does it.
+\item \textbf{The direction is weak, and it lives in the first level of the book and in
+the reversal of the recent change; the neighbours add nothing.}  The best single quantity
+is right 57\% of the time at one hour; the contracts of the same event move in the same
+minute and nobody leads; the skill of the traders, though real, is already in the book by
+the time a model reads it.
+\item \textbf{The graph is one piece with a dense core, a long tail of sparse wallets and
+an organisation that the metadata already encode.}  A model with a state per wallet finds
+most states empty or stale, and a message-passing model finds no locality to exploit; the
+expectation for the graph models is a negative one.
+\item \textbf{The features are seventeen quantities read several times, organised by
+market and activity rather than by the label.}  The readable part of the label is
+``whether'', which is linear and local; the direction needs thresholds and interactions,
+which is where the boosted trees earn their margin; and the information moves from the
+activity clock to the shape of the book as the horizon grows.  The families of markets
+defined by how they trade are not the categories: the live-game regime, not the sports
+category, is the hard case.
+\end{enumerate}
 
-\paragraph{The graph.}  The transaction graph is one connected component with a dense core
-and a long tail of sparse wallets; its organisation is by category, contract type and date,
-which the market's metadata already encode; a wallet's identity is often a single fill.
-A model with a state per wallet will find most states empty, and a message-passing model
-will find no locality.
-
-\paragraph{The feature space.}  The features are about seventeen quantities read several
-times, so the capacity of a learner is not the issue and redundancy is not a problem for
-trees but is one for distance-based and linear methods.  The space is organised by market
-and by activity, not by the label, which is why a per-market state has material to work
-with and why deduplication is a necessary second view of every result.  The separable part
-of the label is first of all \emph{whether} the price moves, which is linear and local; the
-direction is neither, and it is where the boosted trees earn their margin over every
-simpler learner and where, in \cref{ch:stateful}, the stateful model earns its margin over
-the trees at the shortest horizon.  The information that the label asks of the features
-moves with the horizon, from the activity clock at minutes to the shape of the book at
-hours, and the learner that reads it best moves with it, from thresholds to linear
-directions.  And the families of markets defined by how they trade are not the categories:
-the live-game regime, not the sports category, is the hard case, and any model that is to
-be judged by category should also be judged by regime.
+For the model families this means the following.  A model that reads the activity clock,
+the first level of the book, the long returns, the price level and the contract type has
+most of what there is, and that is what the stateless control of \cref{ch:stateless} does.
+The question for the stateful family is whether a state per market adds anything on top,
+and the same-market structure of the feature space says that it has material to work
+with, most of all at the shortest horizon.  The question for the graph family is whether a
+neighbourhood adds anything, and the graph says that it should not.  And every model
+should be judged by regime and by price level, not only by category.

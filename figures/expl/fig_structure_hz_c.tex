@@ -1,0 +1,14 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, width=0.6\textwidth, height=5.2cm, symbolic x coords={1 min, 15 min, 1 h, 6 h, 12 h}, xtick=data, enlarge x limits=0.12, ymin=0, ymax=50, ylabel={best feature of the group (\% of uncertainty)}, xlabel={horizon $H$}, legend pos=outer north east, legend cell align=left, legend style={font=\scriptsize}]
+\addplot[vizA, thick, mark=*, mark size=1.6pt] coordinates {(1 min,23.0) (15 min,19.5) (1 h,16.5) (6 h,11.8) (12 h,13.3)};
+\addlegendentry{price}
+\addplot[vizB, thick, mark=square*, mark size=1.6pt] coordinates {(1 min,10.5) (15 min,19.9) (1 h,27.0) (6 h,37.3) (12 h,42.0)};
+\addlegendentry{book shape}
+\addplot[vizC, thick, mark=triangle*, mark size=1.6pt] coordinates {(1 min,35.6) (15 min,27.4) (1 h,22.5) (6 h,15.2) (12 h,14.0)};
+\addlegendentry{activity and clock}
+\addplot[vizD, thick, mark=diamond*, mark size=1.6pt] coordinates {(1 min,26.6) (15 min,14.9) (1 h,13.9) (6 h,10.1) (12 h,9.6)};
+\addlegendentry{on-chain trades}
+\addplot[vizE, thick, mark=pentagon*, mark size=1.6pt] coordinates {(1 min,22.5) (15 min,17.7) (1 h,17.8) (6 h,20.3) (12 h,24.0)};
+\addlegendentry{market metadata}
+\end{axis}
+\end{tikzpicture}

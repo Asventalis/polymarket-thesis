@@ -1,0 +1,18 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, xbar, width=0.76\textwidth, height=8.6cm, xmin=0, xmax=34, ymajorgrids=false, xmajorgrids, y dir=reverse, ytick={{volatility, last 60 min},{moves, last 60 min},{time since the last move},{mid minus its 60-min mean},{position in the 60-min range},{microprice minus mid},{15-min return},{1-hour return},{duration of the market},{first-level imbalance},{sign of the 15-min return},{3-hour return}},
+  symbolic y coords={{volatility, last 60 min},{moves, last 60 min},{time since the last move},{mid minus its 60-min mean},{position in the 60-min range},{microprice minus mid},{15-min return},{1-hour return},{duration of the market},{first-level imbalance},{sign of the 15-min return},{3-hour return}}, xlabel={share of the label's uncertainty removed by the feature alone (\%)}, bar width=7pt, bar shift=0pt, enlarge y limits=0.055,
+  y axis line style={draw=none}, ytick style={draw=none}, yticklabel style={font=\footnotesize, text width=4.2cm, align=right},
+  nodes near coords, nodes near coords align={horizontal}, every node near coord/.append style={font=\scriptsize, color=vizInk, /pgf/number format/fixed, /pgf/number format/precision=0},
+  legend style={at={(0.5,1.02)}, anchor=south, font=\footnotesize}, legend columns=5, legend image code/.code={\draw[#1, draw=none] (0cm,-0.1cm) rectangle (0.3cm,0.1cm);}]
+\addplot[fill=vizA, draw=none] coordinates {(19.5,{15-min return}) (18.9,{1-hour return}) (16.9,{sign of the 15-min return}) (15.6,{3-hour return})};
+\addlegendentry{price}
+\addplot[fill=vizB, draw=none] coordinates {(19.9,{microprice minus mid}) (17.1,{first-level imbalance})};
+\addlegendentry{book shape}
+\addplot[fill=vizC, draw=none] coordinates {(27.4,{volatility, last 60 min}) (26.5,{moves, last 60 min}) (25.1,{time since the last move}) (22.4,{mid minus its 60-min mean}) (21.8,{position in the 60-min range})};
+\addlegendentry{activity and clock}
+\addlegendimage{fill=vizD, draw=none}
+\addlegendentry{on-chain trades}
+\addplot[fill=vizE, draw=none] coordinates {(17.7,{duration of the market})};
+\addlegendentry{market metadata}
+\end{axis}
+\end{tikzpicture}

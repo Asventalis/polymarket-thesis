@@ -1,0 +1,10 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, xbar, width=0.47\textwidth, height=3.5cm, xmin=0, xmax=70,
+  ymajorgrids=false, xmajorgrids, y dir=reverse, ytick=data, symbolic y coords={{add size to a price level},{remove size from a level},{touch the best quote},{change the mid}},
+  xlabel={events out of 100}, bar width=11pt, enlarge y limits=0.200, y axis line style={draw=none}, ytick style={draw=none},
+  yticklabel style={font=\footnotesize},
+  nodes near coords, nodes near coords align={horizontal}, every node near coord/.append style={font=\scriptsize, color=vizInk, /pgf/number format/fixed, /pgf/number format/precision=0},
+]
+\addplot[fill=vizA, draw=none] coordinates {(55,{add size to a price level}) (44,{remove size from a level}) (8,{touch the best quote}) (4,{change the mid})};
+\end{axis}
+\end{tikzpicture}

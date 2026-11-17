@@ -53,3 +53,169 @@ events in the last minute     & --- & 0.89 \\
 \bottomrule
 \end{tabular}\end{fittable}
 \end{table}
+
+% ── Tables and a figure of the exploratory analysis (\cref{ch:exploration}), for the technical reader ──
+
+
+\begin{table}[p]
+\centering
+\caption{Share of the three classes among the labelled validation samples of 13 March, by
+horizon (samples of the stateful models: every market of every block at the block time;
+1 h, 6 h and 12 h from the causal-baseline evaluation, 1 and 15 min from the short-horizon
+runs).}
+\label{tab:expl:classes}
+\begin{fittable}\begin{tabular}{lccc}
+\toprule
+Horizon & \textsc{down} & \textsc{const} & \textsc{up} \\
+\midrule
+1 min  & 0.057 & 0.891 & 0.052 \\
+15 min & 0.164 & 0.690 & 0.146 \\
+1 h    & 0.236 & 0.549 & 0.215 \\
+6 h    & 0.335 & 0.354 & 0.312 \\
+12 h   & 0.377 & 0.275 & 0.348 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[p]
+\centering
+\caption{Neighbourhood purity in the maps and in the original space at 15 min: share of
+the fifteen nearest neighbours with the same label, the share expected by chance
+($\sum_c p_c^2$) and their ratio.  UMAP on 50{,}000 samples, t-SNE on 20{,}000.}
+\label{tab:structure:purity}
+\small
+\begin{tabular}{lccc ccc}
+\toprule
+& \multicolumn{3}{c}{UMAP} & \multicolumn{3}{c}{original space} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Label & same & chance & lift & same & chance & lift \\
+\midrule
+prediction label (3 classes) & 0.649 & 0.524 & 1.24 & 0.662 & 0.524 & 1.26 \\
+market category (8)          & 0.404 & 0.273 & 1.48 & 0.462 & 0.273 & 1.69 \\
+price-level bucket (3)       & 0.488 & 0.341 & 1.43 & 0.556 & 0.341 & 1.63 \\
+activity quartile (4)        & 0.423 & 0.250 & 1.69 & 0.487 & 0.250 & 1.95 \\
+market identity (11{,}294)   & 0.026 & 0.0003 & 104 & 0.052 & 0.0003 & 202 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[p]
+\centering
+\caption{Separability of the three classes at 15 min on the validation day, balanced
+accuracy on all and on deduplicated samples.  Linear models and trees are fitted on one
+million training rows; kNN on the same rows and evaluated on 300{,}000 validation samples,
+with the vote of the neighbours weighted by the inverse class frequency.  LightGBM is the
+G5 control of \cref{ch:stateless}, uncalibrated.}
+\label{tab:structure:sep15}
+\small
+\begin{tabular}{lcc}
+\toprule
+Model & all & dedup \\
+\midrule
+Mean Reversion-$H$                      & 0.537 & 0.525 \\
+LDA, uniform priors                     & 0.561 & 0.495 \\
+Logistic regression, balanced weights   & 0.568 & 0.505 \\
+Decision tree, depth 3, balanced        & 0.548 & 0.549 \\
+Decision tree, depth 6, balanced        & 0.571 & 0.562 \\
+kNN, $k = 5$                            & 0.532 & 0.517 \\
+kNN, $k = 50$                           & 0.570 & 0.551 \\
+kNN, $k = 200$                          & 0.574 & 0.553 \\
+kNN, $k = 1000$                         & 0.572 & 0.551 \\
+kNN, $k = 50$, 20-D random projection   & 0.564 & 0.547 \\
+LightGBM G5 (control)                   & 0.616 & 0.600 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[p]
+\centering
+\caption{Neighbourhood purity lift (same label among the fifteen nearest neighbours over
+chance) in the original space / in the UMAP, by horizon.  Only the prediction label
+depends on the horizon.}
+\label{tab:structure:purityh}
+\small
+\begin{tabular}{lccccc}
+\toprule
+Lift of & 1 min & 15 min & 1 h & 6 h & 12 h \\
+\midrule
+prediction label   & 1.06 / 1.05 & 1.26 / 1.24 & 1.39 / 1.36 & 1.45 / 1.39 & 1.42 / 1.35 \\
+market category    & 1.68 / 1.48 & 1.69 / 1.48 & 1.69 / 1.48 & 1.64 / 1.41 & 1.64 / 1.41 \\
+price-level bucket & 1.63 / 1.43 & 1.63 / 1.43 & 1.64 / 1.44 & 1.61 / 1.41 & 1.60 / 1.38 \\
+activity quartile  & 1.90 / 1.66 & 1.95 / 1.69 & 1.95 / 1.70 & 1.95 / 1.66 & 1.96 / 1.66 \\
+market identity    & 216 / 114   & 202 / 104   & 202 / 106   & 198 / 101   & 200 / 102 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[p]
+\centering
+\caption{Separability by horizon: balanced accuracy on all and deduplicated samples of the
+same learners as \cref{tab:structure:sep15}.  kNN with the best $k$ on 300{,}000
+samples; $\Delta$ is the difference from the control on the same samples, hour-block
+bootstrap 95\% interval.}
+\label{tab:structure:seph}
+\footnotesize
+\begin{fittable}\begin{tabular}{lcccccccccc}
+\toprule
+& \multicolumn{2}{c}{1 min} & \multicolumn{2}{c}{15 min} & \multicolumn{2}{c}{1 h} & \multicolumn{2}{c}{6 h} & \multicolumn{2}{c}{12 h} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+Model & all & dedup & all & dedup & all & dedup & all & dedup & all & dedup \\
+\midrule
+Mean Reversion-$H$     & 0.536 & 0.501 & 0.537 & 0.525 & 0.531 & 0.518 & 0.507 & 0.500 & 0.507 & 0.500 \\
+LDA                    & 0.462 & 0.362 & 0.561 & 0.495 & 0.563 & 0.546 & 0.541 & 0.517 & 0.539 & 0.516 \\
+Logistic regression    & 0.504 & 0.376 & 0.568 & 0.505 & 0.562 & 0.525 & 0.544 & 0.518 & 0.543 & 0.519 \\
+Decision tree, depth 3 & 0.558 & 0.474 & 0.548 & 0.549 & 0.534 & 0.503 & 0.513 & 0.492 & 0.499 & 0.497 \\
+Decision tree, depth 6 & 0.575 & 0.479 & 0.571 & 0.562 & 0.554 & 0.535 & 0.531 & 0.512 & 0.531 & 0.523 \\
+kNN, best $k$          & 0.508 & 0.400 & 0.574 & 0.553 & 0.566 & 0.549 & 0.543 & 0.528 & 0.546 & 0.533 \\
+\quad best $k$ & \multicolumn{2}{c}{20} & \multicolumn{2}{c}{200} & \multicolumn{2}{c}{200} & \multicolumn{2}{c}{1000} & \multicolumn{2}{c}{1000} \\
+\quad $\Delta$ vs control & \multicolumn{2}{c}{$-10.2$ [$-11.2$, $-9.5$]} & \multicolumn{2}{c}{$-4.0$ [$-4.3$, $-3.8$]} & \multicolumn{2}{c}{$-3.6$ [$-4.0$, $-3.2$]} & \multicolumn{2}{c}{$-3.0$ [$-3.3$, $-2.6$]} & \multicolumn{2}{c}{$-2.5$ [$-2.8$, $-2.2$]} \\
+LightGBM G5 (control)  & 0.609 & 0.474 & 0.616 & 0.600 & 0.602 & 0.583 & 0.572 & 0.567 & 0.572 & 0.568 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[p]
+\centering
+\caption{Mutual information between a feature and the label, in nats, by horizon, for the
+fifteen features that are among the six most informative at some horizon (bold where they
+are), and the sum over each group.  300{,}000 validation samples, nearest-neighbour
+estimator.  Label entropy 0.42, 0.83, 1.00, 1.10, 1.09 nats.}
+\label{tab:structure:mih}
+\small
+\begin{tabular}{lccccc}
+\toprule
+Feature (group) & 1 min & 15 min & 1 h & 6 h & 12 h \\
+\midrule
+\path{moves_60m} (G3) & \textbf{0.149} & \textbf{0.221} & \textbf{0.212} & 0.135 & 0.104 \\
+\path{rv_60m} (G3) & \textbf{0.142} & \textbf{0.229} & \textbf{0.225} & 0.154 & 0.122 \\
+\path{since_move} (G3) & \textbf{0.123} & \textbf{0.209} & \textbf{0.211} & 0.167 & 0.153 \\
+\path{range_pos_60m} (G3) & \textbf{0.132} & \textbf{0.182} & 0.171 & 0.110 & 0.090 \\
+\path{mid_minus_mean60} (G3) & 0.104 & \textbf{0.187} & \textbf{0.190} & 0.127 & 0.099 \\
+\path{usd_15m} (G4) & \textbf{0.112} & 0.114 & 0.099 & 0.062 & 0.055 \\
+\path{ntr_15m} (G4) & \textbf{0.105} & 0.088 & 0.070 & 0.032 & 0.028 \\
+\path{ret_15m} (G1) & 0.097 & 0.162 & 0.143 & 0.080 & 0.060 \\
+\path{ret_1h} (G1) & 0.087 & 0.158 & 0.165 & 0.112 & 0.089 \\
+\path{micro_minus_mid_ticks} (G2) & 0.044 & \textbf{0.166} & \textbf{0.270} & \textbf{0.410} & \textbf{0.457} \\
+\path{imb1} (G2) & 0.041 & 0.143 & \textbf{0.233} & \textbf{0.362} & \textbf{0.408} \\
+\path{log_bid_sz0} (G2) & 0.039 & 0.116 & 0.184 & \textbf{0.290} & \textbf{0.334} \\
+\path{log_ask_sz0} (G2) & 0.035 & 0.100 & 0.160 & \textbf{0.261} & \textbf{0.303} \\
+\path{log_bid_sz10} (G2) & 0.024 & 0.085 & 0.139 & \textbf{0.217} & \textbf{0.242} \\
+\path{log_duration_h} (G5) & 0.095 & 0.148 & 0.178 & \textbf{0.223} & \textbf{0.262} \\
+\midrule
+sum over G1 (price) & 0.63 & 1.16 & 1.31 & 1.16 & 1.10 \\
+sum over G2 (book) & 0.38 & 1.10 & 1.68 & 2.51 & 2.81 \\
+sum over G3 (flow and clock) & 1.15 & 1.45 & 1.38 & 0.87 & 0.73 \\
+sum over G4 (trades) & 0.60 & 0.75 & 0.76 & 0.51 & 0.46 \\
+sum over G5 (static) & 0.28 & 0.37 & 0.42 & 0.45 & 0.49 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[p]
+\centering
+\input{figures/dm/fig_dm_knn.tex}
+\caption{Balanced accuracy of the balanced-vote kNN against $k$ at every horizon, on
+300{,}000 validation samples.  The optimum moves from $k = 20$ at 1 min to $k = 1000$ at
+6 and 12 h.}
+\label{fig:structure:knn}
+\end{figure}
