@@ -209,3 +209,28 @@ tree = r"""\begin{tikzpicture}[
 \end{tikzpicture}
 """
 w("fig_structure_tree.tex", tree)
+
+# ── J. the market map: what every layout keeps (graphviz_2026-11-12/map_metrics.csv) ──
+rows = {r["tag"]: r for r in csv.DictReader(open(os.path.join(SRC, "graphviz_2026-11-12", "map_metrics.csv")))}
+pt = lambda t: "(%.1f,%.1f)" % (100 * float(rows[t]["neighbour_fidelity"]) + 1e-9, 100 * float(rows[t]["same_category"]) + 1e-9)
+s = r"""\begin{tikzpicture}
+\begin{axis}[thesis, width=0.8\textwidth, height=6.4cm, xmin=13, xmax=23.4, ymin=70, ymax=103,
+  xlabel={trading neighbours kept on the page (\%)}, ylabel={page neighbours of the same category (\%)},
+  legend style={font=\footnotesize, draw=none, fill=none, at={(0.5,-0.3)}, anchor=north, /tikz/every even column/.append style={column sep=8pt}}, legend columns=3, legend cell align=left,
+  xtick={14,16,18,20,22}, ytick={70,80,90,100}]
+"""
+s += "\\addplot[vizA, only marks, mark=*, mark size=2.4pt] coordinates {%s};\n\\addlegendentry{category block of weight $w$}\n" % " ".join(pt(t) for t in ["cat000", "cat025", "cat050", "cat075", "cat100"])
+s += "\\addplot[vizB, only marks, mark=square*, mark size=2.2pt] coordinates {%s};\n\\addlegendentry{supervised layout}\n" % " ".join(pt(t) for t in ["sup000", "sup050"])
+s += "\\addplot[vizC, only marks, mark=triangle*, mark size=2.8pt] coordinates {%s};\n\\addlegendentry{other layouts}\n" % " ".join(pt(t) for t in ["nn50", "tpl050", "day050"])
+labels = [("cat000", "west", "$w = 0$, similarity only", "3pt", "0pt"),
+          ("sup000", "west", "supervised, weight 0", "3pt", "0pt"),
+          ("sup050", "west", "supervised, weight 0.5", "3pt", "0pt"),
+          ("cat025", "north east", "$w = 0.25$", "-2pt", "-2pt"),
+          ("cat100", "west", "$w = 0.5$, $0.75$ and $1$", "4pt", "-2pt"),
+          ("nn50", "north", "50 neighbours, $w = 0$", "0pt", "-3pt"),
+          ("day050", "south", "first-day axis", "0pt", "3pt"),
+          ("tpl050", "south", "contract-template block", "0pt", "3pt")]
+for t, anc, txt, dx, dy in labels:
+    s += "\\node[font=\\scriptsize, color=vizInk, anchor=%s, xshift=%s, yshift=%s] at (axis cs:%s) {%s};\n" % (anc, dx, dy, pt(t)[1:-1], txt)
+s += "\\end{axis}\n\\end{tikzpicture}\n"
+w("fig_graph_weights.tex", s)

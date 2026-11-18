@@ -219,3 +219,98 @@ sum over G5 (static) & 0.28 & 0.37 & 0.42 & 0.45 & 0.49 \\
 6 and 12 h.}
 \label{fig:structure:knn}
 \end{figure}
+
+\begin{table}[t]
+\centering
+\caption{What every layout of the market map keeps (\cref{sec:expl:graph:weight}).  For
+every market the fifteen nearest markets on the page are compared with its fifteen nearest
+markets in the 64-dimensional trading space (fidelity), with its category, with its
+contract template (\cref{sec:expl:templates}) and, for the five- and fifteen-minute crypto
+contracts, with its first trading day.  Islands are the groups of at least 150 markets
+found by HDBSCAN on the page, and the noise share is the share of markets in no island.}
+\label{tab:graph:mapmetrics}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+layout & fidelity & same category & same template & same day & islands & noise \\
+ & (\%) & (\%) & (\%) & (\%) & & (\%) \\
+\midrule
+similarity only ($w = 0$) & 20.4 & 76.0 & 49.0 & 25.4 & 129 & 21.2 \\
+category block, $w = 0.25$ & 19.3 & 96.1 & 57.4 & 24.8 & 95 & 11.1 \\
+category block, $w = 0.5$ & 18.3 & 99.7 & 59.3 & 24.0 & 39 & 4.8 \\
+category block, $w = 0.75$ & 18.3 & 99.9 & 59.3 & 24.3 & 34 & 4.8 \\
+category block, $w = 1$ & 18.4 & 100.0 & 59.6 & 24.5 & 58 & 9.4 \\
+supervised, target weight 0 & 20.1 & 85.3 & 53.5 & 24.8 & 109 & 16.4 \\
+supervised, target weight 0.5 & 19.9 & 96.2 & 57.9 & 24.5 & 84 & 10.7 \\
+50 neighbours, $w = 0$ & 15.8 & 75.3 & 47.7 & 23.2 & 72 & 14.8 \\
+contract-template block, weight 0.5 & 15.6 & 95.8 & 98.1 & 24.9 & 97 & 4.7 \\
+first-day axis, weight 0.5 & 13.9 & 75.7 & 48.4 & 71.5 & 148 & 28.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[p]
+\centering
+\begin{subfigure}{0.86\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_map_w025.png}
+\caption{Category block, $w = 0.25$.}
+\end{subfigure}
+
+\medskip
+\begin{subfigure}{0.86\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_map_supervised.png}
+\caption{Supervised layout, target weight 0.5.}
+\end{subfigure}
+\caption{The market map at the other positions of the dial of \cref{sec:expl:graph:weight},
+with the largest islands labelled as in \cref{fig:graph:maps} (wallets in blue, markets in
+orange).  (a) At $w = 0.25$ the five- and fifteen-minute crypto contracts form one ribbon
+ordered by date at the top, sports and esports regions of their own, and politics, culture
+and economy still touch at the centre.  (b) The supervised layout keeps the islands of
+\cref{fig:graph:map:sim}, the short crypto contracts one island per period of days, and
+gathers the categories into regions.  (c), (d) At $w = 0.75$ and $w = 1$ every category is
+a continent, and the two maps differ only in how compact the continents are.}
+\label{fig:graph:othermaps}
+\end{figure}
+
+\begin{figure}[p]
+\ContinuedFloat
+\centering
+\begin{subfigure}{0.86\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_map_w075.png}
+\caption{Category block, $w = 0.75$.}
+\end{subfigure}
+
+\medskip
+\begin{subfigure}{0.86\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_map_w100.png}
+\caption{Category block, $w = 1$.}
+\end{subfigure}
+\caption{(continued)}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\begin{subfigure}{0.32\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_map_nn50.png}
+\caption{50 neighbours, $w = 0$.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_map_template.png}
+\caption{Contract-template block.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.32\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_map_day.png}
+\caption{First-day axis.}
+\end{subfigure}
+\caption{Three other layouts of the market map, markets coloured by category as in
+\cref{fig:graph:weights}.  (a) With fifty neighbours instead of fifteen the per-day islands
+of the short crypto contracts chain into one ribbon, and sports, politics and esports share
+one region.  (b) A block of indicator coordinates of the contract template
+(\cref{sec:expl:templates}) in place of the category, with weight 0.5, gives a catalogue of
+contract types: 98\% of the page neighbours of a market share its template, in many small
+islands that cut across the categories.  (c) The first trading day of the market as an
+extra coordinate, with weight 0.5, makes the date the first partition: 72\% of the page
+neighbours of a short crypto contract are contracts of the same day, three times the share
+of the other layouts, and every category is sliced by date.}
+\label{fig:graph:extramaps}
+\end{figure}

@@ -117,8 +117,9 @@ markets are placed on the plane by UMAP \cite{mcinnes2018umap}, a method that ke
 neighbours of the 64-dimensional space close on the page, and every wallet is placed at
 the centre of the markets it traded, pushed outwards in proportion to how spread those
 markets are; the wallets that traded a single market form a halo around it.  The second
-map adds the category of each market to its summary, so that markets of different
-categories are pushed apart on top of their trading distance.
+map adds the category of each market to its summary with a weight of one half, so that
+markets of different categories are pushed apart on top of their trading distance;
+\cref{sec:expl:graph:weight} turns this weight.
 
 Read with the question texts of their markets, the islands of the maps say how the
 trading of Polymarket is organised.  The first partition is the \emph{category}: on the
@@ -163,6 +164,112 @@ are placed at the centroid of the markets they trade, so the dense blue regions 
 publics of the corresponding markets and the blue rings are the exclusive publics of single
 markets.}
 \label{fig:graph:maps}
+\end{figure}
+
+\subsubsection{How much should the category weigh?}
+\label{sec:expl:graph:weight}
+
+The second map of \cref{fig:graph:maps} mixes two distances.  Every market is described by
+its 64 trading coordinates, scaled to unit length, followed by eight indicator coordinates,
+one per category, multiplied by a weight $w$; two markets of different categories are then
+$w\sqrt{2}$ farther apart than their trading distance alone, which lies between 0 and 2,
+and \cref{fig:graph:map:cat} uses $w = 0.5$.  The weight is a dial between \emph{who
+trades a market} and \emph{what the market is}, and \cref{fig:graph:weights} shows the map
+at six positions of it: $w = 0$, $0.25$, $0.5$, $0.75$ and $1$, and a different way of
+mixing the two, a supervised layout in which the fifteen trading neighbours of every
+market are kept and only the links between markets of different categories are weakened
+(UMAP with the category as target and target weight 0.5).
+
+Two numbers say what each map keeps.  The \emph{fidelity} of a map is the share of the
+fifteen nearest markets of a market on the page that are also among its fifteen nearest
+markets in the 64-dimensional trading space, averaged over all markets: one fifth means
+that one page neighbour in five is a true trading neighbour.  The \emph{category share}
+is the share of the page neighbours that belong to the same category as the market.
+\cref{fig:graph:tradeoff} plots one against the other for every layout; the values, with
+the shares of neighbours of the same contract template and of the same day, are in
+\cref{tab:graph:mapmetrics}.  The map by similarity alone keeps one trading neighbour in
+five, and three page neighbours in four already share the category: the trading side
+separates the categories by itself.  At $w = 0.5$ the category share is 99.7\% and the
+fidelity has lost one neighbour in ten; $w = 0.75$ and $w = 1$ give the same two numbers,
+because at $w = 0.5$ the category offset already exceeds the distance to the fifteenth
+trading neighbour of almost every market, and beyond it the continents only become more
+compact and farther apart.  The weight $0.25$ is the intermediate position: the categories
+are regions that still touch (a category share of 96\%), and the islands of the short
+crypto contracts, one per few days in \cref{fig:graph:map:sim}, have merged into one long
+ribbon ordered by date.  The supervised layout reaches the same category share as
+$w = 0.25$ while keeping almost every trading neighbour of the first map (a fidelity of
+19.9\% against 20.4\%), and it keeps that map's crypto islands, one per period of days.
+The labelled maps of these layouts are in \cref{fig:graph:othermaps}, and three other
+layouts, with fifty neighbours instead of fifteen, with the contract template in place of
+the category, and with the first trading day as an extra coordinate, are in
+\cref{fig:graph:extramaps}: each imposes a different first partition at a larger cost in
+fidelity.
+
+The weight does not touch the date structure of the short crypto contracts: in every
+layout one page neighbour in four of a five- or fifteen-minute contract is a contract of
+the same day, so the grouping by day belongs to the trading and not to the drawing.  The
+page shows the trading up to $w = 0.5$ and only the category beyond it, and the supervised
+layout is the map that keeps the most of both.  For the models, the category and the
+trading neighbourhood of a market are two separate pieces of information: the first is a
+static feature of the market (\cref{sec:prep:features}), the second is what the graph
+models of \cref{sec:models:graph} read through the wallet--market edges, and the maps say
+that the second carries most of the first, three neighbours in four, while a category of
+tens of thousands of markets says little about who trades a given one.
+
+\begin{figure}[p]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_mapc_w000.png}
+\caption{$w = 0$, similarity only.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_mapc_w025.png}
+\caption{$w = 0.25$.}
+\end{subfigure}
+
+\medskip
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_mapc_w050.png}
+\caption{$w = 0.5$.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_mapc_w075.png}
+\caption{$w = 0.75$.}
+\end{subfigure}
+
+\medskip
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_mapc_w100.png}
+\caption{$w = 1$.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\textwidth]{figures/graph/graph_mapc_sup050.png}
+\caption{Supervised layout, target weight 0.5.}
+\end{subfigure}
+\caption{The market map at six positions of the dial between trading similarity and
+category, markets coloured by category (crypto yellow, sports orange, esports red,
+politics purple, weather pink, economy and tech brown, culture dark red, other grey) and
+wallets in blue.  (a) and (c) are the maps of \cref{fig:graph:maps} without labels.  At
+$w = 0$ the categories are already grouped, with the central region shared by politics,
+culture and economy and one island of short crypto contracts per few days; at $w = 0.25$
+the crypto islands have merged into one ribbon and the categories are regions that touch;
+from $w = 0.5$ on every category is a continent and the weight only makes the continents
+more compact; the supervised layout gathers the categories into regions while keeping the
+per-period crypto islands of the first map.}
+\label{fig:graph:weights}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\input{figures/expl/fig_graph_weights.tex}
+\caption{What every layout keeps: the share of the fifteen trading neighbours of a market
+that are also among its fifteen page neighbours (fidelity, horizontal) against the share of
+page neighbours of the same category (vertical), for the layouts of
+\cref{fig:graph:weights,fig:graph:extramaps} and the supervised layout with target weight
+0.  The category block moves the maps up at a small cost in fidelity and saturates at
+$w = 0.5$; the supervised layout with target weight 0.5 keeps the fidelity of the
+similarity-only map at the category share of $w = 0.25$.}
+\label{fig:graph:tradeoff}
 \end{figure}
 
 \subsubsection{Large taker orders}

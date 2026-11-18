@@ -1,16 +1,17 @@
 \chapter{Reproduction}
 \label{app:reproduction}
 
-\paragraph{Data and code availability.}  The raw sources are public
+\paragraph{Data and code.}  The raw sources are public
 (\cref{sec:data:collection}): the order-book archive on Kaggle, the Polygon blockchain and
 the Polymarket metadata API.  Rebuilding every derived dataset from them is possible but
-long, so the datasets that the models read are deposited as they are: the market table
+long, so the models read the derived datasets directly: the market table
 (175{,}292 rows), the hourly transaction partitions with the market and the token
 orientation of every fill (11~GB), the order-book tensors (27~GB), the hand-made features
 (7.7~GB), the cross-fitted tree log-probabilities (6.6~GB), the foundation-model forecasts
 (0.7~GB), the news and sibling features and the identifier mappings, about 55~GB in all,
-together with the trained checkpoints and the reports from which every table is taken.  With them, every model of the thesis can be
-retrained and evaluated on the same inputs without touching the raw streams.  The code is
+together with the trained checkpoints and the reports from which every table is taken.
+With them, every model of the thesis can be retrained and evaluated on the same inputs
+without touching the raw streams.  The code is
 a Python package (\path{polymarket_gnn}) managed with \path{uv}, with the data pipeline in
 DuckDB and NumPy and the models in PyTorch; the raw data
 under \path{data/raw/} are never modified and every derived dataset lives under

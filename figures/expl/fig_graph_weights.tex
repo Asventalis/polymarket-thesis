@@ -1,0 +1,21 @@
+\begin{tikzpicture}
+\begin{axis}[thesis, width=0.8\textwidth, height=6.4cm, xmin=13, xmax=23.4, ymin=70, ymax=103,
+  xlabel={trading neighbours kept on the page (\%)}, ylabel={page neighbours of the same category (\%)},
+  legend style={font=\footnotesize, draw=none, fill=none, at={(0.5,-0.3)}, anchor=north, /tikz/every even column/.append style={column sep=8pt}}, legend columns=3, legend cell align=left,
+  xtick={14,16,18,20,22}, ytick={70,80,90,100}]
+\addplot[vizA, only marks, mark=*, mark size=2.4pt] coordinates {(20.4,76.0) (19.3,96.1) (18.3,99.7) (18.3,99.9) (18.4,100.0)};
+\addlegendentry{category block of weight $w$}
+\addplot[vizB, only marks, mark=square*, mark size=2.2pt] coordinates {(20.1,85.3) (19.9,96.2)};
+\addlegendentry{supervised layout}
+\addplot[vizC, only marks, mark=triangle*, mark size=2.8pt] coordinates {(15.8,75.3) (15.6,95.8) (13.9,75.7)};
+\addlegendentry{other layouts}
+\node[font=\scriptsize, color=vizInk, anchor=west, xshift=3pt, yshift=0pt] at (axis cs:20.4,76.0) {$w = 0$, similarity only};
+\node[font=\scriptsize, color=vizInk, anchor=west, xshift=3pt, yshift=0pt] at (axis cs:20.1,85.3) {supervised, weight 0};
+\node[font=\scriptsize, color=vizInk, anchor=west, xshift=3pt, yshift=0pt] at (axis cs:19.9,96.2) {supervised, weight 0.5};
+\node[font=\scriptsize, color=vizInk, anchor=north east, xshift=-2pt, yshift=-2pt] at (axis cs:19.3,96.1) {$w = 0.25$};
+\node[font=\scriptsize, color=vizInk, anchor=west, xshift=4pt, yshift=-2pt] at (axis cs:18.4,100.0) {$w = 0.5$, $0.75$ and $1$};
+\node[font=\scriptsize, color=vizInk, anchor=north, xshift=0pt, yshift=-3pt] at (axis cs:15.8,75.3) {50 neighbours, $w = 0$};
+\node[font=\scriptsize, color=vizInk, anchor=south, xshift=0pt, yshift=3pt] at (axis cs:13.9,75.7) {first-day axis};
+\node[font=\scriptsize, color=vizInk, anchor=south, xshift=0pt, yshift=3pt] at (axis cs:15.6,95.8) {contract-template block};
+\end{axis}
+\end{tikzpicture}

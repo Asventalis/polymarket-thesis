@@ -1,7 +1,7 @@
 \chapter{Conclusions}
 \label{ch:conclusions}
 
-\section{What the thesis found, question by question}
+\section{Findings, question by question}
 \label{sec:concl:summary}
 
 This thesis treated a decentralised prediction market as a data-mining object and asked four
@@ -106,14 +106,14 @@ mostly ``the price is about to move'', which a resting order cannot use.  \emph{
 the sparse markets, where the sequential state is worth most, are sparse because little
 money trades them.  \emph{Non-stationarity}: the families were selected on one validation
 day; a deployed model would be retrained on a rolling window, and the stability of the
-rankings across days is measured here only by the locked test period.  What the thesis does
-settle is what a model of this market should be made of, and that is the content of the next
+rankings across days is measured here only by the locked test period.  What these results
+do settle is what a model of this market should be made of, and that is the content of the next
 section.
 
-\section{What the thesis would start from today}
+\section{The design to start from}
 \label{sec:concl:today}
 
-Taken together, the control suggests the design the thesis would start from today: a
+Taken together, the control suggests the design a new study of this task should start from: a
 regular time grid per market (one-minute bars, aggregated to fifteen minutes for the long
 horizons) instead of the event clock, a feature set reduced to the first level, the
 microprice, the recent-mean distance, the activity clock and the contract type, the
