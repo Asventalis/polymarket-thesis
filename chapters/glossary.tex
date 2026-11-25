@@ -3,15 +3,16 @@
 
 \section*{Terms}
 \begin{description}[nosep, font=\normalfont\itshape, leftmargin=3.2cm, style=nextline]
-  \item[adverse selection] the fact that a resting order is filled by the trades that come
-  to its price, so that the calls that get filled are not a random sample of the calls and
-  can move against the order more often than the others (\cref{sec:exp:econ}).
   \item[activity clock] the quantities that describe how recently and how often a market's
   mid has changed: the time since the last mid change, the number of mid changes and of
   book events in the last minutes and hour.  The strongest predictors of whether the mid
   will move (\cref{sec:expl:activity}).
+  \item[adverse selection] the fact that a resting order is filled only when the market
+  comes to its price, so that the predictions that get filled are not a random sample of
+  all the predictions made, and the price moves against them more often than against the
+  others (\cref{sec:exp:econ}).
   \item[balanced accuracy] the mean of the per-class recalls of a classifier; $1/3$ for a
-  constant three-class rule (\cref{sec:models:protocol}).
+  constant three-class rule (\cref{sec:bg:eval}).
   \item[block] the unit of time of the Polygon blockchain, about two seconds; the time step
   of the stateful model (\cref{sec:data:blocks}).
   \item[calibration (offsets)] two additive constants on the \textsc{down} and \textsc{up}
@@ -35,30 +36,33 @@
   \item[direct path] a zero-initialised linear layer from the lookback price features (and
   the engineered features) to the three logits, which contains Mean Reversion as a special case
   (\cref{sec:models:skip}).
-  \item[maker, taker] the two sides of a fill: the maker is the resting order that was
-  already in the book, the taker the order that crossed the book and was matched against
-  it.  On Polymarket only takers pay the fee (\cref{sec:exp:econ}).
   \item[fill] a matched trade, recorded on-chain with maker, taker, token, side, quantity
   and price; the rows of the transactions table.
-  \item[hierarchical memory] the minute and hour states of a market, each updated by its
-  own GRU cell at its own period (\cref{sec:models:memory}).
-  \item[rank-gauss transform] the monotone map of a feature to its rank and then through the
-    inverse normal distribution, fitted on training rows; it removes heavy tails and scale
-    before distance-based methods (\cref{ch:structure}).
+  \item[hierarchical memory] the per-block, minute and hour states of a market, the last
+  two each updated by its own GRU cell at its own period (\cref{sec:models:memory}).
   \item[hour-block bootstrap] resampling of the 24 validation hours with replacement to
   obtain confidence intervals for differences between models (\cref{sec:models:protocol}).
   \item[lead--lag] whether the changes of one contract precede those of another;
   measured at the minute scale between sibling contracts (\cref{sec:expl:siblings}).
+  \item[logit] one of the three raw scores a model outputs before they are turned into
+  probabilities; the predicted class is the one with the largest logit.
   \item[lookback] the change of the mid over a fixed past span (15 min, 1, 3, 6, 12 h).
+  \item[maker, taker] the two sides of a fill: the maker is the resting order that was
+  already in the book, the taker the order that crossed the book and was matched against
+  it.  On Polymarket only takers pay the fee (\cref{sec:exp:econ}).
   \item[Mean Reversion-$H$] the rule that predicts the opposite of the sign of the change
   over the past $H$, and \textsc{const} if the price did not move (\cref{sec:models:baselines}).
-  \item[mid price] the average of the best bid and the best ask of the Yes-side book.
+  \item[mid price] the average of the best bid and the best ask of the book that is read:
+  the Yes side, or the second token where there is no Yes side (see token orientation).
+  \item[rank-gauss transform] the monotone map of a feature to its rank and then through the
+  inverse normal distribution, fitted on training rows; it removes heavy tails and scale
+  before distance-based methods (\cref{ch:structure}).
   \item[residual model] the stateful model that receives the cross-fitted tree
   log-probabilities as inputs and adds them to its logits (\cref{sec:models:residual}).
   \item[resolution] the decision of a market's outcome through UMA's optimistic oracle
   after the event (\cref{sec:pm:life}).
   \item[sibling contracts] markets of the same event: the two sides of a game, the
-  candidates of an election, the strikes of a ladder (\cref{sec:prep:features}).
+  candidates of an election, the strikes of a ladder (\cref{sec:expl:siblings,sec:prep:features}).
   \item[stateful / stateless model] a model that keeps a state per market updated from the
   stream, against one that reads a table of features at the sample time
   (\cref{ch:stateless,ch:stateful}).
@@ -94,16 +98,16 @@
   \item[TBPTT] truncated backpropagation through time.
   \item[TSFM] time-series foundation model.
   \item[t-SNE] t-distributed stochastic neighbour embedding.
-  \item[UMA] the optimistic oracle protocol that resolves Polymarket markets.
+  \item[UMA] Universal Market Access, the optimistic oracle protocol that resolves Polymarket markets.
   \item[UMAP] uniform manifold approximation and projection.
-  \item[USDC] the dollar stablecoin used as collateral.
+  \item[USDC] USD Coin, the dollar stablecoin used as collateral.
 \end{description}
 
 \section*{Notation}
 \begin{description}[nosep, font=\normalfont, leftmargin=3.2cm, style=sameline]
   \item[$\mathcal{M}$, $\mathcal{W}$] the sets of markets and wallets; $m$, $w$ one of each (\cref{sec:bg:notation}).
   \item[$(t_i, \mathbf{b}_i)$] the book stream of a market: the time of its $i$-th event and the 52 numbers that describe the book just after it.
-  \item[$H$] the prediction horizon (60 s, 900 s, 1 h, 6 h, 12 h).
+  \item[$H$] the prediction horizon (1 min, 15 min, 1 h, 6 h, 12 h).
   \item[$\operatorname{mid}_m(t)$] the mid price of market $m$ at the last book update strictly before $t$.
   \item[$y_{m,t}$] the label: \textsc{up}, \textsc{const} or \textsc{down} according to whether $\operatorname{mid}_m(t + H)$ is above, equal to or below $\operatorname{mid}_m(t)$ (\cref{eq:label:bg}).
   \item[$(m, t)$] a sample: market $m$ at block $t$, a block in which $m$ had a book event.

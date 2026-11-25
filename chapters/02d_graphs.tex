@@ -14,7 +14,8 @@ arrive one at a time.
 
 The vocabulary is the one of \cref{sec:bg:notation}: a graph $G = (V, E)$ with nodes $V$
 and edges $E \subseteq V \times V$, and the neighbourhood $N(v) = \{u : (u, v) \in E\}$ of
-a node.  Three derived notions are used in \cref{sec:expl:graph}: the \emph{degree} of a
+a node, a set of nodes (its timed counterpart $N_t(v)$ of \cref{sec:bg:notation} is a set
+of fills).  Three derived notions are used in \cref{sec:expl:graph}: the \emph{degree} of a
 node is the size of its neighbourhood; a \emph{connected component} is a maximal set of
 nodes between which a path exists; the \emph{$k$-core} is the largest sub-graph in which
 every node has at least $k$ neighbours inside it, which isolates the dense centre of a
@@ -50,10 +51,11 @@ stream is a sequence of timestamped, attributed edges
   \qquad t_1 \le t_2 \le \cdots,
   \label{eq:temporal-graph}
 \end{equation}
-with $\mathbf{a}_{e} \in \mathbb{R}^{7}$ the attributes of the fill (side, role, size, price,
-fee, token orientation; \cref{sec:models:mp}).  This is a \emph{continuous-time dynamic
-graph} \cite{kazemi2020survey,gravina2024dynamic}: the node set is fixed (every wallet and
-market that appears in the window), the edges arrive one at a time and never disappear,
+with $\mathbf{a}_{e} \in \mathbb{R}^{7}$ the attributes of the fill (side, role, log collateral,
+log tokens, price, fee, token orientation; \cref{sec:models:mp}).  This is a \emph{continuous-time dynamic
+graph} \cite{kazemi2020survey,gravina2024dynamic}: the node set is fixed only in hindsight
+(every wallet and market that appears in the window; in the stream a node appears with its
+first edge), the edges arrive one at a time and never disappear,
 and the graph at time $t$ is the set of edges with $t_i < t$.  Such a stream can be read in
 two ways.  As a sequence of \emph{snapshots}, $G_{[t_0, t_0 + \tau)}, G_{[t_0 + \tau, t_0 +
 2\tau)}, \ldots$ for a fixed $\tau$, which is how the hourly graphs of
@@ -90,7 +92,7 @@ makes the network a function of the graph rather than of a particular listing of
 nodes of a neighbourhood have no natural order, and a sum or a mean gives the same result
 in any order (\emph{permutation invariance}).  Several rounds let information travel
 across the graph, one hop per round; the parameters of $M$ and $U$ are shared by all nodes
-and all rounds in the simplest designs, so that the network can be applied to a graph of
+(and, in some designs, by all rounds), so that the network can be applied to a graph of
 any size and to nodes it has never seen (\emph{inductive} learning), which is necessary
 here, where thirteen hundred new wallets appear every hour.  Training is backpropagation
 through the three operations: the gradient of the loss at a node flows back through its
@@ -115,15 +117,17 @@ learned relevance: for every edge a score is computed from the two ends (and, he
 edge), the scores of the edges incident to a node are normalised with a softmax, and the
 aggregation is the weighted sum,
 \begin{equation}
-  \alpha_{uv} = \frac{\exp\bigl(\operatorname{LeakyReLU}(\mathbf{q}^{\top} [\mathbf{h}_u, \mathbf{h}_v, \mathbf{e}_{uv}])\bigr)}
-  {\sum_{u' \in N(v)} \exp\bigl(\operatorname{LeakyReLU}(\mathbf{q}^{\top} [\mathbf{h}_{u'}, \mathbf{h}_v, \mathbf{e}_{u'v}])\bigr)},
+  \alpha_{uv} = \frac{\exp\bigl(\operatorname{LeakyReLU}(\mathbf{q}^{\top} [\mathbf{h}_u \,\|\, \mathbf{h}_v \,\|\, \mathbf{e}_{uv}])\bigr)}
+  {\sum_{u' \in N(v)} \exp\bigl(\operatorname{LeakyReLU}(\mathbf{q}^{\top} [\mathbf{h}_{u'} \,\|\, \mathbf{h}_v \,\|\, \mathbf{e}_{u'v}])\bigr)},
   \qquad
   \mathbf{s}_v = \sum_{u \in N(v)} \alpha_{uv}\, \mathbf{msg}_{u \to v},
   \label{eq:gat}
 \end{equation}
-where $[\cdot]$ is concatenation, $\mathbf{q}$ a learned vector and $\mathbf{e}_{uv}$ an
-encoding of the edge attributes.  This is the attention of \cref{eq:attention} restricted
-to the neighbours of a node, with one head.  \emph{Gated graph networks} \cite{li2016ggnn}
+where $\|$ denotes concatenation, $\operatorname{LeakyReLU}(a) = \max(a, 0.2\,a)$,
+$\mathbf{q}$ is a learned vector and $\mathbf{e}_{uv}$ an encoding of the edge attributes.
+This is the idea of \cref{eq:attention}, a softmax over learned relevance scores, restricted
+to the neighbours of a node, with one head and an additive score in place of the dot
+product.  \emph{Gated graph networks} \cite{li2016ggnn}
 first used a GRU as the update function $U$, so that a node's representation is a state
 that each round of message passing updates by \cref{eq:gru}, with the aggregate as input;
 this is the update used in the stateful model, where a market's state is updated by the
@@ -144,9 +148,9 @@ Networks \cite{rossi2020tgn} give the general recipe, of which the earlier event
 models \cite{kumar2019jodie,trivedi2019dyrep,xu2020tgat} are special cases: when an edge
 $(u, v, t, \mathbf{a})$ arrives, a message is computed for each end from the two memories,
 the elapsed time since the node's last event and the attributes, $\mathbf{msg}_v =
-M(\mathbf{s}_v, \mathbf{s}_u, \Delta t_v, \mathbf{a})$; the messages a node receives in
-a batch of events are aggregated; the memory is updated by a recurrent cell, $\mathbf{s}_v
-\leftarrow \operatorname{GRUCell}(\bar{\mathbf{msg}}_v, \mathbf{s}_v)$; and the prediction
+M(\mathbf{h}_v, \mathbf{h}_u, \Delta t_v, \mathbf{a})$; the messages a node receives in
+a batch of events are aggregated; the memory is updated by a recurrent cell, $\mathbf{h}_v
+\leftarrow \operatorname{GRUCell}(\bar{\mathbf{msg}}_v, \mathbf{h}_v)$; and the prediction
 for a node is read from its memory, possibly after one more round of message passing over
 the recent neighbours.  Training follows the stream in time order with truncated
 backpropagation, exactly as in \cref{sec:bg:tbptt}, the batch being the events of a block.

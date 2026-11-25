@@ -6,8 +6,7 @@ learner is not a neural network but an ensemble of decision trees built by gradi
 boosting.  This section explains the decision tree, the boosting procedure that adds trees
 one at a time along the gradient of the loss, the LightGBM implementation
 \cite{ke2017lightgbm} used in this thesis, and
-the two neural learners trained on the same table to tell the learner apart from the
-training regime.
+the two neural learners trained on the same table.
 
 \subsection{Decision trees}
 
@@ -34,11 +33,11 @@ previous ones got wrong.  \emph{Gradient boosting} \cite{friedman2001gbm} makes 
 precise as gradient descent in the space of functions.  The model after $k$ rounds is an
 additive sum of trees,
 \begin{equation}
-  F_k(\mathbf{x}) = F_{k-1}(\mathbf{x}) + \eta\, h_k(\mathbf{x}), \qquad
+  F_k(\mathbf{x}) = F_{k-1}(\mathbf{x}) + \eta\, T_k(\mathbf{x}), \qquad
   F_0(\mathbf{x}) = \text{a constant (the log-frequencies of the classes)},
   \label{eq:boosting}
 \end{equation}
-where $h_k$ is a small tree and $\eta$ a \emph{learning rate} (0.05 here) that shrinks
+where $T_k$ is a small tree and $\eta$ a \emph{learning rate} (0.05 here) that shrinks
 every tree's contribution so that many trees share the work.  For a classifier
 $F(\mathbf{x})$ is a vector of three scores, the logits of \cref{eq:softmax}, and one tree
 per class is added at every round.  Each round asks which tree would most reduce the loss
@@ -54,7 +53,8 @@ and class $c$, $g_i = \hat{p}_{i,c} - [y_i = c]$ and $h_i = \hat{p}_{i,c}(1 -
 \hat{p}_{i,c})$, the same quantities as in \cref{eq:xent-grad}), the loss change produced
 by a tree that assigns the value $w_j$ to the rows of its leaf $j$ is approximately
 $\sum_j \bigl( G_j w_j + \tfrac{1}{2} (H_j + \lambda) w_j^2 \bigr)$ with $G_j = \sum_{i \in
-j} g_i$ and $H_j = \sum_{i \in j} h_i$, which is minimised by
+I_j} g_i$ and $H_j = \sum_{i \in I_j} h_i$, $I_j$ being the rows that fall in leaf $j$,
+which is minimised by
 \begin{equation}
   w_j^{\ast} = -\frac{G_j}{H_j + \lambda}, \qquad
   \text{gain of a split} = \frac{1}{2}\Bigl( \frac{G_L^2}{H_L + \lambda} + \frac{G_R^2}{H_R + \lambda} - \frac{(G_L + G_R)^2}{H_L + H_R + \lambda} \Bigr),
@@ -105,9 +105,9 @@ care.
 
 A neural network trained on the same table reaches the trees only with a few known
 ingredients \cite{holzmuller2024betterbydefault}.  The first is the \emph{piecewise-linear encoding} of every numeric feature
-\cite{gorishniy2022embeddings}: the range of a feature is cut at $T$ quantiles of the
-training data, $b_0 < b_1 < \cdots < b_T$, and the feature value $x$ is replaced by $T$
-numbers,
+\cite{gorishniy2022embeddings}: the range of a feature is cut into $T$ bins by $T + 1$
+points $b_0 < b_1 < \cdots < b_T$ (the minimum, $T - 1$ quantiles of the training data and
+the maximum), and the feature value $x$ is replaced by $T$ numbers,
 \begin{equation}
   \operatorname{PLE}(x)_t = \min\Bigl(1, \max\Bigl(0, \frac{x - b_{t-1}}{b_t - b_{t-1}}\Bigr)\Bigr), \qquad t = 1, \ldots, T,
   \label{eq:ple}
@@ -115,9 +115,11 @@ numbers,
 which are one for the bins below $x$, zero for the bins above it and a fraction in the bin
 that contains it; a linear layer on this encoding can represent any piecewise-linear
 function of $x$ with knots at the quantiles, that is, the thresholds that a tree would
-find, which is exactly what a plain MLP on the raw feature cannot do.  With $T = 16$ bins
-the 59 numeric features become $59 \times 16$ numbers, plus a flag per missing value, the
-hour as a sine and a cosine and the category as eight indicators: 674 inputs at one hour.
+find, which is exactly what a plain MLP on the raw feature cannot do.  With at most
+$T = 16$ bins per feature (fewer where the quantiles coincide, as for the discrete counts)
+the 59 numeric features become their bin encodings, plus a flag per missing value, the
+hour as a sine and a cosine and the category as eight indicators: 674 inputs in all at one
+hour.
 The other ingredients are the ones of \cref{sec:bg:learning}: shuffled mini-batches of
 8{,}192 rows, the one-cycle learning-rate schedule, dropout and early stopping on 12 March.
 The MLP so trained has three layers of 512 units.  \emph{TabM} \cite{gorishniy2025tabm}

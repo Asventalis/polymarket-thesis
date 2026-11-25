@@ -32,16 +32,16 @@ activity and the first level of its book carry nearly all of the information the
 long returns, read together with the price level and the lifecycle of the market, carry the
 long-horizon direction.  The wallets, the sibling contracts, the news flow and the
 zero-shot forecasts of a pretrained model add nothing reliable at one hour; the forecasts
-add a few tenths of a point in the central price range, on the full stream only, and lose
-at the extremes.  What moves a price from outside the book, the reference price of a crypto
+add a few tenths of a point on the full stream, almost a point in the central price range,
+nothing on the deduplicated samples, and lose at the extremes.  What moves a price from outside the book, the reference price of a crypto
 interval market, the score of a game, the content of the news, was not in the data, and the
 kinds of market on which every model is weakest are exactly the ones driven by such a
 reference.
 
 \paragraph{The models (\ref{q:models}).}  A stateless learner on sixty-one engineered
-features that encode the properties above is the strongest model at every horizon from
-fifteen minutes to twelve hours, six to seven points above the best rule; a properly trained
-tabular network ties it.  A continuous-time stateful model of the order-book stream reaches
+features that encode the properties above is the reference model at every horizon from
+fifteen minutes to twelve hours, six to eight points above the best rule; a properly trained
+tabular network ties it, and nothing beats it except what is built on top of it.  A continuous-time stateful model of the order-book stream reaches
 it only when it is given the same inputs and the trees as a base, and beats it, by a small
 margin with an interval that excludes zero on every subset, only at the two shortest
 horizons: alone and as the residual of the trees at one minute, where the sequence of book
@@ -61,9 +61,10 @@ sequence of book events carries information that the summary loses; at fifteen m
 state still adds a little on top of the trees; at one hour the summary is complete and a
 stateless learner is the right model; at six and
 twelve hours the task is the direction of a slow reversal read with the price level and the
-lifecycle of the market, the stateless learner is six points above the rule, and the
-stateful models of this study are below it, at twelve hours even when they read the
-engineered features and sit on the trees as a base.
+lifecycle of the market, the stateless learner is six and a half points above the rule, and the
+stateful models of this study are below it even when they read the engineered features;
+on the trees as a base they come within half a point of the trees at six hours and stay
+three and a half points below at twelve.
 The live-game regime and the crypto interval contracts are the hard cases at every horizon.
 
 \section{The results in brief}
@@ -74,14 +75,15 @@ price-direction prediction on Polymarket in which no input can see the future, a
 to compare five families of approaches against the strongest simple rule on the data.  The
 continuous-time model built for the thesis contains the mean-reversion rule as a special
 case, encodes the order book with a recurrent network, keeps a three-rate hierarchical memory
-and reads five lookback price changes; it beats the rule by two to three points at one hour
-and at six hours, with a gain that is stable across seeds, and reading the order-book
+and reads five lookback price changes; it beats the rule by two and a half points at one hour
+and by one and a half at six hours, with a gain that is stable across seeds, and reading the order-book
 window one quantity at a time before mixing quantities raises the one-hour gain by a further
 point, reproduced on a second seed.  The message-passing model on the wallet--market
 transaction graph never adds a reliable gain; zero-shot time-series foundation models re-discover the rule and do not beat
 it.  The decisive experiment is the stateless one: a gradient-boosted model with no state, on
 sixty-one engineered features from the clean data, beats the best stateful model of the
-book stream by four points at one hour and by more at the long horizons, and the features
+book stream by three to four points at one hour and at six hours and by eight at twelve, and
+the features
 that carry the gain, the time since the last price change, the number of recent changes, the
 first level of the book, the long returns read together with the price level, are exactly
 the ones the event-clock tensor hides or a linear direct path cannot use.  Given those same
@@ -90,12 +92,14 @@ is the cost of its online, time-ordered training regime, and with the cross-fitt
 a base and the same calibration as the trees it ties them.  At one minute, with the control
 rebuilt on the runs' own samples and every model calibrated the same way, the stateful model
 is above the trees alone and by more as their residual; at fifteen minutes it ties them
-alone and is seven tenths above them as their residual; at twelve hours the same
-construction stays three and a half points below them.  The
-locked test days of 24--26 March reproduce every one of these orderings, with the
-one-minute margins confirmed over two seeds and the long-horizon gaps one to two points
-wider (\cref{sec:horizons:test}).  Traded one share at a time on the same days, the calls of
-the control lose seventy to one hundred ticks per share as a taker at every horizon, the
+alone on the full stream, is below them on the sparse markets, and is seven tenths above
+them as their residual; at six hours the same
+construction comes within half a point of them and at twelve hours it stays three and a
+half points below.  The
+locked test days of 24--26 March reproduce every one of these orderings that was re-run on
+them, with the one-minute margins confirmed over two seeds and the six-hour gap half a
+point to a point wider (\cref{sec:horizons:test}).  Traded one share at a time on the same days, the calls of
+the control lose about seventy to one hundred ticks per share as a taker at every horizon, the
 spread and not the fee being the cost, break even only on the books with a spread of two
 ticks or less, and earn ten to fourteen ticks per filled share as a maker from one hour on,
 on a third to a half of the calls (\cref{sec:exp:econ}).
@@ -106,15 +110,15 @@ on a third to a half of the calls (\cref{sec:exp:econ}).
 The study has the limits of its data and of its budget, and the main ones are the
 following.  The models are trained on one week and validated on one day, and the three
 locked test days are three days of the same month: they reproduce every ordering of the
-validation day, but the long-horizon gaps widened by one to two points on them, and nothing
+validation day, but the six-hour gap widened by half a point to a point on them, and nothing
 here says how the families would rank in an election week or in a quiet August.  The
 periods are not contiguous (\cref{sec:data:splits}): ten days separate the validation day
-from the test period, so every model meets the test days eleven days after its last training
+from the test period, so every model meets the test days twelve days after its last training
 day, and a drift of the regularities over those days would be charged to the models.  The
 size of that charge was measured on the stateless control, the model cheap enough to refit
 (\cref{app:results:lag}): fitted on every day up to the warm-up instead of on the training
 week, the control gains between half a point and one point of balanced accuracy on the test
-days at every horizon, with intervals that exclude zero; fitted on the week adjacent to the
+days at every horizon from fifteen minutes to twelve hours, with intervals that exclude zero; fitted on the week adjacent to the
 test alone it gains a few tenths on the full stream, not distinguishable from zero at one
 hour and at twelve, and most of the full gain on the deduplicated samples.  On the busy
 markets, then, what the extra days bring is mostly more data, while on the sparse markets
@@ -165,7 +169,7 @@ of the next section.
 \section{The design to start from}
 \label{sec:concl:today}
 
-Taken together, the control suggests the design a new study of this task should start from:
+Taken together, the results suggest the design a new study of this task should start from:
 a regular time grid per market, one-minute bars aggregated to fifteen minutes for the long
 horizons, instead of the event clock; a feature set reduced to the first level, the
 microprice, the distance from the recent mean, the activity clock and the contract type; the
@@ -175,13 +179,11 @@ beat; and a contiguous protocol that trains up to the warm-up days and calibrate
 \section{Future work}
 \label{sec:concl:future}
 
-The nearest extension is the input pipeline of the previous section, rebuilt on a regular
-time grid with the features that the stateless control found decisive, the time-first
-encoder on those bars, a learned contract-type embedding and one multi-horizon model
-\cite{zhang2021multihorizon}, with gradient boosting as the control that every deep model has
-to beat.  On the same pipeline, two inputs that this study could not use deserve a place: the
-elapsed time between snapshots as a channel of the time-first encoder, since the encoder's
-window is on an event clock and never knows how much wall-clock time it spans, and the
+The nearest extension is the pipeline of the previous section with two additions, a
+learned contract-type embedding and one multi-horizon model \cite{zhang2021multihorizon}.
+On the same pipeline, two inputs deserve a place: the elapsed time between snapshots as an
+explicit channel of the time-first encoder's time map, rather than one column among
+sixty-one in each row, since the window is on an event clock, and the
 exchange price of Bitcoin as a covariate of the crypto markets, following
 \textcite{young2026openmarket}, since those markets are the hard case of every family.
 

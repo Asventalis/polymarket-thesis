@@ -13,7 +13,7 @@ and \textcite{snowberg2012prediction} and the research agenda of \textcite{arrow
 document that their prices are well calibrated, competitive with polls and expert forecasts
 and quick to react to news; \textcite{manski2006interpreting} states under which assumptions
 a price can be read as a probability; \textcite{berg2008iem} report the long record of the
-Iowa Electronic Markets; and \textcite{hanson2003mcr,hanson2007lmsr} design the automated
+Iowa Electronic Markets; and \textcite{hanson2003mcr,hanson2007lmsr} designs the automated
 market makers that many venues use in place of an order book.  The favourite--longshot bias
 is the best-documented deviation from calibration \cite{page2013calibrated}, and it has been
 found again on Polymarket \cite{cardozo2026favorite}; \textcite{le2026calibration} show that
@@ -49,16 +49,17 @@ main regularity.  \textcite{gould2013limit} survey the limit order book as an ob
 \textcite{cont2014price} define the order-flow imbalance that this thesis uses as a feature.
 Deep learning on books started with DeepLOB \cite{zhang2019deeplob} on the FI-2010 benchmark
 \cite{ntakaris2018benchmark} and continued with multi-horizon variants
-\cite{zhang2021multihorizon}, transformer architectures \cite{berti2025tlob}, foundation
-models of the message stream \cite{linna2025lobert} and generative models of the event stream
-\cite{zheng2026lobdif}; point-process models describe the same stream as a Hawkes process
+\cite{zhang2021multihorizon}, transformer architectures \cite{berti2025tlob}, models
+pretrained on the raw order messages \cite{linna2025lobert} and generative models that
+sample the next book events \cite{zheng2026lobdif}; point-process models describe the same
+stream as a Hawkes process, in which every event raises the rate of the next ones
 \cite{cestari2023hawkes,lalor2025neuralhawkes}.  Four findings of this literature shaped the
 thesis.  Predictability depends on the microstructure of each asset, tick size, spread and
 depth, more than on the architecture \cite{briola2024deep}, which is why the price level is
 read as the first conditioning variable here.  Most of the information of a book is in its first levels and the deeper levels add much
 less \cite{tran2022beyondbest}, and what a model is shown matters more than which model
-reads it \cite{kolm2023dofi,lucchese2024predictability}, which is why the thesis measures the
-inputs before the learners.  One model trained on many books beats one model per book
+reads it \cite{kolm2023dofi,lucchese2024predictability}, which is why the inputs are measured
+here before the learners.  One model trained on many books beats one model per book
 \cite{sirignano2019universal}, which motivates a single model pooled over all markets.  And a
 well-tuned small network matches larger ones when the label is defined carefully
 \cite{berti2025tlob}, while recurrent models remain competitive on irregular series
@@ -77,8 +78,8 @@ accurate than mixing the variables at every step, which is the design of the tim
 encoder.  Other deep forecasters of the same generation \cite{challu2022nhits,lim2021tft}
 are not used.  Time-series foundation models, pretrained once and applied zero-shot, exist in
 several families: Chronos \cite{ansari2024chronos} and Chronos-2 \cite{ansari2025chronos2},
-the model evaluated here, TimesFM \cite{das2024timesfm}, MOMENT \cite{goswami2024moment} and
-TiRex \cite{auer2025tirex}.  Their record in finance is sobering: on returns their zero-shot
+the model evaluated here, and TimesFM \cite{das2024timesfm}, MOMENT \cite{goswami2024moment}
+and TiRex \cite{auer2025tirex}, three further pretrained forecasters of the same kind.  Their record in finance is sobering: on returns their zero-shot
 forecasts are close to a random walk \cite{rahimikia2025revisiting,anon2026pretrained}, the
 value found so far comes from a learned correction on top of the frozen model
 \cite{dewage2026hybrid}, and classical machine learning remains the reference for realised
@@ -119,8 +120,7 @@ near the top unless a network is trained with care \cite{jiang2026omnitabbench}.
 is known: piecewise-linear encodings of the numeric features \cite{gorishniy2022embeddings},
 embeddings of the categorical ones \cite{guo2016entity}, strong defaults for the training
 loop \cite{holzmuller2024betterbydefault}, and the cheap ensembles of TabM
-\cite{gorishniy2025tabm}; \cref{sec:stateless:tabular} uses the last three to tell the
-learner apart from the training regime.  Averaging several independently trained networks
+\cite{gorishniy2025tabm}; \cref{sec:stateless:tabular} uses the last three.  Averaging several independently trained networks
 is the most reliable improvement of a deep classifier \cite{lakshminarayanan2017ensembles}.
 For evaluation under class imbalance and dependent samples the thesis uses balanced accuracy
 \cite{brodersen2010balanced}, the logit adjustment of \textcite{menon2021logitadjustment}

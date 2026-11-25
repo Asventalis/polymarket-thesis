@@ -6,7 +6,7 @@
 \node[input] (in) at (0, 0) {last 512 mid prices of the market, one per minute (one per 5 min at 12 h): 512 numbers};
 \node[op, below=of in] (ch) {Chronos-2: pretrained forecaster, frozen, no training on our data};
 \node[state, below=of ch] (q) {forecast of the mid at $t + H$:\\9 quantiles, 10\% to 90\%};
-\node[op, below=of q] (rule) {decision rule: sign of the median; or median with a dead zone of $\pm 0.0005$ (half a tick); or the quantile bands};
+\node[op, below=of q] (rule) {decision rule: sign of the median forecast minus the current mid; or the same with a dead zone of $\pm 0.0005$ (half a tick); or the quantile bands};
 \node[outbox, below=of rule] (out) {class: \textsc{down} / \textsc{const} / \textsc{up}};
 \draw[arr] (in) -- (ch); \draw[arr] (ch) -- (q); \draw[arr] (q) -- (rule); \draw[arr] (rule) -- (out);
 \node[lbl] at (7.6, 0.9) {(b) as features};

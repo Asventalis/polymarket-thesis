@@ -110,7 +110,7 @@ spread at the calls, mean spread paid by a taker over the two legs, and mean fee
 legs as charged in March 2026.  Ticks of $0.001$.}
 \label{tab:econ:terms}
 \small
-\begin{fittable}\begin{tabular}{lrcccccccccc}
+\begin{fittable}\begin{tabular}{lrccccccccc}
 \toprule
 Horizon & Calls & $h$ & $z$ & $w$ & $\mu^{+}$ & $\mu^{-}$ & $g$ & Spread (median) & Spread paid & Fee \\
 \midrule
@@ -135,9 +135,9 @@ realised label, as a taker and as a maker--taker.}
 \small
 \begin{fittable}\begin{tabular}{lccccccccccc}
 \toprule
-& \multicolumn{3}{c}{Taker--taker} & \multicolumn{4}{c}{Maker--taker} & Maker--maker & \multicolumn{3}{c}{Oracle} \\
-\cmidrule(lr){2-4}\cmidrule(lr){5-8}\cmidrule(lr){9-9}\cmidrule(lr){10-12}
-Horizon & all & no fee & spread $\le 2$ & filled & all & filled & top decile & all & taker & filled & maker--taker \\
+& \multicolumn{3}{c}{Taker--taker} & \multicolumn{2}{c}{Maker--taker, all} & \multicolumn{2}{c}{Maker--taker, top decile} & Maker--maker & \multicolumn{3}{c}{Oracle} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(lr){9-9}\cmidrule(lr){10-12}
+Horizon & all & no fee & spread $\le 2$ & filled & P\&L & filled & P\&L & all & taker & filled & maker--taker \\
 \midrule
 1 min & $-99.6$ & $-98.8$ & $-0.9$ & 7\% & $-4.2$ & 7\% & $+0.6$ & $+24.5$ & $-90.6$ & 10\% & $+27.4$ \\
 15 min & $-91.8$ & $-91.2$ & $+0.9$ & 20\% & $+0.4$ & 19\% & $+51.1$ & $+33.0$ & $-63.9$ & 24\% & $+71.5$ \\
@@ -164,14 +164,14 @@ eighteen to forty ticks, the oracle's $\mu^{+}(1 - z)$, which is a fifth of the 
 would pay.
 
 \paragraph{The taker.}  \Cref{tab:econ:pnl} says the same in money.  Executed as a taker, the
-calls of the control lose seventy to one hundred ticks per share at every horizon; removing
+calls of the control lose sixty-eight to one hundred ticks per share at every horizon; removing
 the fee changes the loss by less than one tick; the oracle loses forty to ninety.  The loss
 shrinks with the horizon because the spread is the same while the moves are larger, but it
 never closes.  The one place where a taker breaks even is the books with a spread of at most
 two ticks, a tenth of the calls: there the edge of two to three ticks pays the spread and the
 fee almost exactly, between $-0.9$ and $+0.9$ ticks per share, and only the most confident
-decile of those calls is clearly positive, eight to thirty ticks per share on one percent of
-the samples (\cref{tab:app:econ}).  The spread, not the fee, is what eats the profit of a
+decile of those calls is clearly positive, from under one tick at one minute to twenty or
+thirty ticks per share at fifteen minutes and one hour, on one percent of the samples.  The spread, not the fee, is what eats the profit of a
 direction call: on this venue in March 2026 a taker pays the fee on a minority of markets
 and the spread on all of them, and the spread is a hundred times larger.
 
@@ -189,8 +189,8 @@ filled share from one hour on, with a precision of $0.76$ to $0.77$, and the ora
 forty to eighty: the model's maker gain on all calls is a tenth to a third of what perfect
 foresight would earn, and on its best decile it is close to it.  The maker--maker bound adds
 the exit half spread, thirty ticks, and shows what the second fill would be worth: more than
-the whole edge of any model.  Which side is better is therefore not in doubt: on the same
-calls a maker is eighty to one hundred ticks per share ahead of a taker at every horizon,
+the whole edge of any model.  Which side is better is therefore not in doubt: per filled
+share a maker is eighty to one hundred ticks ahead of a taker on all calls at every horizon,
 and the costs that remain to it are the fill, which the simulation grants optimistically,
 and the adverse selection, which it measures.
 
@@ -200,8 +200,8 @@ ticks against a mean of $-4$ to $+14$, so that a single trade is a coin toss wit
 tilt (hit rates of $0.45$ to $0.61$) and the mean is only visible over hundreds of thousands
 of trades; per unit of capital at risk, the aggregate return of the maker--taker on all
 calls is $1.5$ to $2\%$ per holding period from one hour on, and negative at one minute.
-The economics favour the long horizons, where the same spread is paid against a move that
-is five times larger and a resting order is filled twice as often.  By kind of market, the
+The economics favour the long horizons, where the same spread is paid against an edge that
+is five times larger and a resting order is filled seven times as often as at one minute.  By kind of market, the
 maker--taker at one hour is positive in every category, most on esports and sports
 ($+28$ and $+16$ ticks per filled share, the in-play markets where the moves are large and
 the fills frequent) and least on economy and technology and on crypto ($+1$ and $+2$, where

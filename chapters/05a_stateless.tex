@@ -34,7 +34,8 @@ Mean Reversion-$H$        & \textbf{0.536} & \textbf{0.501} & \textbf{0.537} & \
 \end{table}
 
 \Cref{tab:exp:baselines} gives the rules of \cref{sec:models:baselines} at every horizon.
-Mean Reversion is above one half everywhere and is the rule to beat.  Momentum is far below
+Mean Reversion is above one half on the full stream at every horizon, at or just below it
+on the deduplicated samples at six and twelve hours, and is the rule to beat.  Momentum is far below
 it and, on the sign of the last tick, close to the constant rule: on this data the sign of
 the last move is \emph{anti}-informative, and the whole of the simple predictability is a
 reversal.  The reason is the one of \cref{sec:expl:level}: most changes of a bounded,
@@ -42,7 +43,7 @@ discrete price are one-tick moves that revert, and a market that has not moved i
 $H$ is likely not to move in the next $H$ either.  The rule is strongest at extreme prices,
 below $0.05$ or above $0.95$, where the process is almost purely a one-tick oscillation,
 and it is there that every learned model is weakest relative to it.  The Mean Reversion
-values quoted in later sections differ in the third decimal from these because every
+values quoted in later sections differ in the second or third decimal from these because every
 comparison is made on the samples of the run it belongs to (\cref{sec:models:protocol}).
 
 \subsection{The control: trees on the engineered features}
@@ -119,9 +120,9 @@ since the last mid change alone has an AUC of 0.85.
 \centering
 \input{figures/fig_groups}
 \caption{The stateless control by feature group at every horizon, against Mean Reversion
-(all samples).  Price history alone (G1) is below the rule at one minute and above the
-stateful model at six and twelve hours; the activity clock (G3) carries most of the gain at
-the short horizons.}
+(all samples).  Price history alone (G1) is below the rule at one minute on the deduplicated
+samples, level with the LOB-only stateful model at six hours and above it at twelve; the
+activity clock (G3) carries most of the gain at the short horizons.}
 \label{fig:stateless:groups}
 \end{figure}
 
@@ -149,24 +150,26 @@ Horizon & Subset & MR & G1 & G1--G3 & G1--G5 & $\Delta$ G1--G5 $-$ MR [95\% CI] 
 
 \label{sec:stateless:horizons}
 The other horizons sharpen the picture.  At six and twelve hours the control is six and a
-half points above the rule and the price history alone carries most of the gain: the
+half points above the rule and the price history alone carries about half of the gain: the
 long-horizon signal is a slow reversal of the six- and twelve-hour returns, read together
 with the price level and with where the market is in its life (time to the end, age and
 duration rise to about a tenth of the gain importance), which trees read directly.  At one
 minute nothing predicts the direction, every feature is within four points of a coin toss
 on the samples that moved, and the whole gain is in \emph{whether} the mid will move: the
-activity group alone is seven points above the rule, the number of mid changes in the last
+first three groups together are seven points above the rule, the number of mid changes in the last
 hour separates \textsc{const} from a move with an AUC of 0.94, and the price history alone
 is below the rule on the deduplicated samples, because trees on returns learn the
-move-or-not prior of the full stream, which is wrong on independent samples.  The ordering
-of the groups is the same at every horizon, activity clock first, then book shape, then
-price history, with trades and static fields marginal.
+move-or-not prior of the full stream, which is wrong on independent samples.  The weight
+of the groups changes with the horizon, the activity clock carrying most of the gain at the
+short horizons and the price history about half of it at the long ones, with trades and
+static fields marginal everywhere.
 
 \paragraph{Where the information is.}
 \label{sec:analysis:nostate}
 The control is the most informative negative result of the thesis.  A model with no
 memory, reading a few dozen numbers that anyone would compute from the clean data, is the
-strongest model from fifteen minutes to twelve hours (\cref{sec:main:synthesis}).  Three
+reference model from fifteen minutes to twelve hours, matched only by the tabular network
+and beaten only by what is built on top of it (\cref{sec:main:synthesis}).  Three
 things follow.  First, the recurrent state is not where the information lives: the price
 history alone, fed to trees, already matches the stateful models of \cref{ch:stateful}
 that read the raw book window, so what the state adds on top of the heuristic is small.
@@ -192,7 +195,7 @@ be settled on the control's table alone, and \cref{tab:exp:learners} does so.  A
 network trained as a tabular model should be, three layers of 512 units on the
 piecewise-linear encoding, shuffled mini-batches, a one-cycle schedule and early stopping,
 is within a quarter of a point of the trees, and the parameter-efficient ensemble TabM is
-indistinguishable from them; the combination of TabM with the trees adds nothing, so the
+indistinguishable from them; the combination of the MLP with the trees adds nothing, so the
 two learners know the same things.  The claim that trees beat networks on this table does
 not survive a properly trained network.  What does survive is the cost of the training
 regime that a stateful model imposes: the same network trained in one pass over the rows
@@ -224,7 +227,7 @@ MLP $256 \times 2$, one pass in time order (the stateful model's regime) & 0.573
 MLP $256 \times 2$, one pass in time order, rate $\times 10$ & 0.5675 & $-3.40$ [$-3.79$, $-2.97$] & 0.5355 & $-4.72$ \\
 MLP $256 \times 2$, one pass shuffled & 0.5818 & $-1.97$ [$-2.34$, $-1.59$] & 0.5649 & $-1.79$ \\
 MLP $256 \times 2$, two passes in time order & 0.5802 & $-2.13$ [$-2.62$, $-1.61$] & 0.5701 & $-1.26$ \\
-Stateful model with the engineered features (\cref{sec:stateful:hand}) & 0.5842 & $-1.73$ [$-2.27$, $-1.13$] & 0.5708 & $-1.20$ \\
+Stateful model with the engineered features (\cref{sec:stateful:hand}) & 0.5842 & $-1.73$ [$-2.28$, $-1.15$] & 0.5708 & $-1.20$ \\
 \midrule
 LightGBM $\oplus$ stateful model with the engineered features & \textbf{0.6035} & $+0.19$ [$+0.12$, $+0.27$] & \textbf{0.5850} & $+0.23$ \\
 LightGBM $\oplus$ MLP $256 \times 2$ + piecewise-linear encoding & 0.6020 & $+0.05$ [$-0.02$, $+0.11$] & 0.5829 & $+0.02$ \\

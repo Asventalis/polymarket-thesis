@@ -5,18 +5,19 @@ The first questions are about the price itself: what the raw stream of the order
 looks like, how often the price moves, where it sits, when it moves and which way, and
 whether the kind of contract, the related contracts or the traders say anything about
 it.  Every number of this part is computed on the training and validation days of
-\cref{sec:data:protocol}, never on the locked test period.
+\cref{sec:data:splits}, never on the locked test period.
 
 \subsubsection{What does the raw stream look like?}
 \label{sec:expl:stream}
 
 The unit of the order-book table is one event: one price level of one market changing
-size.  One training day, 12 March, has 325 million of them on 23{,}512 markets, which is a
+size.  One training day, 12 March, has 325 million of them on 23{,}512 markets with at least one
+book event, which is a
 lot of data for a handful of price changes.  \Cref{fig:expl:stream} says what an event
 usually is.  Of a hundred events, fifty-five add size to a price level and forty-four
 remove it; only eight touch the best quote on either side, and only four change the mid.
-The rest happens deep in the book: a full book has about 650 levels on the bid side and
-750 on the ask side, and the median event is three cents away from the best bid, or ten
+The rest happens deep in the book: a full snapshot lists about 650 price levels on the bid
+side and 750 on the ask side, and the median event is three cents away from the best bid, or ten
 cents from the best ask.  The stream is mostly resting orders being placed and cancelled
 far from the price, and the price itself, the mid, is the quantity that changes least
 often.
@@ -49,9 +50,9 @@ millisecond, a second and a minute of the previous event of the same market.}
 The label of \cref{sec:data:labels} asks whether the mid will be lower, the same or higher
 after a horizon $H$.  How often each answer occurs depends entirely on $H$
 (\cref{fig:expl:classes}).  Over one minute, nine samples in ten do not move; over fifteen
-minutes, seven in ten; over one hour, a little more than half; over twelve hours, one in
-three.  The two directions are close to balanced at every horizon, \textsc{down} being
-slightly more frequent than \textsc{up} at the short ones.
+minutes, seven in ten; over one hour, a little more than half; over six hours, one in three; over
+twelve hours, one in four.  The two directions are close to balanced at every horizon,
+\textsc{down} being slightly more frequent than \textsc{up} at each of them.
 
 Two things follow.  The first is that the task changes with the horizon.  At one minute
 the question is almost entirely \emph{whether} the mid will move at all, and the direction
@@ -182,10 +183,10 @@ the validation day, and the template is a good predictor of how a market behaves
 (\cref{fig:expl:contract}).  The share of samples whose mid moves within the hour is seven
 in ten for weather and esports markets and one in three for political ones, and the spread
 is wider between templates: 81\% for the over/under line of a game, 24\% for ``will this
-club win on this date''.  The template accounts for 55\% of the differences between
-markets in this share, from 4\% for a seat in the House of Representatives to 83\% for a
-daily temperature, and a regression on a sentence embedding of the full question text
-predicts the share out of sample no better than the template averages do.  The kind of
+club win on this date''.  The share ranges from 4\% for a seat in the House of
+Representatives to 83\% for a daily temperature; the template accounts for 55\% of the
+differences between markets in it, and a regression on a sentence embedding of the full
+question text predicts the share out of sample no better than the template averages do.  The kind of
 contract conditions the dynamics, but it does so through a handful of types rather than
 through the words of the question, and that is how the text enters the models, as a
 category or template indicator (\cref{sec:prep:features}).  \textcite{le2026calibration}

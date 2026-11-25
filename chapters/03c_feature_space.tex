@@ -11,7 +11,8 @@ The answers set expectations for every model family and explain, before any trai
 several results of \cref{ch:stateless,ch:stateful,ch:horizons}.
 
 Everything here uses the samples of the validation day, 13 March, with the training rows
-of 7--12 March wherever a method is fitted, and never the test set
+of 7--12 March wherever a method is fitted (6 March supplies only the history that the
+twelve-hour features need), and never the test set
 (\cref{sec:data:protocol}); the methods are the standard implementations of scikit-learn
 \cite{pedregosa2011sklearn} and umap-learn \cite{mcinnes2018umap}, and the script is
 \path{scripts/data_audit/datamining.py} (\cref{app:reproduction}).  The horizon of 15
@@ -31,8 +32,8 @@ Trees and rules, which only look at the order of the values, are unaffected.  Fi
 features enter the analysis: the engineered features without the category of the market,
 one of eight classes derived from the tags that Polymarket attaches to each market
 (\cref{sec:data:collection}), which is kept as a label to colour by and never as an
-input, and without the time since the last book event, which is constant on the training
-rows.
+input, and without the time since the market's last tensor row (\texttt{since\_row}), which
+is constant on the training rows.
 
 \subsubsection{How many different things do the features measure?}
 \label{sec:structure:dim}
@@ -71,20 +72,25 @@ diagonal are the blocks: each return with its sign, the event counts over the fo
 windows, the order-flow imbalances with their standardised copies, the dollars and the
 number of trades with the time since the last trade, the hour's number of moves with its
 volatility and the time since the last move, the hours to the end of the market with its
-duration.  Counting the blocks at a correlation of at least $0.7$ gives fifteen, and an
-effective number of independent features of about seventeen.  The fifty-nine columns are,
-in short, about seventeen quantities read three or four times each.  This is harmless for
+duration.  Counting the blocks at a correlation of at least $0.7$ gives fifteen, and the
+participation ratio of the correlation spectrum, the number of equally important
+quantities that would spread the eigenvalues as these do, gives an effective number of
+independent features of about seventeen.  The fifty-nine numeric columns (the sixty-one
+features without the category and the time since the last tensor row) are, in short, about
+seventeen quantities read three or four times each.  This is harmless for
 trees, which pick one column of a block and ignore the rest, and a nuisance for methods
 that use distances or weighted sums, which count the same quantity several times.
 Flattening the space to two dimensions for a picture distorts the distances between
-samples considerably, so the maps that follow are read for the groups they show, not for
-the distances between points.
+samples considerably (the neighbours of a sample on the planar map are from its own market
+half as often as in the original space, \cref{tab:structure:purity}), so the maps that
+follow are read for the groups they show, not for the distances between points.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/dm/dm_corr_15m.png}
 \caption{Spearman correlation of the fifty-nine features on 200{,}000 validation samples
-at 15 min, ordered by average-linkage clustering of $1 - |\rho|$.  Tick labels are coloured
+at 15 min, ordered by average-linkage clustering of $1 - |\rho|$, $\rho$ the rank correlation
+of two features.  Tick labels are coloured
 by group: blue price, orange book shape, aqua activity and clock, yellow on-chain trades,
 violet market metadata.  The blocks are the returns with their signs, the event counts, the order-flow
 imbalances with their standardised copies, the on-chain trade quantities, and the
@@ -152,14 +158,14 @@ sum of its features; a decision tree asks a sequence of yes/no questions on sing
 features, three questions deep or six; nearest neighbours classifies a sample by the vote
 of the two hundred training samples most similar to it.  All of them are fitted on one
 million training rows, and the bars give the balanced accuracy on the validation day, on
-all samples and on the deduplicated ones, where only one sample per market and quarter of
-an hour is kept (\cref{sec:models:protocol}).  Three things stand out.
+all samples and on the deduplicated ones, where at most one sample per market and ten
+minutes is kept (\cref{sec:models:protocol}).  Three things stand out.
 
 \begin{figure}[t]
 \centering
 \input{figures/expl/fig_structure_sep}
 \caption{How much of the label simple models read, at 15 min: balanced accuracy on the
-validation day of the rule, of four simple learners and of the control, on all samples and
+validation day of the rule, of five simple learners and of the control, on all samples and
 on the deduplicated ones.  Chance is one third.}
 \label{fig:structure:sep}
 \end{figure}
@@ -179,8 +185,8 @@ the features can tell, imperfectly, whether the price will move; it cannot tell 
 \centering
 \includegraphics[width=0.62\textwidth]{figures/dm/dm_lda_15m.png}
 \caption{The two discriminant directions of LDA at 15 min on 20{,}000 validation samples.
-LD1 separates \textsc{const} (right) from the moving classes (left); the two directions
-overlap.}
+LD1 separates \textsc{const} (right) from the moving classes (left); \textsc{down} and
+\textsc{up} overlap.}
 \label{fig:structure:lda}
 \end{figure}
 
@@ -230,7 +236,7 @@ read and is all that is used here.)  The activity of the last hour leads: the vo
 and the number of moves remove 27\% each, the time since the last move 25\%.  Then come the
 position of the mid relative to the last hour, the microprice offset, the returns over
 fifteen minutes and one hour, the duration of the market and the imbalance at the best
-quotes, each between 17 and 22\%.  Two of the top twelve are quantities of the book's
+quotes, each between 17 and 22\%.  Three of the top twelve are quantities of the book's
 shape, the group that the principal components could not see: those features vary little,
 but what varies is informative, which is the usual reason why a spread-based count and a
 label-based count disagree.
@@ -251,9 +257,9 @@ feature group.}
 The markets are the natural unit of this data, and \cref{sec:expl:templates} grouped them
 by what they are about.  Here we group them by how they trade.  Each of the 11{,}294
 markets with at least a hundred validation samples is described by thirteen numbers of its
-validation day (its activity, spread, depth, volatility, distance of the mid from one
-half, share of moving samples, duration, time to the end, dollars traded, cancellation
-ratio and contract type), and the markets are clustered by Ward's method, which starts
+validation day (its activity, the number of events and of mid changes in its last hour,
+spread, depth, volatility, distance of the mid from one half, share of moving samples,
+duration, time to the end, dollars traded, cancellation ratio and contract type), and the markets are clustered by Ward's method, which starts
 from every market alone and repeatedly merges the two most similar groups
 (\cref{fig:structure:clusters}); $k$-means and HDBSCAN give the same families.  The
 silhouette, a score of how well separated the groups are, is highest with two groups and
@@ -280,7 +286,7 @@ balanced accuracy of Mean Reversion and of the control inside the cluster.}
 \small
 \begin{fittable}\begin{tabular}{lcccc}
 \toprule
-& 1 live games & 2 wide-spread & 3 long-dated, mid & 4 long-dated, tight \\
+& 1 live games & 2 wide-spread & 3 long-dated, mid-spread & 4 long-dated, tight \\
 \midrule
 markets                           & 355    & 1{,}670 & 4{,}802 & 4{,}467 \\
 samples (thousands)               & 748    & 753     & 6{,}333 & 1{,}891 \\
@@ -297,7 +303,7 @@ economy and tech / crypto         & 1 / 2  & 129 / 128 & 569 / 174 & 339 / 278 \
 weather / culture / other         & 0 / 9 / 0 & 179 / 94 / 8 & 46 / 360 / 62 & 17 / 184 / 22 \\
 \midrule
 Mean Reversion-$H$                & 0.513  & 0.511   & 0.524   & 0.529 \\
-LightGBM G5                       & 0.550  & 0.586   & 0.606   & 0.612 \\
+Control (LightGBM)                & 0.550  & 0.586   & 0.606   & 0.612 \\
 \bottomrule
 \end{tabular}\end{fittable}
 \end{table}
@@ -355,19 +361,20 @@ at one hour and about $1.45$ at six and twelve hours.  At one minute the neighbo
 sample carry almost no information about it: whether the price moves in the next minute
 is a matter of the next book event, not of where the sample sits in the feature space.  At
 twelve hours the neighbourhood is informative, and the information is about the
-direction, because \textsc{const} has become a third of the samples.
+direction, because \textsc{const} has become a quarter of the samples.
 
 \paragraph{The short horizons are a threshold problem, the long ones a linear one.}  At
 one minute the linear models are \emph{below} Mean Reversion and nearest neighbours are
 ten points under the control; the only simple learners that work are the trees, and the
 three-question tree, whose first question is now ``no move in the last 105 seconds'', is
-one point from the six-question tree and five from the control.  At fifteen minutes the
-trees are still ahead.  At one hour the order reverses: linear discriminant analysis is the
-best simple learner, above the six-question tree and level with nearest neighbours, and it
-matches to the third decimal the stateful model of \cref{sec:stateful:encoders} evaluated
+two points from the six-question tree and five from the control.  At fifteen minutes the
+trees are still ahead.  At one hour the order reverses: linear discriminant analysis and
+nearest neighbours are the best simple learners, level with each other and above the
+six-question tree, and the former matches to the third decimal the stateful model of \cref{sec:stateful:encoders} evaluated
 on the same samples.  At six and twelve hours the linear and local learners are together
-at $0.54$, the trees below them, and the margin of the control over the best simple
-learner, ten points at one minute, is down to two and a half.  The boosted trees earn
+at $0.54$, the trees below them, and the margin of the control over nearest neighbours,
+ten points at one minute, is down to two and a half, as is its margin over the best simple
+learner, which was three and a half at one minute.  The boosted trees earn
 their advantage where the problem is made of thresholds on the activity clock, and the
 threshold itself scales with the horizon: the first split of the small tree is at 105
 seconds since the last move at one minute, 17 minutes at fifteen minutes, 3.1 hours at six
@@ -391,7 +398,7 @@ can read them.
 samples is one of the thirteen numbers, the families are re-derived each time.  The
 live-game family is recovered at one minute, fifteen minutes and one hour, always sports
 and esports an hour from the end; at six and twelve hours it merges with the wide-spread
-sports contracts.  The control inside the live games goes from $0.573$ at one minute to
+sports contracts.  The control inside this family goes from $0.573$ at one minute to
 $0.48$--$0.49$ at six and twelve hours, where Mean Reversion in the same family is at
 $0.42$ and $0.38$: in a game that is ending the price trends, and the reversal rule is
 wrong more often than right.  At the other end, a family of deep and tight long-dated

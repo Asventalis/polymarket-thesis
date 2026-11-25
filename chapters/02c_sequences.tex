@@ -6,22 +6,24 @@ of \emph{layers}, each a linear map followed by an activation function $\sigma$ 
 element by element, with the last layer linear.  With one hidden layer,
 \begin{equation}
   \mathbf{a} = \mathbf{W}_1 \mathbf{x} + \mathbf{b}_1, \qquad
-  \mathbf{h} = \sigma(\mathbf{a}), \qquad
+  \mathbf{h} = \varphi(\mathbf{a}), \qquad
   \mathbf{z} = \mathbf{W}_2 \mathbf{h} + \mathbf{b}_2, \qquad
   \hat{\mathbf{p}} = \operatorname{softmax}(\mathbf{z}),
   \label{eq:mlp}
 \end{equation}
-where $\mathbf{W}_1 \in \mathbb{R}^{d \times n}$ and $\mathbf{W}_2 \in \mathbb{R}^{3
-\times d}$ are matrices of weights and $\mathbf{b}_1$, $\mathbf{b}_2$ vectors of biases;
-deeper networks stack more layers, $\mathbf{h}^{(l)} = \sigma(\mathbf{W}^{(l)}
-\mathbf{h}^{(l-1)} + \mathbf{b}^{(l)})$ with $\mathbf{h}^{(0)} = \mathbf{x}$, and
-without the non-linear $\sigma$ the layers would collapse into one linear map.  The
+where, for an input $\mathbf{x} \in \mathbb{R}^{n}$ and a hidden layer of $d_1$ units,
+$\mathbf{W}_1 \in \mathbb{R}^{d_1 \times n}$ and $\mathbf{W}_2 \in \mathbb{R}^{3
+\times d_1}$ are matrices of weights, $\mathbf{b}_1$, $\mathbf{b}_2$ vectors of biases and
+$\varphi$ the activation; deeper networks stack more layers, $\mathbf{h}^{(l)} =
+\varphi(\mathbf{W}^{(l)} \mathbf{h}^{(l-1)} + \mathbf{b}^{(l)})$ with $\mathbf{h}^{(0)} =
+\mathbf{x}$, and without the non-linear $\varphi$ the layers would collapse into one
+linear map.  The
 gradient of the loss with respect to the parameters of \cref{eq:mlp} is the backward pass
 of \cref{sec:bg:learning:backprop} written out: $\partial \ell / \partial \mathbf{z} =
 \hat{\mathbf{p}} - \mathbf{e}_y$, then $\partial \ell / \partial \mathbf{W}_2 =
 (\partial \ell / \partial \mathbf{z})\, \mathbf{h}^{\top}$, $\partial \ell / \partial
 \mathbf{h} = \mathbf{W}_2^{\top}\, \partial \ell / \partial \mathbf{z}$, $\partial \ell /
-\partial \mathbf{a} = \partial \ell / \partial \mathbf{h} \odot \sigma'(\mathbf{a})$ and
+\partial \mathbf{a} = \partial \ell / \partial \mathbf{h} \odot \varphi'(\mathbf{a})$ and
 $\partial \ell / \partial \mathbf{W}_1 = (\partial \ell / \partial \mathbf{a})\,
 \mathbf{x}^{\top}$, each line reusing the one before.  A layer
 with $d$ units maps its input to $d$ numbers; the \emph{width} $d$ and the number of
@@ -76,11 +78,11 @@ keep and how much of a new candidate to write (\cref{fig:bg:gru}):
 \begin{align}
   \mathbf{r}_t &= \sigma(\mathbf{W}_r \mathbf{x}_t + \mathbf{U}_r \mathbf{h}_{t-1} + \mathbf{b}_r)
   && \text{(reset gate)}, \notag \\
-  \mathbf{z}_t &= \sigma(\mathbf{W}_z \mathbf{x}_t + \mathbf{U}_z \mathbf{h}_{t-1} + \mathbf{b}_z)
+  \mathbf{u}_t &= \sigma(\mathbf{W}_u \mathbf{x}_t + \mathbf{U}_u \mathbf{h}_{t-1} + \mathbf{b}_u)
   && \text{(update gate)}, \notag \\
   \tilde{\mathbf{h}}_t &= \tanh\bigl(\mathbf{W}_h \mathbf{x}_t + \mathbf{U}_h (\mathbf{r}_t \odot \mathbf{h}_{t-1}) + \mathbf{b}_h\bigr)
   && \text{(candidate)}, \notag \\
-  \mathbf{h}_t &= (1 - \mathbf{z}_t) \odot \mathbf{h}_{t-1} + \mathbf{z}_t \odot \tilde{\mathbf{h}}_t
+  \mathbf{h}_t &= (1 - \mathbf{u}_t) \odot \mathbf{h}_{t-1} + \mathbf{u}_t \odot \tilde{\mathbf{h}}_t
   && \text{(interpolation)},
   \label{eq:gru}
 \end{align}
@@ -164,8 +166,11 @@ query matches their keys:
   \mathbf{Q} = \mathbf{X}\mathbf{W}_Q,\ \mathbf{K} = \mathbf{X}\mathbf{W}_K,\ \mathbf{V} = \mathbf{X}\mathbf{W}_V,
   \label{eq:attention}
 \end{equation}
-where the softmax is taken row by row and $\sqrt{d_k}$ keeps the dot products on a
-scale at which the softmax is not saturated \cite{vaswani2017attention}.  Row $i$ of the
+where $\mathbf{W}_Q, \mathbf{W}_K \in \mathbb{R}^{d \times d_k}$ and $\mathbf{W}_V \in
+\mathbb{R}^{d \times d_v}$ are learned, $d_k$ is the size of the queries and keys (the matrix
+$\mathbf{K}$ of the keys is not the window length $K$), the softmax is taken row by row and
+$\sqrt{d_k}$ keeps the dot products on a scale at which the softmax is not saturated
+\cite{vaswani2017attention}.  Row $i$ of the
 result is a mixture of the values of the tokens that are relevant to token $i$, with
 weights that the network learns; the operation does not depend on the order of the tokens,
 and when the order matters it is added as a \emph{positional encoding} to the inputs.
@@ -195,7 +200,8 @@ learned embedding that says which channel the token is, and lets one attention l
 the 55 tokens.  This is the channel-independence pattern of \cref{sec:bg:lob}: time is
 read first, within each channel, by a map that is the same for all of them, and the
 channels are mixed afterwards.  With 55 tokens of 32 numbers, four heads and one layer the
-encoder is small (about 40 thousand parameters); its cost is in the attention matrix,
+encoder has about a quarter of a million parameters, most of them in the final map from
+the 55 concatenated tokens to the state; its cost in time is in the attention matrix,
 $55 \times 55$ per market per block.
 
 \subsection{Continuous time: decay and multi-rate memories}
@@ -240,8 +246,6 @@ not one number but a band of nine quantiles, from which a direction, a ``no chan
 and a width can be read (\cref{sec:models:zeroshot}).  Every context window is standardised
 before it enters the model, which is what makes the model indifferent to the scale of a
 series and, on a one-tick process, what makes it read noise as signal
-(\cref{sec:external:tsfm}).  The evidence of such models in finance is sobering: zero-shot
-forecasts of returns are close to a random walk, with directional accuracy near 50\%, and
-the value found so far comes from a learned correction on top of a frozen model
-\cite{rahimikia2025revisiting,dewage2026hybrid}.  This is the setting tested in
-\cref{sec:external:tsfm}.
+(\cref{sec:external:tsfm}).  Their record on financial series is reviewed in
+\cref{sec:pm:related}; \cref{sec:external:tsfm} tests the zero-shot setting on
+prediction-market prices.

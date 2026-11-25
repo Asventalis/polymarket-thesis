@@ -53,10 +53,10 @@ forecaster on the test samples and the value of the frozen offsets are in
 \centering
 \caption{Test days 24--26 March: the best model of each family at each horizon, all samples
 and deduplicated samples (balanced accuracy), every model with its two logit offsets chosen
-once on the validation day and applied unchanged.  ``Stateless'' is LightGBM G5 refitted as in
+once on the validation day and applied unchanged.  ``Stateless'' is LightGBM refitted as in
 validation and evaluated on the test samples of the stateful run; ``stateful'' is the best
-validated run without trees (two passes with the engineered features at 1 min, 15 min and 1 h, the
-time-first encoder at 6 h, the reference model, seed 0, at 12 h); ``residual'' is the two-pass
+run without trees evaluated on the test days (two passes with the engineered features at
+1 min, 15 min and 1 h; the time-first encoder at 6 h; the reference model, seed 0, at 12 h); ``residual'' is the two-pass
 stateful model on the cross-fitted trees.  $\Delta$ in points against the stateless control,
 95\% hour-block bootstrap intervals over the test hours.  TabM, not shown, is $+0.27$
 [$+0.21$, $+0.34$] at 1 min, $+0.15$ [$+0.02$, $+0.27$] at 15 min and $-0.08$ [$-0.25$,
@@ -85,14 +85,15 @@ Horizon & Subset & MR & Stateless & Stateful & $\Delta$ & Residual & $\Delta$ \\
 
 Three things carry over from the validation day to the test days, and one does not.
 
-\emph{The ordering of the families, and the whole one-hour chain.}  At every horizon the
+\emph{The ordering of the families, and the whole one-hour chain.}  From fifteen minutes on the
 calibrated control is the best model or within its interval of the best, every learned
 model stands where it stood on 13 March, and the sparse day moves no sign.  At one hour the
 twelve runs of the study keep the order of \cref{ch:stateful,ch:graph,ch:external} to the
 last step, and every gap is within a few tenths of its validation value: the two-pass
 residual model and the tabular network tie the control, the two-pass model without trees is
 a point and a half below it, the time-first encoder is a point and a half above the GRU
-reference, the forecast features add a few tenths on both seeds, the transaction graph is
+reference, the forecast features keep their sign on both seeds (three tenths on one, a few
+hundredths on the other), the transaction graph is
 below the reference, and the three seeds of the reference are within a quarter of a point of
 one another.  At fifteen minutes the tabular network is slightly above the control and the
 two-pass stateful model slightly below it, on the deduplicated samples by more, as in
@@ -102,13 +103,14 @@ days, a second seed of the same model keeps the sign and the exclusion of zero o
 subset and every day while moving the size by four tenths of a point, which is the measure
 of the seed noise at this horizon, and the residual model is above the control by about a
 point on all samples and by two points on the deduplicated ones, with a second seed within
-a tenth of the first.  The tabular network, the best stateless model at one minute, sits
+two tenths of the first.  The tabular network, the best stateless model at one minute, sits
 between the control and the stateful models on every day: at one minute the stateful
 models beat the strongest learner on the summary features, not only the trees.  At six and
 twelve hours the stateful models of the study are four to five points below the control,
-their seeds within six tenths of one another and in the same order on every day; the
-long-horizon gaps are one to two points wider on the test days than in validation, in the
-control's favour.  The graph models stand where \cref{ch:graph} put them: below the LOB-only
+their seeds within a point of one another in an order that changes on the sparse day; at
+six hours the gap is half a point wider on the full stream and a point wider on the
+deduplicated samples than in validation, while at twelve hours the reference model's gap is
+narrower than its raw validation gap.  The graph models stand where \cref{ch:graph} put them: below the LOB-only
 reference at one hour, below the time-first model at six hours, and between the seeds of
 the reference at twelve.
 
@@ -124,7 +126,7 @@ control, 95\% hour-block bootstrap intervals.}
 \toprule
 Model & Validation & Test & $\Delta$ [95\% CI] & Dedup. & $\Delta$ \\
 \midrule
-LightGBM G5 (control)                        & 0.6044 & \textbf{0.5944} & --- & 0.5887 & --- \\
+LightGBM (control)                           & 0.6044 & \textbf{0.5944} & --- & 0.5887 & --- \\
 TabM, 3 seeds                                & 0.6036 & 0.5936 & $-0.08$ [$-0.25$, $+0.09$] & 0.5865 & $-0.22$ \\
 MLP, 3 seeds                                 & 0.6002 & 0.5923 & $-0.22$ [$-0.40$, $-0.03$] & 0.5834 & $-0.54$ \\
 Stateful, 2 passes, residual of the trees    & 0.6048 & 0.5933 & $-0.11$ [$-0.26$, $+0.03$] & \textbf{0.5895} & $+0.08$ \\

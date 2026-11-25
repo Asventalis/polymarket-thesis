@@ -111,7 +111,7 @@ inside the spread, and the best ask and the mid move with it.}
 Column & Meaning & Row 1 & Row 2 & Row 3 \\
 \midrule
 \path{timestamp_created_at} & when the operator created the message; the time of the event in the thesis & 2026-03-10 00:00:00.069 & 2026-03-10 00:00:00.069 & 2026-03-10 00:00:00.069 \\
-\path{timestamp_received} & when the archive's collector received it; used only to check latency & 2026-03-10 00:00:00.010 & 2026-03-10 00:00:00.011 & 2026-03-10 00:00:00.015 \\
+\path{timestamp_received} & when the archive's collector received it, on the collector's own clock, which is not aligned with the operator's; not used by the models & 2026-03-10 00:00:00.010 & 2026-03-10 00:00:00.011 & 2026-03-10 00:00:00.015 \\
 \path{market_id} & the market & \path{0x020c64e6}\ldots\path{d0c7} (Austin: McNally vs Starodubtseva) & same & same \\
 \path{token_id} & the outcome token whose book this is & \path{4686906466}\ldots{} (Starodubtseva) & same & same \\
 \path{change_side} & the side of the book that changed: BUY is the bid side, SELL the ask side & SELL & SELL & SELL \\
@@ -120,7 +120,7 @@ Column & Meaning & Row 1 & Row 2 & Row 3 \\
 \path{delta} & the change of that size with respect to the previous state of the level & $-8.0$ & $-36.0$ & $+3000.0$ \\
 \path{best_bid}, \path{best_ask} & the best quotes after the event & 0.20, 0.33 & 0.20, 0.33 & 0.20, 0.22 \\
 \path{spread} & best ask minus best bid & 0.13 & 0.13 & 0.02 \\
-\path{mid_price} & the average of the best quotes; the price whose direction the thesis predicts & 0.265 & 0.265 & 0.21 \\
+\path{mid_price} & the average of the best quotes; the price whose direction is predicted & 0.265 & 0.265 & 0.21 \\
 \bottomrule
 \end{tabular}\end{fittable}
 \end{table}
@@ -196,7 +196,7 @@ emits one row per wallet and per fill (block number, timestamp, transaction hash
 index, wallet, role, token, side, quantity, price, total collateral and fee rate), with
 the longer timeouts and the many retries that a free public node requires.  The node was
 the public endpoint of dRPC (\path{wss://polygon.drpc.org}); the token identifier of
-every fill is then mapped to its market through the markets table.  A transaction with one taker and $n$ makers yields $n$ taker rows and $n$
+every fill is then mapped to its market through the markets table.  A transaction with one taker and $n$ makers yields one taker row and $n$
 maker rows, so the 219 million rows are \emph{fill legs}; 79 million of them are taker legs.
 
 \section{Scale, coverage and storage}
@@ -204,9 +204,8 @@ maker rows, so the 219 million rows are \emph{fill legs}; 79 million of them are
 
 Daily activity is stable over the twenty-one days of the window, 6--26 March 2026:
 9.2--11.8 million transaction rows,
-122{,}000--161{,}000 distinct wallets and 15{,}000--21{,}000 active markets per day.
-Markets and wallets are mapped to dense indices (175{,}292 markets, 646{,}394 wallets).
-The data were stored as Parquet files and queried with DuckDB
+122{,}000--161{,}000 distinct wallets and 15{,}000--21{,}000 markets with at least one fill
+per day.  The data were stored as Parquet files and queried with DuckDB
 \cite{raasveldt2019duckdb}; all derived tensors were produced with SQL and NumPy and
 checked by unit tests.  The raw files are never modified and every derived dataset is
 rebuilt from them (\cref{app:reproduction}).
@@ -225,26 +224,27 @@ of \cref{ch:experiments} change by less than $0.2$ points when they are excluded
 token~1 only in Yes/No markets and to token~2 in all other markets (Up/Down, Over/Under,
 team~A/team~B), whereas the raw transaction direction is defined with respect to token~1
 everywhere.  Without a correction, the sign of a buy is wrong relative to the label in 82\%
-of the edges of a typical day (8.5\% of the labelled 1h samples).  Every model reads the
+of the fill legs of a typical day, which fall on the 8.5\% of labelled 1h samples whose
+market is not a Yes/No one.  Every model reads the
 corrected sign (\cref{sec:models:mp}).
 
-\paragraph{Price level.}  About 40\% of the samples have a mid below $0.05$ or above
-$0.95$ (\cref{tab:expl:classes}); their dynamics are those of a bounded, one-tick process
+\paragraph{Price level.}  About 38\% of the samples have a mid below $0.05$ or above
+$0.95$ (\cref{fig:expl:midhist}); their dynamics are those of a bounded, one-tick process
 and they are where every model struggles most.  Every result is therefore reported
 separately on the extreme and the central samples (\cref{sec:data:protocol}).
 
 \paragraph{Gaps.}  The activity of the venue has one dip in the window.  Between 01:00
 and 03:00 UTC on 20 March the hourly number of book events falls from about nine million
-to 1.3 million and the hourly number of fill legs from about 500 thousand to 79 thousand;
-both recover within three hours (\cref{fig:graph:summary}).  The two streams are
+to 1.3 million and the hourly number of fill legs from about 500 thousand to 79 thousand
+(\cref{fig:graph:summary} shows the fills); both recover within three hours.  The two streams are
 collected independently and show the same dip, so it belongs to the activity of the
 venue.  20 March lies between the validation day and the test period
-(\cref{sec:data:protocol}), and no model is trained or evaluated on it.
+(\cref{sec:data:splits}), and no model is trained or evaluated on it.
 
 \section{Preprocessing}
 \label{ch:prep}
 
-The data of \cref{sec:data:sources} are three streams on three clocks.  This section turns
+The data of \cref{sec:data:sources} are two streams on two clocks.  This section turns
 them into the objects the models read: a common time axis and per-block tensors.
 
 \subsection{Time axis: blocks and the synchronisation of the two streams}
@@ -255,11 +255,9 @@ block number.  The block is therefore the natural time step of the on-chain stre
 it is also the time step of the models: a ``step'' is one block, the set of transactions
 in it, and the order-book updates that arrived since the previous block.  About 1{,}800
 blocks per hour contain Polymarket transactions.  Order-book updates arrive at their own
-times; a model that acts at block $t$ sees every update with a timestamp strictly before
-$t$.  Because the two
-streams are collected by different clocks (\cref{sec:data:sources}), every stateful model
-reads the book updates created strictly before a block time and the fills of the block
-itself; a sample at block $t$ never sees an update created at or after $t$.
+times, on a different clock (\cref{sec:data:sources}): every stateful model reads the book
+updates created strictly before a block time and the fills of the block itself, so a
+sample at block $t$ never sees an update created at or after $t$.
 
 \subsection{Derived tensors}
 \label{sec:data:tensors}
@@ -294,7 +292,7 @@ fixed at market creation, so they are leak-free; they initialise the market's st
 to prediction is measured in \cref{sec:external:text}.
 
 \paragraph{Identifiers.}  Markets and wallets are mapped to dense indices
-(175{,}292 markets, 646{,}394 wallets) so that their states can live in two matrices on
+(175{,}292 distinct markets, 646{,}394 wallets) so that their states can live in two matrices on
 the GPU.
 
 \section{The final dataset: labels, samples, features and periods}
@@ -312,8 +310,8 @@ The target of a market $m$ at block time $t$ and horizon $H$ is the direction of
 change of its mid price between $t$ and $t + H$, the label $y_{m,t}$ of
 \cref{eq:label:bg}, where $\operatorname{mid}_m(s)$ is the mid price of the last
 order-book update of $m$ strictly before $s$.  A price is \textsc{const} when the two mids are \emph{exactly}
-equal: there is no tolerance band, the mid moves in ticks of $0.001$, and a move of one
-tick or more in either direction is \textsc{up} or \textsc{down}.  Three choices matter:
+equal: there is no tolerance band, the quotes move in ticks of $0.001$ so the mid moves in
+steps of half a tick or more, and any move in either direction is \textsc{up} or \textsc{down}.  Three choices matter:
 
 \begin{itemize}[nosep]
   \item \textbf{Three classes.}  The price is a step function with ticks of $0.001$;
@@ -342,8 +340,7 @@ million after deduplication.
 \subsection{Feature engineering}
 \label{sec:prep:features}
 
-\paragraph{The sixty-one engineered features.}  For every validation sample of the 1h model (same time, market and label), and later for
-every tensor row, 61 causal features were computed from the clean data: the mid, its changes over
+\paragraph{The sixty-one engineered features.}  For every tensor row, 61 causal features are computed from the clean data: the mid, its changes over
 15 minutes and 1, 3, 6 and 12 hours and their signs, and the hour (\emph{price history},
 the inputs of the direct path); the spread, the level-1, 5-level and 10-level depth
 imbalances, the microprice, the sizes and the number of filled levels (\emph{book
@@ -380,7 +377,8 @@ mention), computed from the files published at least ten minutes before the row.
 are measured in the stateless learner first (\cref{sec:external:news}).
 
 \paragraph{Wallet features.}  For the graph models, every transaction edge carries a
-seven-dimensional feature (side, role, signed size, price, fee, token orientation) and, in
+seven-dimensional feature (the logarithms of the collateral and of the number of tokens,
+the price, the fee rate, buy or sell, the token orientation, maker or taker) and, in
 the enriched variants, a causal record of the wallet's past accuracy at the horizon
 (``skill''), a placebo skill (another wallet's record), and the wallet's past behaviour
 (activity, maker share, one-sidedness, size, breadth); \cref{sec:models:mp} says how they
@@ -421,9 +419,9 @@ the dataset was assembled and before any model was trained, with the three days 
 21--23 March, reserved as the warm-up through which a saved model rebuilds its states
 before it is scored (\cref{sec:horizons:test}).  The days 14--20 March are used by
 nothing: no model is trained, validated or tested on them, and the dip of 20 March
-(\cref{sec:data:quality}) falls inside this unused stretch.  The gap has a cost, and the
-thesis measures it rather than assumes it away: a model fitted on 6--12 March meets the test
-period eleven days after its last training day, so any drift of the regularities over
+(\cref{sec:data:quality}) falls inside this unused stretch.  The gap has a cost, measured in
+\cref{app:results:lag}: a model fitted on 6--12 March meets the test
+period twelve days after its last training day, so any drift of the regularities over
 those days appears as a loss on the test days relative to the validation day.
 \Cref{sec:horizons:test} compares the two, and \cref{sec:concl:limits} discusses what a
 contiguous protocol, training up to the warm-up days and calibrating on them, would
@@ -460,7 +458,7 @@ to them.  \Cref{sec:expl:limits} says what the analysis cannot say, and
 \subsection{What this analysis cannot say}
 \label{sec:expl:limits}
 
-Four limits bound everything above.  The data are one month of one venue, 6--26 March
+Four limits bound everything above.  The data are three weeks of one venue, 6--26 March
 2026: the shapes of the figures, the activity clock, the U-shaped distribution of the
 price level, the symmetric lead--lag curve, are the kind of regularity that survives a
 change of month; the exact shares and lifts are not, and nothing here says how they would
@@ -468,7 +466,8 @@ look in an election week or in a quiet August.  The feature-space study reads on
 validation day and the price-process numbers the training and validation days; the locked
 test days are untouched, which is the point, but it also means that every finding of this
 section is a hypothesis about the test days, not a result on them.  The samples are
-dominated by the busy markets, ten million samples a day from sixteen thousand markets,
+dominated by the busy markets, ten million samples a day from the sixteen thousand markets
+that have a labelled sample,
 most of them consecutive samples of the same few hundred books; the deduplicated view is
 the counterweight, and a number that holds on all samples and not on the deduplicated ones
 is a number about the busy markets only.  Finally, co-movement is not causation: that

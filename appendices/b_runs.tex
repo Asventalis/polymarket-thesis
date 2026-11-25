@@ -5,7 +5,7 @@ Every stateful run is identified by a label that encodes its configuration, and 
 number in the thesis points to one.  The grammar of the labels of the final study
 (\path{run_hand_runs_v4.sh}) is
 \begin{center}
-\path{<H>_lb_hm_sg_lb5_<enc><K>_hand[_xp][_tree[_tro]][_ep<N>][_ema<d>]_ablation_pred_s<seed>}
+\path{<H>_lb_hm_sg_lb5_<enc><K>_hand[_xp][_tree[_tro]][_ep<N>][_ema<d>][_ablation]_pred_s<seed>}
 \end{center}
 with the components of \cref{tab:app:labels}.  Earlier runs use subsets of the same
 components (\path{1h_lb_pred_s0} is the lookback model with the graph,
@@ -57,7 +57,7 @@ $10^{-4}$, weight decay 0.01; truncated backpropagation through five consecutive
 gradients of twenty such segments accumulated before each optimiser step (one step per
 hundred blocks, about three thousand per pass), gradient norm clipped at 1; one or two
 passes over 6--12 March in time order; validation on 13 March; float32, one GPU.  Runs take
-9 to 17 hours on one GPU of the shared server depending on the horizon and the load.
+9 to 17 hours per pass on one GPU of the shared server depending on the horizon and the load.
 
 \section*{Configuration of the stateless control}
 

@@ -40,12 +40,11 @@ market's aggregate probability of the event; under weaker assumptions it is stil
 the mean belief of the traders \cite{wolfers2004prediction,manski2006interpreting}.
 Surveys of the empirical literature find that market prices are well calibrated and
 competitive with polls and expert forecasts, and that they react to news within minutes
-\cite{wolfers2004prediction,snowberg2012prediction}.  Two systematic deviations are
-documented: a favourite--longshot bias, where unlikely events are over-priced and likely
-events under-priced, which grows with the time to expiration \cite{page2013calibrated};
-and, more recently on Polymarket itself, the same bias \cite{cardozo2026favorite} together
-with a concentration of trading profits in a very small set of accounts
-\cite{akey2026whowins}.
+\cite{wolfers2004prediction,snowberg2012prediction}.  One systematic deviation is
+documented, the favourite--longshot bias, where unlikely events are over-priced and likely
+events under-priced, which grows with the time to expiration \cite{page2013calibrated} and
+is found again on Polymarket \cite{cardozo2026favorite}; Polymarket also shows a
+concentration of trading profits in a very small set of accounts \cite{akey2026whowins}.
 
 \section{Polymarket}
 \label{ch:pm}
@@ -60,7 +59,7 @@ the rest of the related work in \cref{sec:bg:related}.
 
 Polymarket is a decentralised prediction market built on the Polygon blockchain, with
 the United States dollar stablecoin USDC as collateral.  The unit of trading is the
-\emph{market}, a question with exactly two outcomes.  For a binary question the outcomes
+\emph{market}, a question with exactly two outcomes.  For a yes/no question the outcomes
 are ``Yes'' and ``No''; for the others they are the two sides of the question, ``Up'' and
 ``Down'' for a price interval, the two teams of a game, ``Over'' and ``Under'' for a total.
 An \emph{event} can have more than two possible outcomes, the candidates of an election,
@@ -103,7 +102,7 @@ the history of a wallet (its activity, its past accuracy, the other markets it t
 informative about the price of the markets it trades now.  Works on Polymarket have used
 wallet-level data to study who wins and who loses \cite{akey2026whowins}, insider trading and
 informed flow \cite{bsic2026polymarket}, and arbitrage between related markets
-\cite{saguillo2025unravelling}.  None of them, to the best of our knowledge, had used the wallet--market
+\cite{saguillo2025unravelling}.  None of them, to the best of our knowledge, has used the wallet--market
 graph as the input of a forecasting model; the graph models of \cref{ch:graph} do.  The block is also the natural time step of the
 on-chain stream and the time step of every stateful model in the thesis
 (\cref{sec:data:blocks}); the graph itself is described in \cref{sec:expl:graph}.
@@ -120,7 +119,8 @@ difference the \emph{spread}; the size resting at the first few levels on each s
 and $0.01$ on some, so a contract that is almost certain trades at $0.99$ or above and its
 price can only move by a few ticks.  Because the Yes and No books mirror each other (a bid
 for Yes at $p$ is an ask for No at $1 - p$), the book of one side describes the market, and
-this thesis reads the Yes side.  An \emph{order-book event} is a change of the size resting
+the side read here is the one on which the archive quotes it: the Yes token in Yes/No
+markets, the second token in the others (\cref{sec:data:quality}).  An \emph{order-book event} is a change of the size resting
 at one price on one side, caused by an order arriving, being cancelled or being filled; the
 operator publishes it with the new best quotes, the new mid and the new spread.  Most events
 do not touch the best quotes: on a typical day about four events in a hundred change the mid
@@ -130,8 +130,8 @@ Two consequences of this structure recur in every result of the thesis.  A mid p
 bounded, discrete process observed through a thin book, so most of its changes are one-tick
 oscillations produced by an order arriving at or leaving the best quote: they are the noise
 of the book, not news about the event, and they are typically undone by the next event; and
-the dynamics depend on the price level, since a market at $0.98$ has two ticks of room on
-one side and a hundred on the other.
+the dynamics depend on the price level, since a market at $0.98$ has $0.02$ of room on one
+side and $0.98$ on the other.
 \textcite{dubach2026anatomy} measures this microstructure on a 52-day sample of Polymarket
 books and reports three findings that matter here.  The depth of a book depends on how long
 the market lives, on its price level and on its volume.  The resting orders are not
@@ -154,8 +154,8 @@ prices follow an external reference, the spot price on a centralised exchange, w
 a few hundred milliseconds \cite{young2026openmarket}.  Sports markets trade before and during
 the game, with a recorded start time; political, economic and cultural questions trade for
 weeks or months; daily temperature and weather questions resolve every day.  During the three
-weeks studied here about 175{,}000 markets existed and 15{,}000--21{,}000 were active on any
-given day (\cref{ch:data}).
+weeks studied here about 175{,}000 markets existed and 15{,}000--21{,}000 had at least one
+fill on any given day (\cref{ch:data}).
 
 Resolution is not decided by Polymarket.  When the event is over, a user proposes the outcome
 to UMA's optimistic oracle and posts a bond in collateral; the proposal stands if nobody
@@ -177,9 +177,9 @@ thesis are not sampled on a regular grid: the order book of a market changes whe
 order arrives, is cancelled or is filled, and a fill happens whenever two orders cross, so
 the two raw streams are sequences of timed \emph{events}, hundreds of thousands per market
 on a busy day and a handful on a quiet one.  Two ways of reading such a stream recur in
-what follows.  The first summarises the past at a chosen time by a fixed set of quantities,
-the last price, its change over a few fixed lookbacks, the number of events in the last
-minutes, the shape of the book now, and hands the summary to a learner that has no memory
+what follows.  The first summarises the past at a chosen time by a fixed set of quantities
+(the last price, its change over a few fixed lookbacks, the number of events in the last
+minutes, the shape of the book now) and hands the summary to a learner that has no memory
 of its own: the \emph{stateless} reading, in which time enters only through the features.
 The second keeps a \emph{state} per market: a vector that is updated from the new
 observations at every event or every block, carries forward what the past of the market has
@@ -208,7 +208,7 @@ and the \emph{microprice}, $(p^{b}_1 s^{a}_1 + p^{a}_1 s^{b}_1) / (s^{b}_1 + s^{
 weighted average of the two best quotes in which each price is weighted by the size resting
 on the \emph{opposite} side: when little is resting at the best bid, the bid is the quote
 more likely to be consumed next, the weight of the bid price grows and the microprice sits
-closer to the bid.  It is the best one-number guess of where the next mid will be.  The \emph{order-flow imbalance} of \textcite{cont2014price}
+closer to the bid.  It is a better one-number guess of the next mid than the mid itself.  The \emph{order-flow imbalance} of \textcite{cont2014price}
 accumulates, over a span of events, the signed changes of the size at the best quotes:
 an order that adds size to the best bid or removes it from the best ask pushes the mid up,
 and the sum of such pushes over the recent past is strongly related to the next move of
@@ -222,36 +222,21 @@ information about future prices \cite{fama1970efficient}.  At short horizons thi
 only approximately true: \textcite{lo1988stock} reject the random-walk model on weekly
 stock returns, and the empirical ``stylised facts'' of high-frequency returns
 \cite{cont2001empirical} include a negative autocorrelation at the shortest lags
-produced by the bid--ask bounce and by the discreteness of prices.  Deep learning on
-limit order books started with DeepLOB \cite{zhang2019deeplob}, a convolutional network
-followed by a recurrent layer that reads a window of the last hundred book states and
-predicts the next move of the mid, on the FI-2010 benchmark of Finnish stocks
-\cite{ntakaris2018benchmark}.  Two recent studies are directly relevant.
-\textcite{briola2024deep} show that predictability depends on the microstructural
-properties of each asset (tick size, spread, depth) more than on the architecture, and
-\textcite{berti2025tlob} show that a well-tuned MLP matches transformer models on the
-same benchmarks and that the label should be defined with a smoothing window that is
-chosen independently of the horizon.  Both findings recur in this thesis: the price
-level (a proxy for the effective tick size) is the main driver of the results, and the
-simplest architectures are hard to beat.  Three further results from the equity
-literature frame the choices of \cref{ch:models}.  \textcite{sirignano2019universal} train
-one recurrent model on the books of a thousand stocks and find that it beats models
-trained on each stock alone: the predictive relation between book and next move is to a
-large extent \emph{universal}, which motivates one model pooled over all Polymarket markets
-rather than one per market.  \textcite{kolm2023dofi} compare raw book states with
-order-flow representations as inputs of the same networks and find that flows win, and that
-the useful horizon is of the order of a few price changes;
-\textcite{lucchese2024predictability} confirm on a larger panel that short-horizon
-predictability is present almost everywhere and that \emph{what} the model is shown matters
-more than \emph{which} model is used.  Two lessons of the general time-series forecasting
-literature are also used.  The first is a caution \cite{zeng2023transformers}: on the
-standard forecasting benchmarks a one-layer linear model on the raw window matches or
-beats several large transformer forecasters, so a complex encoder has to be checked against
-a trivial one on the same inputs.  The second is a design pattern called \emph{channel
-independence} \cite{nie2023patchtst}: when a series has many variables, reading each
-variable as its own sequence with shared weights, and mixing the variables only
-afterwards, is more accurate and more robust than mixing them at every step.  The ``time
-first'' encoder of \cref{sec:models:encoders} applies this pattern to the order-book
+produced by the bid--ask bounce and by the discreteness of prices.  The work on deep
+learning for limit order books, reviewed in \cref{sec:pm:related}, gives four lessons that
+frame the choices of \cref{ch:models}: predictability depends on the microstructure of each
+asset, its tick size, spread and depth, more than on the architecture, which is why the
+price level is the first conditioning variable here; what a model is shown matters more
+than which model reads it; one model pooled over many books beats one model per book; and
+the simplest architectures are hard to beat.  Two lessons of the general time-series
+forecasting literature are also used.  The first is a caution \cite{zeng2023transformers}:
+on the standard forecasting benchmarks a one-layer linear model on the raw window matches
+or beats several large transformer forecasters, so a complex encoder has to be checked
+against a trivial one on the same inputs.  The second is a design pattern called
+\emph{channel independence} \cite{nie2023patchtst}: when a series has many variables,
+reading each variable as its own sequence with shared weights, and mixing the variables
+only afterwards, is more accurate and more robust than mixing them at every step.  The
+``time first'' encoder of \cref{sec:models:encoders} applies this pattern to the order-book
 window.
 
 \section{Notation}
@@ -284,8 +269,9 @@ them.
     \end{cases}
     \label{eq:label:bg}
   \end{equation}
-  where \textsc{const} means exactly equal: the mid moves in ticks of $0.001$, and a move
-  of one tick or more in either direction is \textsc{up} or \textsc{down}
+  where \textsc{const} means exactly equal: the quotes move in ticks of $0.001$ ($0.01$ on
+  some markets), so the mid moves in steps of half a tick or more, and any move in either
+  direction is \textsc{up} or \textsc{down}
   (\cref{sec:data:labels}).  The classes are indexed $c \in \{1, 2, 3\}$ for
   \textsc{down}, \textsc{const}, \textsc{up}, and $\mathbf{e}_y \in \{0, 1\}^{3}$ is the
   one-hot vector of the label.
@@ -294,8 +280,9 @@ them.
   are tied to the book events because an event is the moment at which something new about
   the market is observed; a market whose book did not change in a block has nothing new to
   read, its state is the one of its last event, and a prediction for it would repeat the
-  previous one.  Nothing is required of the market at $t + H$: the label reads the last
-  mid before $t + H$, whatever happened in between (\cref{sec:data:labels}).  A day has
+  previous one.  Nothing is required of the market between $t$ and $t + H$, except that
+  it is still trading at $t + H$: the label reads the last mid before $t + H$, whatever
+  happened in between (\cref{sec:data:labels}).  A day has
   about ten million samples.  When the market and the time are not needed, a sample is
   written $(\mathbf{x}_i, y_i)$, $i = 1, \ldots, N$.
   \item \textbf{Lookbacks.}  For a span $L$,
@@ -307,8 +294,8 @@ them.
   weights and biases, collected in one vector).  A stateless model reads a vector of
   engineered features $\mathbf{x}_{m,t} \in \mathbb{R}^{61}$, each a function of the data
   strictly before $t$ (\cref{sec:prep:features}), and returns three class probabilities
-  $\hat{\mathbf{p}}_{m,t} = f(\mathbf{x}_{m,t}; \boldsymbol{\theta}) \in \Delta^{3}$, where
-  $\Delta^{3}$ is the set of probability vectors over the three classes.
+  $\hat{\mathbf{p}}_{m,t} = f(\mathbf{x}_{m,t}; \boldsymbol{\theta})$, a vector of three
+  non-negative numbers that sum to one.
   \item \textbf{Stateful models.}  A stateful model keeps a vector
   $\mathbf{h}_m(t) \in \mathbb{R}^{d}$ per market, with $d = 128$, a size fixed in
   \cref{sec:models:ctdgnn} as a compromise between the capacity of the state and the memory
@@ -318,22 +305,24 @@ them.
   updated from the window $\mathbf{W}_{m,t} \in \mathbb{R}^{K \times C}$ of its last $K$
   book states, each row holding the $52$ book columns, three momentum columns and the
   constant columns of \cref{sec:models:ctdgnn} ($C$ is 70 to 143 depending on the
-  configuration), $\mathbf{h}_m(t) \leftarrow U\bigl(\mathbf{h}_m(t^{-}),
-  \phi(\mathbf{W}_{m,t})\bigr)$, where $\phi$ is the window encoder and $U$ a gated
-  recurrent update; the prediction is
+  configuration), $\mathbf{h}_m(t) \leftarrow U\bigl(\phi(\mathbf{W}_{m,t}),
+  \mathbf{h}_m(t^{-})\bigr)$, where $t^{-}$ is the time of the market's previous event, $\phi$
+  the window encoder and $U$ a gated recurrent update of the state from the new input,
+  written in full in \cref{eq:state-update}; the prediction is
   $\hat{\mathbf{p}}_{m,t} = g(\mathbf{h}_m(t), \mathbf{x}_{m,t})$
   (\cref{sec:models:ctdgnn}).
   \item \textbf{Graphs.}  A graph $G = (V, E)$ is a set of nodes $V$ and a set of edges
   $E \subseteq V \times V$.  The transaction graph is bipartite,
   $V = \mathcal{W} \cup \mathcal{M}$ with every edge joining a wallet to a market, and
   dynamic: an edge is an event $e = (w, m, t, \mathbf{a}_e)$, a fill of wallet $w$ on
-  market $m$ at time $t$ with attributes $\mathbf{a}_e \in \mathbb{R}^{7}$ (side, role,
-  size, price, fee, token orientation; \cref{sec:models:mp}).  $E_t$ is the set of edges
+  market $m$ at time $t$ with attributes $\mathbf{a}_e \in \mathbb{R}^{7}$ (side, role, log
+  collateral, log tokens, price, fee, token orientation; \cref{sec:models:mp}).  $E_t$ is the set of edges
   of block $t$ and $N_t(v)$ the edges of $E_t$ incident to node $v$.  Wallets have states
   $\mathbf{h}_w(t) \in \mathbb{R}^{d}$ like markets.  \Cref{sec:bg:graphs:polymarket}
   draws this object and gives its two readings, static and temporal.
-  \item \textbf{Decision and score.}  Every model outputs three logits
-  $\mathbf{z}_{m,t} \in \mathbb{R}^{3}$; the probabilities are
+  \item \textbf{Decision and score.}  Every model outputs three unconstrained scores, the
+  \emph{logits} $\mathbf{z}_{m,t} \in \mathbb{R}^{3}$, turned into probabilities by the softmax
+  of \cref{eq:softmax}:
   $\hat{\mathbf{p}} = \operatorname{softmax}(\mathbf{z} + \boldsymbol{\delta})$ with an
   offset $\boldsymbol{\delta} = (\delta_{\mathrm{down}}, 0, \delta_{\mathrm{up}})$, and the
   predicted class is $\hat{y} = \arg\max \hat{\mathbf{p}}$.  The offset is the
@@ -341,7 +330,8 @@ them.
   \textsc{const} and the models are trained with class weights or undersampling, so their
   raw probabilities are tilted and the most probable class is not the one that maximises
   balanced accuracy; two constants added to the \textsc{down} and \textsc{up} logits,
-  chosen once on the validation day to maximise balanced accuracy and then frozen, move
+  fitted on half of the validation hours and applied to the other half and vice versa (and,
+  for the test days, chosen once on the whole validation day and applied unchanged), move
   the decision boundary to where the score wants it
   (\cref{sec:bg:learning:imbalance,sec:models:protocol}).  Every model receives its own
   offset, so that every comparison is made between models whose decision rules have been

@@ -17,8 +17,8 @@ rest of the section describes.
 the model (forward pass), the loss measures how far the predicted probabilities are from
 the labels, backpropagation computes the gradient of the loss with respect to every
 parameter (backward pass), and the optimiser moves the parameters a small step against the
-gradient; after every pass over the training data the model is scored on the validation
-day, and training stops when that score stops improving.}
+gradient; after every pass over the training data the model is scored on a held-out day,
+and training stops when that score stops improving.}
 \label{fig:bg:loop}
 \end{figure}
 
@@ -68,7 +68,7 @@ that the quantity is to be minimised and is a \emph{loss}:
   \ell(\hat{\mathbf{p}}, y) = -\log \hat{p}_{y} = -\sum_{c} [y = c] \log \hat{p}_c .
   \label{eq:xent}
 \end{equation}
-This is the \emph{cross-entropy} loss: it is zero when the model gives probability one to
+where $[y = c]$ is one if $y = c$ and zero otherwise.  This is the \emph{cross-entropy} loss: it is zero when the model gives probability one to
 the true class and grows without bound as that probability goes to zero, so a confident
 mistake is punished far more than a hesitant one.  The $1/N$ makes the loss an average
 per sample.  Minimising the cross-entropy is the same as maximising the likelihood, and it
@@ -77,7 +77,7 @@ surprise of an outcome of probability $p$ being $-\log p$), which is why a model
 lower cross-entropy is said to ``fit'' the data better.  The cross-entropy is also what makes the outputs of the model \emph{probabilities}
 in the useful sense: among all functions, the one that minimises it on infinitely many
 samples is the true conditional distribution $p(y \mid \mathbf{x})$, a property called
-\emph{properness} that the squared error, say, does not have for classification.
+\emph{properness} that the 0--1 loss (accuracy) does not have.
 
 With the softmax of \cref{eq:softmax} the derivative of this loss with respect to the
 logits is remarkably simple,
@@ -150,15 +150,16 @@ by hand.  The computation of each model is given with the model, in
 \subsection{Activation functions and normalisation}
 \label{sec:bg:activations}
 
-The activation $\sigma$ of a layer (\cref{sec:bg:mlp}) is, in the networks of the thesis, the SiLU, $\operatorname{SiLU}(a) = a /
+The activation $\varphi$ of a layer (\cref{sec:bg:mlp}) is, in the networks of the thesis, the SiLU, $\operatorname{SiLU}(a) = a /
 (1 + e^{-a})$ \cite{elfwing2018silu,hendrycks2016gelu}, a smooth version of the rectifier
 $\max(0, a)$ that passes positive inputs almost unchanged and suppresses negative ones;
 the logistic sigmoid $\sigma(a) = 1 / (1 + e^{-a})$, which maps any number into $(0, 1)$,
 and the hyperbolic tangent, which maps it into $(-1, 1)$, are the activations of the gates
 of recurrent units (\cref{sec:bg:rnn}).  \emph{Layer normalisation} \cite{ba2016layernorm}
 rescales a vector to zero mean and unit variance across its components and then applies a
-learned scale and shift, $\operatorname{LN}(\mathbf{h}) = \boldsymbol{\gamma} \odot
-(\mathbf{h} - \mu) / \sqrt{s^2 + \epsilon} + \boldsymbol{\beta}$ with $\mu$ and $s^2$ the
+learned scale $\boldsymbol{\lambda}$ and shift $\boldsymbol{\nu}$, $\operatorname{LN}(\mathbf{h}) =
+\boldsymbol{\lambda} \odot (\mathbf{h} - \mu) / \sqrt{s^2 + \epsilon} + \boldsymbol{\nu}$,
+where $\odot$ is the element-wise product and $\mu$ and $s^2$ the
 mean and variance of the components of $\mathbf{h}$; it keeps the quantities that flow
 through a deep or recurrent network on a fixed scale, which keeps the gradients
 from vanishing or exploding as they are multiplied back through many layers.
@@ -171,9 +172,9 @@ frequent than the others (89\% \textsc{const} at one minute) the model learns fi
 to predict that class, because that is where most of the loss is.  Three corrections are
 used in the thesis.  \emph{Class weights} multiply the loss of each sample by a weight
 $\alpha_{y}$ that depends on its class, $\ell = -\alpha_{y} \log \hat{p}_{y}$, larger for
-the rare classes (2 for \textsc{down} and \textsc{up}, 1 for \textsc{const} in the stateful
-model; the inverse of the class frequency in the trees and the tabular networks), so that
-the rare classes count as much as the frequent one in the gradient.  The \emph{focal loss}
+the rare classes: the inverse of the class frequency in the trees and the tabular
+networks, which makes the three classes count equally in the gradient, and the milder
+2 for \textsc{down} and \textsc{up}, 1 for \textsc{const} in the stateful model.  The \emph{focal loss}
 \cite{lin2017focal},
 \begin{equation}
   \ell_{\mathrm{focal}}(\hat{\mathbf{p}}, y) = -\alpha_{y} (1 - \hat{p}_{y})^{\gamma} \log \hat{p}_{y},
@@ -187,8 +188,10 @@ cross-entropy, so training concentrates on the samples it gets wrong, which unde
 imbalance are mostly those of the rare classes.  Its gradient with respect to the logits is
 the cross-entropy gradient \cref{eq:xent-grad} scaled by the same factor and corrected by
 a term that vanishes as $\hat{p}_y \to 1$, so backpropagation proceeds unchanged.  In the
-stateful model the class weight is applied before the modulating factor, so that the loss
-minimised is $-\alpha_{y} (1 - \hat{p}_{y}^{\alpha_{y}})^{\gamma} \log \hat{p}_{y}$: for
+stateful model the class weight is applied before the modulating factor, which is computed
+from the weighted cross-entropy, $1 - e^{-\alpha_y (-\log \hat{p}_y)} = 1 -
+\hat{p}_y^{\alpha_y}$, so that the loss minimised is
+$-\alpha_{y} (1 - \hat{p}_{y}^{\alpha_{y}})^{\gamma} \log \hat{p}_{y}$: for
 $\alpha_y = 1$ this is \cref{eq:focal}, and for $\alpha_y = 2$ the factor
 $(1 - \hat{p}_y^{2})^{2}$ switches off a little later than $(1 - \hat{p}_y)^{2}$, which
 pushes the two rare classes slightly harder.
@@ -205,15 +208,17 @@ that maximises balanced accuracy is therefore
   \hat{y} = \arg\max_c \frac{\hat{p}_c}{\pi_c} = \arg\max_c \bigl( z_c - \log \pi_c \bigr),
   \label{eq:logit-adjustment}
 \end{equation}
-the most probable class \emph{after} a constant has been subtracted from the logit of each
-class, larger for the frequent classes \cite{menon2021logitadjustment}.  The constants are
+the most probable class \emph{after} $\log \pi_c$ has been subtracted from the logit of
+each class, which lowers the frequent classes relative to the rare ones
+\cite{menon2021logitadjustment}.  The constants are
 exact when the probabilities $\hat{\mathbf{p}}$ are correct; when they are not, and the
 focal loss and the class weights already distort them, the constants are better fitted than
 computed.  The calibration rule of \cref{sec:models:protocol} is exactly this: two
 constants added to the \textsc{down} and \textsc{up} logits of every model,
-$\boldsymbol{\delta}$ in \cref{sec:bg:notation}, chosen on the validation day to maximise
-balanced accuracy and applied unchanged afterwards, so that every model is compared with
-its decision rule placed the same way.
+$\boldsymbol{\delta}$ in \cref{sec:bg:notation}, fitted on half of the validation hours to
+maximise balanced accuracy and applied to the other half and vice versa (and, for the test
+days, chosen once on the whole validation day), so that every model is compared with its
+decision rule placed the same way.
 
 \subsection{Generalisation, overfitting and early stopping}
 \label{sec:bg:learning:generalisation}
@@ -225,8 +230,9 @@ thesis guards against \emph{overfitting} in the standard ways \cite{goodfellow20
 The data are split by date into training, validation and test periods
 (\cref{sec:data:splits}): the parameters are fitted on the training days, every choice
 about the model is made on the validation day, and the test days are read once at the end.
-\emph{Early stopping} scores the model on a held-out day after every epoch (12 March for
-the trees and the tabular networks) and keeps the parameters of the best epoch, stopping
+\emph{Early stopping} scores the model on a held-out day after every epoch (12 March, the
+last day of the training period, for the trees and the tabular networks, which do not fit
+on it) and keeps the parameters of the best epoch, stopping
 when the score has not improved for a fixed number of epochs; it is the main regulariser
 of the trees and of the tabular networks.  \emph{Weight decay}, the shrinkage
 term of AdamW (\cref{sec:bg:learning:sgd}), keeps the weights small.  \emph{Dropout} \cite{srivastava2014dropout}

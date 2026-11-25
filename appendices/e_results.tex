@@ -13,8 +13,8 @@ balanced accuracy on the validation day unless stated otherwise, differences in 
 Before the direct path and the hierarchical memory were added, the stateful model
 (\cref{sec:models:ctdgnn}) read the window and the transactions with three lookbacks.
 \Cref{tab:exp:retrain} gives its numbers against Mean Reversion: with or without the
-graph they beat the blind baselines and momentum but lose to the rule by three to eight
-points, and three seeds put the seed-to-seed standard deviation at $0.001$--$0.002$.  The
+graph they beat the blind baselines and momentum but lose to the rule by two and a half to
+seven points, and three seeds put the seed-to-seed standard deviation at $0.001$--$0.002$.  The
 graph contributes nothing at one hour, a tenth of a point at six hours with mixed sign
 across seeds, and three tenths at twelve hours with the same sign on all seeds.
 
@@ -75,8 +75,8 @@ replacing it with a fixed multi-scale decay is worse than the learned decay; ini
 the direct path at Mean Reversion instead of at zero loses two points, and is the clearest
 case in which a two-day short test predicted the wrong sign ($+0.7$ and $+2.0$ in the short
 test); log-odds price features have no effect.  Three seeds reproduce the one-hour number to
-the third decimal; at twelve hours they spread by $0.009$ and straddle the rule on the full
-stream while all three are above it on the deduplicated subset.
+the third decimal; at twelve hours they spread by two points and are all three below the
+rule on the full stream while all three are above it on the deduplicated subset.
 
 \begin{table}[t]
 \centering
@@ -123,7 +123,7 @@ central prices        & 0.5199 & 0.5260                                & 0.5355 
 
 \Cref{tab:exp:encoders:more} confirms the comparison of the window encoders of
 \cref{sec:stateful:encoders} on a second seed at one hour and at six hours: seed 1
-reproduces seed 0 to within a tenth of a point on every subset, and at six hours the
+reproduces seed 0 to within two tenths of a point on every subset, and at six hours the
 time-first encoder is above the reference on every subset, the deduplicated samples and
 the extreme prices included.
 
@@ -142,7 +142,7 @@ Horizon & Subset & $n$ & MR & GRU $K{=}10$ & Time-first $K{=}64$ & $\Delta$ [95\
            & Extreme prices & 3{,}787{,}202 & 0.5230 & 0.5409 & 0.5403 & $-0.06$ [$-0.48$, $+0.34$] \\
            & Central prices & 6{,}076{,}923 & 0.5348 & 0.5588 & 0.5725 & $+1.37$ [$+1.04$, $+1.70$] \\
 \midrule
-6h, seed 0 & All samples    & 9{,}321{,}125 & 0.5069 & 0.5214 & \textbf{0.5396} & $+1.83$ [$+1.41$, $+2.21$] \\
+6h, seed 0 & All samples    & 9{,}321{,}125 & 0.5069 & 0.5214 & 0.5396 & $+1.83$ [$+1.41$, $+2.21$] \\
            & Deduplicated   & 1{,}234{,}892 & 0.5002 & 0.5333 & 0.5370 & $+0.38$ [$+0.13$, $+0.64$] \\
            & Extreme prices & 3{,}744{,}385 & 0.4879 & 0.5136 & 0.5285 & $+1.49$ [$+0.94$, $+2.05$] \\
            & Central prices & 5{,}576{,}740 & 0.5199 & 0.5260 & 0.5468 & $+2.08$ [$+1.81$, $+2.36$] \\
@@ -177,9 +177,9 @@ samples; last column, the three runs after two cross-fitted logit offsets.}
 \small
 \begin{fittable}\begin{tabular}{lcccc}
 \toprule
-Run & All & $\Delta$ & Dedup. & All, with offsets \\
+Run & All & $\Delta$ & Dedup. ($\Delta$) & All, with offsets \\
 \midrule
-With the engineered features (reference) & 0.5842 & & 0.5708 & 0.5837 \\
+With the engineered features (reference) & 0.5842 & & 0.5708 (reference) & 0.5837 \\
 Class-balanced cross-entropy instead of the focal loss & & $-0.47$ [$-0.74$, $-0.22$] & $-1.95$ [$-2.13$, $-1.78$] & 0.5848 \\
 Predictor head of 256 units and two layers & & $-0.37$ [$-0.70$, $-0.08$] & $-1.90$ [$-2.12$, $-1.69$] & 0.5849 \\
 \bottomrule
@@ -225,7 +225,7 @@ Two passes & 0.5907 & & 0.5782 & $+0.26$ [$+0.16$, $+0.37$] (all samples) \\
 \Cref{tab:exp:short} is the calibrated comparison of \cref{sec:horizons:short} with the
 offsets used by every model: at one minute both learners sit at the edge of the $\pm 0.6$
 grid used at one hour and the grid was widened to $\pm 2$, where the offsets are worth $+5.4$
-points to LightGBM and $+5.8$ to the network; at fifteen minutes they are worth $+0.5$ and
+points to LightGBM and $+5.8$ to the stateful model; at fifteen minutes they are worth $+0.5$ and
 at one hour $+0.3$.  Before calibration the ordering is the same but the gaps are not: the
 raw stateful model is $+0.23$ (not significant) at one minute and $-0.76$ [$-1.08$, $-0.45$]
 at fifteen, where the raw residual model is $+0.04$ and the calibrated one $+0.70$, and the
@@ -236,9 +236,9 @@ nothing at fifteen minutes ($0.6084 \to 0.5587$).
 \centering
 \caption{Short horizons against one hour: the no-state control, the tabular network on the
 control's table and the stateful model, every one with its own two cross-fitted logit
-offsets (DOWN, UP), on the runs' validation samples of 13 March.  Balanced accuracy after
-calibration; $\Delta$ in points against the calibrated LightGBM with 95\% hour-block
-bootstrap intervals.  Labels DOWN / CONST / UP: $5.7 / 89.1 / 5.2\%$ at 1~min,
+offsets (\textsc{down}, \textsc{up}), on the runs' validation samples of 13 March.  Balanced
+accuracy after calibration; $\Delta$ in points against the calibrated LightGBM with 95\%
+hour-block bootstrap intervals.  Labels \textsc{down} / \textsc{const} / \textsc{up}: $5.7 / 89.1 / 5.2\%$ at 1~min,
 $16.4 / 69.0 / 14.6\%$ at 15~min.}
 \label{tab:exp:short}
 \small
@@ -246,17 +246,17 @@ $16.4 / 69.0 / 14.6\%$ at 15~min.}
 \toprule
 Horizon & Model & All & $\Delta$ [95\% CI] & Dedup. & $\Delta$ [95\% CI] \\
 \midrule
-1 min  & LightGBM G5 (offsets 1.6, 1.6)  & 0.6623 & --- & 0.6143 & --- \\
+1 min  & LightGBM, control (offsets 1.6, 1.6)  & 0.6623 & --- & 0.6143 & --- \\
        & TabM, 3 seeds                   & 0.6656 & $+0.33$ [$+0.26$, $+0.39$] & 0.6133 & $-0.10$ [$-0.31$, $+0.10$] \\
        & Stateful, 2 passes              & 0.6685 & $+0.62$ [$+0.46$, $+0.82$] & 0.6317 & $+1.74$ [$+1.31$, $+2.22$] \\
        & Stateful, 2 passes, residual    & \textbf{0.6760} & $\mathbf{+1.37}$ [$+1.16$, $+1.58$] & \textbf{0.6346} & $\mathbf{+2.04}$ [$+1.76$, $+2.30$] \\
 \midrule
-15 min & LightGBM G5 (offsets 0.4, 0.4)  & 0.6213 & --- & 0.6197 & --- \\
+15 min & LightGBM, control (offsets 0.4, 0.4)  & 0.6213 & --- & 0.6197 & --- \\
        & TabM, 3 seeds                   & 0.6235 & $+0.22$ [$+0.07$, $+0.36$] & 0.6248 & $+0.51$ [$+0.35$, $+0.68$] \\
        & Stateful, 2 passes              & 0.6206 & $-0.07$ [$-0.34$, $+0.19$] & 0.6158 & $-0.39$ [$-0.63$, $-0.13$] \\
        & Stateful, 2 passes, residual    & \textbf{0.6283} & $\mathbf{+0.70}$ [$+0.50$, $+0.88$] & \textbf{0.6265} & $\mathbf{+0.67}$ [$+0.34$, $+0.99$] \\
 \midrule
-1 h    & LightGBM G5 (offsets 0.2, 0.3)  & 0.6044 & --- & 0.5943 & --- \\
+1 h    & LightGBM, control (offsets 0.2, 0.3)  & 0.6044 & --- & \textbf{0.5943} & --- \\
        & TabM, 3 seeds                   & 0.6033 & $-0.11$ [$-0.29$, $+0.06$] & 0.5922 & $-0.21$ [$-0.45$, $+0.00$] \\
        & Stateful, 2 passes              & 0.5902 & $-1.42$ [$-1.83$, $-1.00$] & 0.5797 & $-1.46$ [$-1.76$, $-1.14$] \\
        & Stateful, 2 passes, residual    & \textbf{0.6048} & $+0.04$ [$-0.18$, $+0.24$] & 0.5933 & $-0.10$ [$-0.26$, $+0.05$] \\
@@ -377,10 +377,10 @@ protocol on two other periods and evaluated on the same test samples as the cont
 with the same early-stopping day.  \Cref{tab:app:lag} gives the three fits at every horizon,
 as raw decisions, with the paired differences from the fit of the thesis and their 95\%
 hour-block bootstrap intervals over the test hours.  Fitting on every day gains between half
-a point and one point of balanced accuracy on the test days at every horizon, with intervals
-that exclude zero everywhere.  Fitting on the adjacent week alone gains a few tenths on all
-samples, not distinguishable from zero at one hour and at twelve hours, and between half a
-point and almost a point on the deduplicated samples, close to what every day gives there.
+a point and one point of balanced accuracy on the test days at every horizon from fifteen
+minutes to twelve hours, with intervals that exclude zero everywhere.  Fitting on the adjacent week alone gains a few tenths on all
+samples, not distinguishable from zero at one hour and at twelve hours, and between four
+tenths of a point and almost a point on the deduplicated samples, close to what every day gives there.
 On the full stream, dominated by the busy markets, what the extra days bring is therefore
 mostly more data; on the sparse markets the week adjacent to the test recovers most of the
 gain on its own, so there recency matters as much as quantity.  Either way the gap costs the

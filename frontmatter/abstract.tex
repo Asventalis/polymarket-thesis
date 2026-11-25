@@ -1,27 +1,31 @@
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 
-Polymarket is the largest decentralised prediction market: contracts on real-world events
-are traded on a central limit order book and settled on the Polygon blockchain, so that
-every order-book update and every trade is publicly observable.  This thesis treats that
+Polymarket is a decentralised prediction market: contracts on real-world events are
+traded on a central limit order book whose every update is published, and settled on the
+Polygon blockchain, so that every trade is publicly observable together with the addresses
+of its counterparties.  This thesis treats that
 venue as a data-analysis and data-mining object and asks whether, and how, the direction
 of its prices can be predicted over horizons from one minute to twelve hours.
 
 The question is approached as a data-mining study rather than as the search for one
 model.  Twenty-one days of order-book, on-chain and market data are followed from
-collection to a leakage-free three-class benchmark (down, unchanged, up) and are explored
+collection to a three-class benchmark (down, unchanged, up) in which no input can see the
+future, and are explored
 before any model is trained, as a price process, a transaction graph and a feature space,
 so that every model is held to regularities measured in advance.  Five families of
-approaches are then compared on the same samples, with bootstrap intervals and a locked
-test period: causal rules on the price, stateless learners on engineered features, a
-continuous-time stateful model of the order-book stream, message passing on the
+approaches are then compared on the same samples, with confidence intervals and a test
+period kept aside and used once: rules on the past price, learners without memory on
+engineered features, a continuous-time stateful model of the order-book stream, message
+passing (a network that updates each wallet and market from its neighbours) on the
 wallet--market transactions, and sources of information outside the book.
 
-The main findings are that a market's own activity is its most predictable feature; that
-gradient-boosted trees on engineered features are the strongest model from fifteen minutes
+The main findings are that the most regular, and most predictive, feature of a market is
+its own activity, which says whether the price will move at all; that
+gradient-boosted trees on engineered features are the model to beat from fifteen minutes
 to twelve hours; that the stateful model of the book stream adds a small but reliable gain
-at one minute, where the task is whether the price will move at all, and, on top of the
-trees, at fifteen minutes; and that the
+at one minute, where the task is whether the price will move at all, and a smaller one at
+fifteen minutes when it is trained on top of the trees; and that the
 message-passing model built on the transaction graph and the sources outside the book add
 no reliable gain over what the book already shows.  The conclusions state the limits of the study, what a deployment would
 need, and the future work.

@@ -4,8 +4,8 @@
 The previous sections assessed the families mostly at one hour.  This section reads the
 same families across the five horizons, because the horizon changes what the task is and
 which family can do it; then by kind of market; then for robustness, across seeds,
-calibration and run length.  The cross-family tables of \cref{sec:main:synthesis} are the
-reference; what follows is their reading.
+calibration and run length.  The cross-family table of \cref{sec:main:synthesis} is the
+reference; what follows is its reading.
 
 \subsection{Short horizons: one and fifteen minutes}
 \label{sec:horizons:short}
@@ -39,7 +39,8 @@ samples and is below them on the deduplicated and extreme ones, while the tabula
 is a few tenths above: against the same learner the online, time-ordered regime costs a few
 tenths on all samples and almost a point on the sparse ones.  Given the trees as a base,
 however, the residual model is seven tenths of a point above them on both views, with
-intervals that exclude zero, and above the tabular network by half a point.  At one hour the
+intervals that exclude zero, and above the tabular network by half a point on all samples
+and two tenths on the deduplicated ones.  At one hour the
 regime costs a point and a half, and the residual model only recovers it
 (\cref{sec:stateful:residual}).
 
@@ -48,7 +49,7 @@ information about the next minute of a market that the sixty-one summary feature
 away, chiefly on the quiet markets where a summary of the last hour says little about the
 next sixty seconds, and that by fifteen minutes the summary is nearly complete: the
 sequential regime alone only costs, and what the state still adds is recovered only on top
-of the trees.  The gains are small in absolute terms, under two points on a scale where the
+of the trees.  The gains are small in absolute terms, two points at most on a scale where the
 activity clock alone is worth seven, but the two short horizons are the places in this study
 where a stateful model beats a calibrated tree model on the same inputs with an interval
 that excludes zero on every subset.
@@ -61,7 +62,7 @@ One hour is the horizon at which most of the design was done, and its result is 
 engineered features, the tabular network on the same table and the two-pass residual
 stateful model are within their intervals of one another, the stateful model without trees
 is a point and a half below, and the best LOB-only model without the engineered features
-is four points below.  Half of the labels are \textsc{const}; the activity clock decides
+is three points below.  Half of the labels are \textsc{const}; the activity clock decides
 whether the price moves and the reversal of the recent change decides which way; the
 combination of the stateful model with the trees adds two to three tenths of a point, most
 of it on the sparse markets.  The one-hour task is a summary task: everything a model needs
@@ -77,7 +78,8 @@ all samples, above on the deduplicated samples at both; the time-first encoder r
 six-hour gain to three points on every subset, and the hierarchical memory is worth most at
 twelve hours, the horizon at which the morning matters most.  The control is six and a half
 points above the rule at both horizons (\cref{tab:exp:nostate:horizons}), and the price
-history alone already beats the LOB-only stateful models: the long-horizon signal is a slow
+history alone already matches the LOB-only stateful models at six hours and beats them at
+twelve: the long-horizon signal is a slow
 reversal of the six- and twelve-hour returns, modulated by the price level and by where the
 market is in its life, which trees read directly and a direct path that is linear in the
 returns cannot bend to the level.
@@ -85,22 +87,23 @@ returns cannot bend to the level.
 The question that the one-hour result raises, whether the stateful model loses at the long
 horizons because of what it reads or because of what it is, is answered in
 \cref{tab:horizons:synthesis} by the stateful model given the engineered features.  At
-twelve hours the features are worth one and a half points to it on all samples and a point
-and a quarter on the deduplicated ones, which bring it level with the rule on the full
-stream and three points above it on independent samples, but leave it six and a half points
-below the trees on all samples and four below on the deduplicated ones.  The features
-therefore explain a part of the gap at twelve hours and not the whole of it: on a task
+six hours the features are worth a point to it on all samples and almost two on the
+deduplicated ones over the time-first model without them, and at twelve hours one and a
+half points and a point and a quarter; they bring the model four to five points above the
+rule at six hours, level with the rule on the full stream at twelve and three points above
+it on independent samples, but leave it two points below the trees at six hours and six and
+a half at twelve on all samples, one and four below on the deduplicated ones.  The features
+therefore explain a part of the gap at the long horizons and not the whole of it: on a task
 that is the direction of a slow reversal read together with the price level and the
 lifecycle, a learner that sees every row once in time order and reads the level through a
 linear path does not reach what six hundred rounds of boosting read from the same table.
-Given the trees as a base as well, the residual construction at twelve hours reaches
-$0.5374$ on all samples and $0.5548$ on the deduplicated ones, three points above the same
-model without the base and five above the rule on independent samples, but still three and
-a half points below the trees on all samples and one and a third below on the deduplicated
-ones: the base halves the gap on the full stream and closes two thirds of it on independent
-samples, where at one hour it closed all of it.  The table marks as not run the
-configurations that the compute budget reached last: the run with the engineered features
-and the residual construction at six hours.
+Given the trees as a base as well, the residual construction comes within half a point of
+the trees at six hours, below them on all samples and above them on the deduplicated ones,
+and at twelve hours stays three and a half points below them on all samples and one and a
+third below on the deduplicated ones, three points above the same model without the base.  The base thus closes the gap at six hours as it did
+at one hour, and at twelve hours halves it on the full stream and closes two thirds of it
+on independent samples.  The tabular network was trained at the three short horizons only,
+which is what the dashes of \cref{tab:horizons:synthesis} mark.
 
 \subsection{Where the models win, by kind of market}
 \label{sec:horizons:where}
@@ -109,9 +112,10 @@ and the residual construction at six hours.
 The per-market analysis at one hour (\cref{tab:horizons:where}; the lookback model with the
 graph against Mean Reversion on the same samples, before the direct path and the engineered
 features) shows where a learned model of the book is strong or weak relative to the rule.
-The model is above the rule only on weather markets and on markets that last one hour or
-less, a small group in which the rule is near chance; it is closest to the rule on markets
-one to six hours from their end date and on the most traded quartile, and farthest on the
+The model is above the rule on weather markets, on markets that last one hour or less and
+on markets one to six hours from their end date, small groups in which the rule is near
+chance; it is level with the rule on the most traded quartile and on markets six hours to a
+day from the end, and farthest below it on the
 fifteen-minute crypto markets, on sports markets while the game is being played, on
 political markets and on markets that had no trades in the training days.  By price level
 (\cref{fig:horizons:pricelevel}) both the model and the rule are best just inside the
@@ -128,9 +132,9 @@ sports hardest, does not change.
 
 \begin{table}[t]
 \centering
-\caption{Balanced accuracy at 1 h by kind of market: the lookback stateful model (graph
-variant, seed 0) against Mean Reversion on the same validation samples, with the class mix
-of each group.  $\Delta$ in points.}
+\caption{Balanced accuracy at 1 h by kind of market, for selected groups: the lookback
+stateful model (graph variant, seed 0) against Mean Reversion on the same validation
+samples, with the class mix of each group.  $\Delta$ in points.}
 \label{tab:horizons:where}
 \small
 \begin{fittable}\begin{tabular}{lrrccc}
@@ -185,10 +189,11 @@ collapses above $0.95$.}
 
 Three guards hold every claim of this chapter.  The first is the seeds: three seeds of the
 best LOB-only configuration agree at one hour to three ten-thousandths, the time-first
-encoder and the forecast features reproduce their gains on a second seed to within a tenth
-of a point, and the tabular network is reported as the mean of three seeds
-(\cref{app:results:variants,app:results:encoders}); at twelve hours the seeds spread by
-almost a point and straddle the rule on the full stream, which is why the twelve-hour
+encoder and the forecast features reproduce their gains on a second seed to within three
+tenths of a point, and the tabular network is reported as the mean of three seeds
+(\cref{app:results:variants,app:results:encoders}); at twelve hours the seeds spread by two
+points, all three below the rule on the full stream and above it on the deduplicated
+subset, which is why the twelve-hour
 result of the LOB-only model is stated as real on independent samples and fragile on the
 full stream.  The second is the calibration: the cross-fitted offsets are worth a few tenths
 of a point at one hour and five points at one minute, every ordering reported in this
@@ -200,7 +205,7 @@ forecast features gain on the first, the engineered features, the second pass an
 residual construction on the second, and a result that holds on one view only is reported
 as such.
 
-A methodological lesson belongs here as well.  A two-day short test is not a reliable
+A two-day short test is not a reliable
 predictor of a seven-day result: the Mean-Reversion initialisation of the direct path gained
 two points in the short test and lost two at full length, while the five-lookback and
 global-state additions kept their sign.  A short test is in the regime where the recurrent

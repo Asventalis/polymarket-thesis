@@ -26,9 +26,9 @@ foundation model re-discovers mean reversion in context, and nothing more.
 \label{tab:exp:tsfm}
 \begin{fittable}\begin{tabular}{lcc}
 \toprule
-Rule & 1h & 12h \\
+Model & 1h & 12h \\
 \midrule
-Our model (same samples)                       & 0.559 & 0.495 \\
+LOB-only stateful model, five lookbacks (same samples) & 0.559 & 0.495 \\
 Mean Reversion-$H$                             & 0.531 & 0.508 \\
 Chronos-2, sign of the median                  & 0.470 & 0.454 \\
 Chronos-2, median with half-tick dead zone     & 0.505 & 0.504 \\

@@ -4,9 +4,9 @@
 This chapter reports the experiments.  \Cref{sec:data:protocol} gives the setup under
 which every number is produced: the periods, the metric, the subsets, the intervals, the
 calibration rule and the compute.  \Cref{sec:main:results} then gives the main results
-first: the best model of every family at every horizon, on the validation day and on the
-locked test days, and every model of the study at one hour, in two tables that compare the
-families side by side.  The families are then assessed one at a time, in the order of
+first: the reference model of every family at every horizon on the validation day, in one
+table that compares the families side by side; \cref{sec:horizons:test} repeats it on the
+locked test days and adds every model of the study at one hour.  The families are then assessed one at a time, in the order of
 \cref{ch:models} and mostly at one hour, the horizon at which the design was done, each with
 the few results that explain its place in the main tables: rules and stateless learners
 (\cref{ch:stateless}), the stateful model (\cref{ch:stateful}), the graph models
@@ -35,7 +35,8 @@ bootstrap interval in brackets (\cref{sec:bg:eval}); ``MR'' is Mean Reversion-$H
 rules make the comparisons fair.
 \begin{itemize}[nosep]
   \item \textbf{The same samples.}  The stateless learners are trained and evaluated on the
-  samples of the stateful runs: at one hour the control was built from the run's predictions;
+  samples of the stateful runs: at one hour the control (LightGBM on the engineered features,
+  \cref{sec:stateless:control}) was built from the run's predictions;
   at one and fifteen minutes it had to be rebuilt on the run's samples, because a control
   that samples tensor rows at the row time is a different population
   (\cref{sec:horizons:short}).
@@ -79,27 +80,30 @@ every subset, and its gain over the tabular network on the same features is conc
 the sparse markets.  At fifteen minutes and one hour the summary is nearly complete: the
 trees, the tabular network and the stateful model given the same inputs and the trees as a
 base are within a point of one another, the online, time-ordered regime costs the stateful
-model one to two points unless it is given the trees as a base, the residual of the trees
-is still seven tenths above them at fifteen minutes and ties them at one hour, and the graph
-and the external sources add nothing.  At six and
+model a few tenths at fifteen minutes and a point and a half at one hour unless it is given
+the trees as a base, the residual of the trees is still seven tenths above them at fifteen
+minutes and ties them at one hour, and the message-passing model built here and the
+external sources add nothing.  At six and
 twelve hours the task is the direction of a slow reversal read together with the price
-level and the market's lifecycle, the stateless control is six points above the rule, and
-the stateful models of this study are below it, at twelve hours even when they read the
-engineered features and sit on the trees as a base.  The same architecture cannot be the right one at both ends, and the reading the
-data give is that a model of this market should be a stateless learner on the activity
+level and the market's lifecycle, the stateless control is six and a half points above the
+rule, and
+the stateful models of this study are below it even when they read the engineered
+features; on the trees as a base they come within half a point of the trees at six hours
+and stay three and a half points below at twelve.  The same architecture cannot be the right one at both ends, and the data suggest that a
+model of this market should be a stateless learner on the activity
 clock, the first level, the long returns, the price level and the contract type, with a
 sequential state added only where the horizon is shorter than the summary.
 
 \begin{table}[t]
 \centering
-\caption{The best model of each family at each horizon on the validation day, all samples
+\caption{The reference model of each family at each horizon on the validation day, all samples
 and deduplicated samples (balanced accuracy).  At 1 min, 15 min and 1 h every model carries
 its own two cross-fitted logit offsets; at 6 h and 12 h the raw decisions (the control was
 not calibrated there).  ``Stateless'' is LightGBM on the sixty-one features; ``tabular
 network'' is TabM on the same table, mean of three seeds; ``stateful'' is the best run
-without trees (two passes with the engineered features at 1 min, 15 min, 1 h and 12 h; the
-time-first encoder at 6 h); ``residual'' is the two-pass stateful model on the cross-fitted
-trees.  $\Delta$ in points against the stateless control, with 95\% hour-block bootstrap
+without trees (two passes with the engineered features at every horizon); ``residual'' is
+the two-pass stateful model on the cross-fitted
+trees (\cref{sec:stateful:encoders,sec:stateful:regime,sec:stateful:residual}).  $\Delta$ in points against the stateless control, with 95\% hour-block bootstrap
 intervals where the comparison is calibrated; ``---'' marks a configuration that was not
 run at that horizon.}
 \label{tab:horizons:synthesis}
@@ -114,8 +118,8 @@ Horizon & Subset & MR & Stateless & Tabular network & Stateful & $\Delta$ & Resi
        & Dedup & 0.5253 & 0.6197 & 0.6248 & 0.6158 & $-0.39$ [$-0.63$, $-0.13$] & \textbf{0.6265} & $+0.67$ [$+0.34$, $+0.99$] \\
 1 h    & All   & 0.5311 & 0.6044 & 0.6033 & 0.5902 & $-1.42$ [$-1.83$, $-1.00$] & \textbf{0.6048} & $+0.04$ [$-0.18$, $+0.24$] \\
        & Dedup & 0.5180 & \textbf{0.5943} & 0.5922 & 0.5797 & $-1.46$ [$-1.76$, $-1.14$] & 0.5933 & $-0.10$ [$-0.26$, $+0.05$] \\
-6 h    & All   & 0.5069 & \textbf{0.5716} & --- & 0.5396 & $-3.20$ & --- & \\
-       & Dedup & 0.5002 & \textbf{0.5665} & --- & 0.5370 & $-2.95$ & --- & \\
+6 h    & All   & 0.5069 & \textbf{0.5716} & --- & 0.5514 & $-2.02$ & 0.5664 & $-0.52$ \\
+       & Dedup & 0.5002 & 0.5665 & --- & 0.5552 & $-1.13$ & \textbf{0.5712} & $+0.47$ \\
 12 h   & All   & 0.5071 & \textbf{0.5715} & --- & 0.5060 & $-6.55$ & 0.5374 & $-3.41$ \\
        & Dedup & 0.4995 & \textbf{0.5680} & --- & 0.5298 & $-3.82$ & 0.5548 & $-1.32$ \\
 \bottomrule

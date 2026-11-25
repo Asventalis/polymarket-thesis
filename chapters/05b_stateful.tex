@@ -15,7 +15,7 @@ with no edges; the contribution of the edges is the subject of \cref{ch:graph}.
 \label{sec:stateful:first}
 
 Without the direct path and the hierarchical memory, and with three lookbacks only, the
-model loses to Mean Reversion by three to eight points at every horizon, with or without the
+model loses to Mean Reversion by two and a half to seven points at every horizon, with or without the
 graph (\cref{app:results:first}).  Starting from that model, three additions were made one at a
 time and evaluated at full length: the hierarchical memory, the direct path with the global
 state, and the two extra lookbacks.  \Cref{tab:exp:chain,fig:stateful:chain} give the chain
@@ -180,8 +180,8 @@ samples and within half a point on the deduplicated ones.  Averaging the weights
 pass does not help on its own but makes the model more complementary to the trees
 (\cref{app:results:ema}).  The combination of LightGBM with the stateful model, a geometric
 mean of their probabilities with the weight cross-fitted on the validation hours, is the
-first number of the study above the trees, whereas the same combination with the tabular
-network gives nothing (\cref{tab:exp:learners}): what the state adds is small, but it is
+first number of the study above the trees, whereas the same combination with the MLP on
+the same table gives nothing (\cref{tab:exp:learners}): what the state adds is small, but it is
 there, and it is not what another learner on the same table would add.
 
 \subsection{The state as the residual of the trees}
@@ -207,8 +207,8 @@ vice versa.}
 Subset & LightGBM & Residual & $\Delta$ & Residual, 2 passes & $\Delta$ & 2 passes + offsets \\
 \midrule
 All      & 0.6015 & 0.6024 & $+0.08$ [$-0.17$, $+0.34$] & 0.6024 & $+0.09$ [$-0.24$, $+0.46$] & 0.6048 \\
-Dedup.   & 0.5827 & 0.5862 & $+0.35$ [$+0.18$, $+0.51$] & \textbf{0.5945} & $+1.18$ [$+0.94$, $+1.42$] & 0.5933 \\
-Extreme  & 0.5804 & 0.5817 & $+0.13$ [$-0.13$, $+0.40$] & \textbf{0.5854} & $+0.50$ [$+0.21$, $+0.81$] & 0.5865 \\
+Dedup.   & 0.5827 & 0.5862 & $+0.35$ [$+0.18$, $+0.51$] & 0.5945 & $+1.18$ [$+0.94$, $+1.42$] & 0.5933 \\
+Extreme  & 0.5804 & 0.5817 & $+0.13$ [$-0.13$, $+0.40$] & 0.5854 & $+0.50$ [$+0.21$, $+0.81$] & 0.5865 \\
 Central  & 0.6107 & 0.6112 & $+0.05$ [$-0.25$, $+0.37$] & 0.6093 & $-0.14$ [$-0.52$, $+0.33$] & 0.6123 \\
 \bottomrule
 \end{tabular}\end{fittable}
@@ -242,7 +242,7 @@ one minute.
 Read together, the section gives a precise account of the stateful family.  Its own
 improvements are real and explicable: a direct path that contains the rule, a memory at
 three rates, five lookbacks and an encoder that reads time before space take the LOB-only
-model from eight points below Mean Reversion to three above it at one hour.  Its inputs were
+model from three points below Mean Reversion to two and a half above it at one hour.  Its inputs were
 its main handicap: the activity clock and the price level, which the event-clock tensor
 hides, are worth two to three points once they are put in front of it.  Its training
 regime, one pass in time order, costs about two points against the same learner trained as
