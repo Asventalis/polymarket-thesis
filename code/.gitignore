@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# Data & Databases
+data/*.duckdb
+data/*.duckdb.wal
+*.parquet
+*.zip
+*.tar.gz
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db

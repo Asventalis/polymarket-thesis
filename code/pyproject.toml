@@ -1,0 +1,46 @@
+[project]
+name = "agy-project"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "Vito Pampinella", email = "megavitoboy@gmail.com" }
+]
+requires-python = "==3.10.*"
+dependencies = [
+    "duckdb>=1.5.4",
+    "lightgbm>=4.7.0",
+    "matplotlib>=3.10.9",
+    "pandas>=2.3.3",
+    "polars>=1.43.0",
+    "pyarrow>=25.0.0",
+    "scikit-learn>=1.7.2",
+    "seaborn>=0.13.2",
+    "sentence-transformers>=5.6.1",
+    "torch>=2.5.0",
+    "torch-geometric>=2.8.0.post1",
+    "xgboost>=3.2.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.21,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm6.2"
+
+[tool.uv.sources]
+torch = { index = "pytorch-rocm" }
+pytorch-triton-rocm = { index = "pytorch-rocm" }
+
+
+
+
+
+
+

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  hetbignn:
+    build: .
+    image: polymarket_hetbignn:latest
+    # We mount the local data/ folder directly into the container.
+    # This ensures the 15GB DuckDB database is NOT permanently baked into the Docker image itself.
+    volumes:
+      - ./data:/app/data
+    
+    # Configure Docker to request NVIDIA GPU access from the host server
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+              
+    # Default action when spinning up the container
+    command: /bin/bash -c "echo 'Container is ready for HetBiGNN training!' && sleep infinity"
