@@ -36,8 +36,7 @@ This thesis treats that object as a data-analysis and data-mining problem.  The 
 is not whether one particular model can be made to work but what the price process of a
 prediction market looks like, how its trading is organised, which of the publicly
 observable information predicts the direction of a price over the next minute, hour or
-half day, and which families of models are able to read that information.  The answers are
-empirical and they are given with their intervals.
+half day, and which families of models are able to read that information.
 
 \section{The problem and why it is difficult}
 \label{sec:intro:difficulty}
@@ -46,30 +45,26 @@ The prediction task of the thesis is the direction of the mid price of a market,
 unchanged or up, over a horizon from one minute to twelve hours, at every moment at which
 the market's book changes.
 
-Four properties of the object make the task hard, and each of them is measured in the
-thesis before any model meets it.  First, a market price is designed to
+Four properties of the object make the task hard.  First, a market price is designed to
 \emph{consolidate} information: whatever is publicly known about the event is already in
-the price, and in its weak form the efficient-market hypothesis says that the past of the
-price carries nothing about its future (\cref{sec:bg:lob}); what remains at short horizons
-is microstructure, the mechanics of a thin book, not knowledge of the event.  Second, the
-price is \emph{bounded and discrete}: it lives in $[0, 1]$ with a tick of a thousandth,
-four samples in ten (a \emph{sample} is one market at one moment at which a prediction
-is asked, \cref{sec:bg:notation}) sit within five cents of a boundary, and most of its changes are
-one-tick oscillations that revert (\cref{sec:expl:level}).  Third, the price is
-\emph{mostly still}: over one hour the mid of more than half of the samples does not move
-at all, over one minute nine in ten, so the task is as much ``will it move'' as ``which
-way'' (\cref{sec:expl:classes}), and a classifier is judged as much by where it puts its
-thresholds as by what it knows.  Fourth, much of what moves a price is \emph{outside the
-data}: the spot price of Bitcoin for the crypto contracts, the score of the game for
-in-play sports, the headline for politics; the order book shows their effect, not their
-cause.  Against these, the data offer two things that most financial datasets do not: the
-complete book rather than its top, and the identity of every counterparty.  Whether either
-is worth anything for prediction is the empirical question.
+the price, so what remains to be predicted at short horizons is the mechanics of a thin
+order book rather than knowledge of the event.  Second, the price is \emph{bounded and
+discrete}: it lives between zero and one and moves in ticks of a thousandth, a large share
+of the markets sit within a few cents of a boundary, and most of its changes are one-tick
+oscillations that revert.  Third, the price is \emph{mostly still}: over one hour it does not
+move at all for more than half of the predictions asked, over one minute for nine in ten,
+so the task is as much ``will it move'' as ``which way''.  Fourth, much of what moves a
+price is \emph{outside the data}: the spot price of Bitcoin for the crypto contracts, the
+score of the game for in-play sports, the headline for politics; the order book shows their
+effect, not their cause.  Against these, the data offer two things that most financial
+datasets do not: the complete book rather than its top, and the identity of every
+counterparty.  Whether either is worth anything for prediction is the empirical question,
+and each of the four properties is measured in \cref{ch:data} before any model meets it.
 
 \section{Research questions}
 \label{sec:intro:questions}
 
-I ask four questions and answer each of them with a measurement.
+We ask four questions and answer each of them with a measurement.
 
 \begin{enumerate}[nosep,label=\textbf{Q\arabic*},ref=Q\arabic*]
   \item \label{q:process} \textbf{What regularities does the price process of a prediction
@@ -91,23 +86,22 @@ I ask four questions and answer each of them with a measurement.
   minute to twelve hours, and with the kind of market (\cref{ch:horizons})?
 \end{enumerate}
 
-What counts as an answer, the same samples, the same post-hoc calibration, an interval
-that excludes zero, a locked test period, is fixed in \cref{sec:meth:criteria}.
+\Cref{sec:meth:criteria} fixes what counts as an answer.
 
 \section{Approach}
 \label{sec:intro:approach}
 
-The study proceeds in four steps, which are also the chapters of the thesis.  Twenty-one
-days of Polymarket were collected from three public sources, audited and prepared into a
-leakage-free dataset with a three-class label, and read with the tools of exploratory
-analysis and classical data mining before any model was trained (\cref{ch:data}).  Five
-families of approaches were built under explicit rules of inclusion and comparison, from
-causal rules on the price to a continuous-time model with message passing on the
-wallet--market graph (\cref{ch:models}).  They were compared on the same samples at five
-horizons, with hour-block bootstrap intervals and the same calibration for every model,
-against the best rule and the best stateless learner on the data (\cref{ch:experiments}).
-The conclusions say where short-horizon predictability lives in a prediction market and
-what a model of it should be made of (\cref{ch:conclusions}).
+The study proceeds in four steps, which are also the chapters of the thesis.  The data are
+collected from public sources, audited and prepared into a benchmark in which no input can
+see the future, and they are explored before any model is trained, so that the models are
+held to regularities measured in advance (\cref{ch:data}).  Five families of approaches are
+built under explicit rules of inclusion, from the simplest rule on the price to models that
+keep a state per market or read the graph of who trades what (\cref{ch:models}).  They are
+compared on the same data and under the same protocol, each against the best simpler
+approach, and the comparison is repeated at every horizon and on a period kept aside for
+the final numbers (\cref{ch:experiments}).  The conclusions say where short-horizon
+predictability lives in a prediction market and what a model of it should be made of
+(\cref{ch:conclusions}).
 
 \section{Contributions}
 \label{sec:intro:contributions}
@@ -148,23 +142,36 @@ what a model of it should be made of (\cref{ch:conclusions}).
 \label{sec:intro:structure}
 
 \Cref{ch:background} gives the background: how a prediction market and Polymarket work,
-what is known about Polymarket, and the notions of time series, graphs, learners and
-evaluation used in the following chapters.  \Cref{ch:data} follows the data from the three sources
+the notions of time series, graphs, learners and evaluation used in the following chapters,
+and the related work.  \Cref{ch:data} follows the data from the three sources
 through the preprocessing to the final dataset and closes with its exploratory and
 statistical analysis, as a price process, a transaction graph and a feature space.
 \Cref{ch:models} is the methodology: the objective, the criteria and the rules that
 decided which approaches were included, and the five families of approaches with their
 advantages and limits.  \Cref{ch:experiments} gives the experimental setup, the
-experiments and the results, family by family and then across horizons, kinds of market
-and seeds, and discusses them against the four questions.  \Cref{ch:conclusions} draws
-the conclusions, states the limits of the study and what a deployment would need, and
-lists the future work.  The appendices list the features, the run configurations and the
-steps that reproduce the numbers; a glossary closes the thesis.
+main results across the families and the horizons, then the results of each family, the
+reading across horizons and kinds of market, the locked test set and an economic reading of
+the direction calls.
+\Cref{ch:conclusions} answers the four questions, states the limits of the study and what
+a deployment would need, and discusses the future work.  The appendices list the features,
+the run configurations, the steps that reproduce the numbers and the detailed results and
+ablations; a glossary closes the thesis.
 
-\paragraph{Code and data.}  Everything in the thesis is produced by one repository: a
+\paragraph{Code and data.}  Everything in the thesis is produced by one code base: a
 Python package (\texttt{polymarket\_gnn}) with the data pipeline in DuckDB and NumPy and
 the models in PyTorch, the collection and preprocessing scripts, the audit, graph and
 comparison scripts, a test suite for the label construction and the feature indices, and
-the reports from which every table is taken.  \Cref{app:runs,app:reproduction} give the
-run labels, the configurations and the steps that reproduce each number; the raw data are
-never modified and every derived dataset is rebuilt from them.
+the reports from which every table is taken.  The code is available at
+\url{https://github.com/Asventalis/polymarket-thesis}, in the \path{code/} directory of
+the repository that also holds the source of this thesis.  The data are not in the
+repository: the raw sources are public (\cref{sec:data:collection}) and the derived
+datasets and the trained checkpoints, about 55~GB, are not distributed with the code.
+\Cref{app:runs,app:reproduction} give the run labels, the configurations and the steps
+that reproduce each number; the raw data are never modified and every derived dataset is
+rebuilt from them.
+
+\paragraph{Use of AI tools.}  AI-based assistants were used as tools in this work, for
+writing and debugging code and in the compilation of the thesis, for typesetting, editing
+and the correction of spelling and language.  They took no part in the decisions: the
+questions, the design of the study, the choice of the data, of the models and of the
+experiments, and the analysis and interpretation of the results are our own.

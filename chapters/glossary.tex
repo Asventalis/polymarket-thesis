@@ -3,6 +3,9 @@
 
 \section*{Terms}
 \begin{description}[nosep, font=\normalfont\itshape, leftmargin=3.2cm, style=nextline]
+  \item[adverse selection] the fact that a resting order is filled by the trades that come
+  to its price, so that the calls that get filled are not a random sample of the calls and
+  can move against the order more often than the others (\cref{sec:exp:econ}).
   \item[activity clock] the quantities that describe how recently and how often a market's
   mid has changed: the time since the last mid change, the number of mid changes and of
   book events in the last minutes and hour.  The strongest predictors of whether the mid
@@ -22,16 +25,19 @@
   \item[conditional token] an outcome token of a market; a pair of complementary tokens is
   minted from one unit of collateral and the winning one is redeemed for it after resolution
   (\cref{sec:pm:mechanics}).
-  \item[control (no-state)] the LightGBM model on the sixty-one hand-made features, the
+  \item[control (no-state)] the LightGBM model on the sixty-one engineered features, the
   stateless reference of every comparison (\cref{sec:stateless:control}).
   \item[cross-fitting] fitting a quantity (offsets, tree log-probabilities, a combination
   weight) on one part of the data and applying it to another, so that no sample is
   evaluated with a quantity fitted on itself.
-  \item[deduplicated samples] at most one sample per market per fifteen minutes; the subset
+  \item[deduplicated samples] at most one sample per market per ten minutes; the subset
   on which samples are closest to independent (\cref{sec:data:labels}).
   \item[direct path] a zero-initialised linear layer from the lookback price features (and
-  the hand features) to the three logits, which contains Mean Reversion as a special case
+  the engineered features) to the three logits, which contains Mean Reversion as a special case
   (\cref{sec:models:skip}).
+  \item[maker, taker] the two sides of a fill: the maker is the resting order that was
+  already in the book, the taker the order that crossed the book and was matched against
+  it.  On Polymarket only takers pay the fee (\cref{sec:exp:econ}).
   \item[fill] a matched trade, recorded on-chain with maker, taker, token, side, quantity
   and price; the rows of the transactions table.
   \item[hierarchical memory] the minute and hour states of a market, each updated by its
@@ -99,10 +105,10 @@
   \item[$(t_i, \mathbf{b}_i)$] the book stream of a market: the time of its $i$-th event and the 52 numbers that describe the book just after it.
   \item[$H$] the prediction horizon (60 s, 900 s, 1 h, 6 h, 12 h).
   \item[$\operatorname{mid}_m(t)$] the mid price of market $m$ at the last book update strictly before $t$.
-  \item[$y_{m,t}$] the label: \textsc{up}, \textsc{const} or \textsc{down} according to whether $\operatorname{mid}_m(t + H)$ is above, equal to or below $\operatorname{mid}_m(t)$ (\cref{eq:label}).
+  \item[$y_{m,t}$] the label: \textsc{up}, \textsc{const} or \textsc{down} according to whether $\operatorname{mid}_m(t + H)$ is above, equal to or below $\operatorname{mid}_m(t)$ (\cref{eq:label:bg}).
   \item[$(m, t)$] a sample: market $m$ at block $t$, a block in which $m$ had a book event.
   \item[$\Delta^{-}_{L}$] the change of the mid over the past lookback $L$.
-  \item[$\mathbf{x}_{m,t}$] the 61 hand-made features of sample $(m, t)$.
+  \item[$\mathbf{x}_{m,t}$] the 61 engineered features of sample $(m, t)$.
   \item[$\mathbf{z}_{m,t}$, $\hat{\mathbf{p}}_{m,t}$, $\hat{y}_{m,t}$] the three logits, the three probabilities and the predicted class of a model at $(m, t)$; $\boldsymbol{\delta}$ the calibration offsets added to the logits (\cref{eq:predictor}).
   \item[$\mathbf{h}_m$, $\mathbf{h}_w$] the per-block states of market $m$ and wallet $w$, 128 numbers each; $\mathbf{h}^{\min}_m$, $\mathbf{h}^{\mathrm{hr}}_m$ the minute and hour states; $\bar{\mathbf{h}}$ the global state (\cref{eq:state-update,eq:memory}).
   \item[$r$] the learned decay rate of the states; $e^{-r\Delta t}$ the decay over $\Delta t$ seconds.
@@ -110,5 +116,5 @@
   \item[$G = (V, E)$] a graph with nodes $V$ and edges $E$; $E_t$ the fills of block $t$, $N_t(v)$ those incident to node $v$, $\mathbf{a}_e$ the seven attributes of fill $e$ (\cref{eq:mp-attention,eq:mp-update}).
   \item[$\mathrm{BA}$, $\mathrm{recall}_c$] balanced accuracy and the recall of class $c$ (\cref{sec:bg:eval}).
   \item[$\Delta$] a difference of balanced accuracies in percentage points, followed by its 95\% interval in brackets.
-  \item[G1 \ldots G5] the nested groups of hand-made features (\cref{app:features}).
+  \item[G1 \ldots G5] the nested groups of engineered features (\cref{app:features}).
 \end{description}

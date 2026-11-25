@@ -1,4 +1,4 @@
-\chapter{The Sixty-One Hand-Made Features}
+\chapter{The Sixty-One Engineered Features}
 \label{app:features}
 
 The features of the stateless control (\cref{sec:prep:features}) are computed for every
@@ -31,7 +31,7 @@ G2 & \texttt{spread\_ticks} & best ask minus best bid, in ticks \\
    & \texttt{log\_bid\_sz10}, \texttt{log\_ask\_sz10} & log size over the first ten levels of each side \\
    & \texttt{bid\_levels}, \texttt{ask\_levels} & number of filled levels among the ten stored \\
    & \texttt{depth\_skew} & skew of the depth between the two sides (tensor feature) \\
-   & \texttt{bid\_rel1}, \texttt{ask\_rel1} & distance of the best bid and ask from the mid, relative (tensor features) \\
+   & \texttt{bid\_rel1}, \texttt{ask\_rel1} & price of the second bid and ask level relative to the mid, $(p - \mathrm{mid})/\mathrm{mid}$ (tensor columns 1 and 21) \\
 \midrule
 G3 & \texttt{ofi}, \texttt{ofi\_5}, \texttt{ofi\_20}, \texttt{ofi\_15m} & order-flow imbalance accumulated over the last event, the last 5 and 20 events and the last 15 minutes \\
    & \texttt{ofi\_20\_z}, \texttt{ofi\_15m\_z} & the same, divided by the volume of book changes over the same span \\

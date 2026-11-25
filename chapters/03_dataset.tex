@@ -160,7 +160,7 @@ Column & Meaning & Taker & Maker 0 & Maker 1 \\
 \section{Collection}
 \label{sec:data:collection}
 
-The three streams come from three places.
+The three streams come from three places, described in the following.
 
 \subsection{Market metadata: the Gamma API}
 
@@ -180,17 +180,17 @@ operator's websocket feed, the \emph{Polymarket Tick-Level Orderbook Dataset} pu
 Kaggle by Marvin Gozo under a CC~BY-NC~4.0 licence \cite{gozo2026polymarket}: one file per
 day, restricted to the Yes side of every book.  Every row
 of the feed carries two timestamps: the time at which the operator created the message and
-the time at which the archive's collector received it; I use the creation time as
+the time at which the archive's collector received it; we use the creation time as
 the time of the event and keep the reception time only to check the feed's latency.
 
 \subsection{The on-chain transactions: a blockchain scraper}
 
-I collected the \emph{transactions} table with a modified version of
+We collected the \emph{transactions} table with a modified version of
 \path{poly-trade-scan} \cite{martkir2026polytradescan}, an open-source Python client that
 connects to a Polygon node over a WebSocket JSON-RPC endpoint, reads every block, filters
 the transactions addressed to Polymarket's exchange contracts and decodes their
 \texttt{matchOrders} calls.  The original tool emits one row per transaction, the taker's
-order with its nominal amounts; my version decodes the whole call, the amounts actually
+order with its nominal amounts; our version decodes the whole call, the amounts actually
 filled and received by the taker, the filled amount and the fee of every maker order, and
 emits one row per wallet and per fill (block number, timestamp, transaction hash, order
 index, wallet, role, token, side, quantity, price, total collateral and fee rate), with
@@ -202,7 +202,8 @@ maker rows, so the 219 million rows are \emph{fill legs}; 79 million of them are
 \section{Scale, coverage and storage}
 \label{sec:data:scale}
 
-Daily activity is stable over the period: 9.2--11.8 million transaction rows,
+Daily activity is stable over the twenty-one days of the window, 6--26 March 2026:
+9.2--11.8 million transaction rows,
 122{,}000--161{,}000 distinct wallets and 15{,}000--21{,}000 active markets per day.
 Markets and wallets are mapped to dense indices (175{,}292 markets, 646{,}394 wallets).
 The data were stored as Parquet files and queried with DuckDB
@@ -263,15 +264,18 @@ itself; a sample at block $t$ never sees an update created at or after $t$.
 \subsection{Derived tensors}
 \label{sec:data:tensors}
 
-\paragraph{Order-book features.}  For every market and every order-book update, a
-52-dimensional feature vector is computed from the book state at that moment: best bid
-and ask, five levels of bid and ask prices and sizes, spread, mid price, volume and
-depth imbalances, recent trade statistics, and rolling statistics of the mid.  The mid
-price is stored in column~40 of the vector; column~0 is the relative deviation of the
-best bid from the mid.  The vectors are stored as hourly Parquet partitions (about
-287{,}000 snapshots per hour, 27~GB in total).  To these, the models append the
-long-lookback price features of \cref{sec:models:lookback}.  The order-flow imbalance
-features follow \textcite{cont2014price}.
+\paragraph{Order-book features.}  For every market, one row is written every twenty
+order-book events from the book state at that moment: a vector of 52 numbers.  Forty of
+them describe ten levels on each side, the price of each level relative to the mid,
+$(p - \mathrm{mid})/\mathrm{mid}$, and the size resting there (zero where the level is
+empty); the other twelve are the mid price (column 40), the spread, the best bid and ask,
+and eight quantities accumulated over the twenty events of the row: the order-flow imbalance
+of \textcite{cont2014price}, the total size changed, the number of events, the share of
+events on the bid side, the share of size removals, the mean depth of the first ten levels
+on each side and the asymmetry between the two.  The rows are stored as hourly Parquet
+partitions (about 287{,}000 rows per hour, 27~GB in total).  To these, the models append
+the long-lookback price features of \cref{sec:models:lookback} and the other constant
+columns of \cref{sec:models:ctdgnn}.
 
 
 \paragraph{Market lifecycle.}  A table of 283{,}318 open/close events gives, for every
@@ -282,12 +286,12 @@ evaluation sample (a label is not computed when the market stops trading before 
 horizon), never as an input.
 
 \paragraph{Static market features.}  Each market has a 390-dimensional static vector:
-a 384-dimensional sentence embedding of its question text, produced by a frozen
-MiniLM sentence encoder \cite{reimers2019sbert}, and six numerical fields (initial
-prices, creation date).  These features are fixed at market creation, so they are
-leak-free; they initialise the market's state (\cref{sec:models:state}) through a fixed
-random projection.  What the text contributes to prediction is measured in
-\cref{sec:analysis:nostate}.
+a 384-dimensional sentence embedding of its question, description and tags, produced by a
+frozen MiniLM sentence encoder \cite{reimers2019sbert}, and six numbers that encode the
+hour, the weekday and the month of its creation as sines and cosines.  These features are
+fixed at market creation, so they are leak-free; they initialise the market's state
+(\cref{sec:models:state}) through a fixed random projection.  What the text contributes
+to prediction is measured in \cref{sec:external:text}.
 
 \paragraph{Identifiers.}  Markets and wallets are mapped to dense indices
 (175{,}292 markets, 646{,}394 wallets) so that their states can live in two matrices on
@@ -297,7 +301,7 @@ the GPU.
 \label{sec:data:final}
 
 This section defines the dataset on which every model of the thesis is trained and
-evaluated: the label and the sample population, the hand-made features and the other
+evaluated: the label and the sample population, the engineered features and the other
 feature tables, and the split of the twenty-one days into training, validation and test
 periods.
 
@@ -305,18 +309,9 @@ periods.
 \label{sec:data:labels}
 
 The target of a market $m$ at block time $t$ and horizon $H$ is the direction of the
-change of its mid price between $t$ and $t + H$ (\cref{sec:bg:notation}):
-\begin{equation}
-  y_{m,t} =
-  \begin{cases}
-    \textsc{up}    & \text{if } \operatorname{mid}_m(t + H) > \operatorname{mid}_m(t), \\
-    \textsc{const} & \text{if } \operatorname{mid}_m(t + H) = \operatorname{mid}_m(t), \\
-    \textsc{down}  & \text{if } \operatorname{mid}_m(t + H) < \operatorname{mid}_m(t),
-  \end{cases}
-  \label{eq:label}
-\end{equation}
-where $\operatorname{mid}_m(s)$ is the mid price of the last order-book update of $m$
-strictly before $s$.  A price is \textsc{const} when the two mids are \emph{exactly}
+change of its mid price between $t$ and $t + H$, the label $y_{m,t}$ of
+\cref{eq:label:bg}, where $\operatorname{mid}_m(s)$ is the mid price of the last
+order-book update of $m$ strictly before $s$.  A price is \textsc{const} when the two mids are \emph{exactly}
 equal: there is no tolerance band, the mid moves in ticks of $0.001$, and a move of one
 tick or more in either direction is \textsc{up} or \textsc{down}.  Three choices matter:
 
@@ -341,13 +336,13 @@ book did not change in a block has nothing new to read.  Every model is asked fo
 prediction at every such pair, so markets that update often contribute many samples.  Because consecutive
 samples of the same market within a few seconds are almost identical, every result is
 also reported on a \emph{deduplicated} subset that keeps at most one sample per market
-per 15 minutes.  At the 6h horizon the validation day has 9.3 million samples, 1.2
+per ten minutes.  At the 6h horizon the validation day has 9.3 million samples, 1.2
 million after deduplication.
 
 \subsection{Feature engineering}
 \label{sec:prep:features}
 
-\paragraph{The sixty-one hand-made features.}  For every validation sample of the 1h model (same time, market and label), and later for
+\paragraph{The sixty-one engineered features.}  For every validation sample of the 1h model (same time, market and label), and later for
 every tensor row, 61 causal features were computed from the clean data: the mid, its changes over
 15 minutes and 1, 3, 6 and 12 hours and their signs, and the hour (\emph{price history},
 the inputs of the direct path); the spread, the level-1, 5-level and 10-level depth
@@ -415,10 +410,29 @@ of the transaction graph, covers the whole window.  The evaluation protocol that
 the split, the metric, the subsets, the bootstrap intervals and the calibration rule, is
 given with the experimental setup (\cref{sec:data:protocol}).
 
+\paragraph{Why the periods are not contiguous.}  The days 14--23 March separate the
+validation day from the test period.  The reason is the cost of the stateful runs.  Every
+stateful model streams its training days in time order, once or twice, at about two hours
+per day on a shared GPU, and the study has dozens of such runs: the training week was
+therefore fixed at 6--12 March at the start, and the engineered features, the tree
+log-probabilities and the forecast caches that the models read were built for the same
+days.  The test period was fixed at the last three days of the window, 24--26 March, when
+the dataset was assembled and before any model was trained, with the three days before it,
+21--23 March, reserved as the warm-up through which a saved model rebuilds its states
+before it is scored (\cref{sec:horizons:test}).  The days 14--20 March are used by
+nothing: no model is trained, validated or tested on them, and the dip of 20 March
+(\cref{sec:data:quality}) falls inside this unused stretch.  The gap has a cost, and the
+thesis measures it rather than assumes it away: a model fitted on 6--12 March meets the test
+period eleven days after its last training day, so any drift of the regularities over
+those days appears as a loss on the test days relative to the validation day.
+\Cref{sec:horizons:test} compares the two, and \cref{sec:concl:limits} discusses what a
+contiguous protocol, training up to the warm-up days and calibrating on them, would
+change.
+
 \section{Exploratory analysis}
 \label{ch:exploration}
 
-Before training anything, I put a series of plain questions to the data and answered each
+Before training anything, a series of plain questions about the data was answered, each
 with one picture.  The questions go from the smallest unit of the data, a single
 order-book event, to the most abstract, the geometry of the feature space, and every
 answer narrows what a model can be expected to do.  The section has three parts.
@@ -466,13 +480,13 @@ from tags and from masked question texts, convenient labels rather than ground t
 \label{sec:structure:agenda}
 \label{sec:expl:agenda}
 
-Five findings carry over to the methodology and the experiments, and they are, in the
-terms of \cref{sec:intro:questions}, a first answer to the first research question.
+Five findings carry over to the methodology and the experiments; together they are a
+first answer to \ref{q:process}.
 
 \begin{enumerate}[leftmargin=*, itemsep=3pt]
-\item \textbf{Whether comes before which way.}  Below one hour the task is mostly whether
-the price will move at all; the direction of a move is close to a coin toss at one minute
-and is the whole task at twelve hours.  The balance of the classes, and with it the
+\item \textbf{Whether comes before which way.}  Below one hour the main question is
+whether the price will move at all: at one minute the direction of a move is close to a
+coin toss, while at twelve hours the direction is the whole task.  The balance of the classes, and with it the
 calibration of every classifier, changes with the horizon.
 \item \textbf{The activity clock is the first thing to know; the price level and the kind
 of contract condition everything.}  How long ago the price last moved and how often it
@@ -496,11 +510,12 @@ defined by how they trade are not the categories: the live-game regime, not the 
 category, is the hard case.
 \end{enumerate}
 
-For the model families this means the following.  A model that reads the activity clock,
-the first level of the book, the long returns, the price level and the contract type has
-most of what there is, and that is what the stateless control of \cref{ch:stateless} does.
-The question for the stateful family is whether a state per market adds anything on top,
-and the same-market structure of the feature space says that it has material to work
-with, most of all at the shortest horizon.  The question for the graph family is whether a
-neighbourhood adds anything, and the graph says that it should not.  And every model
-should be judged by regime and by price level, not only by category.
+For the model families these findings set the expectations.  A model that reads the
+activity clock, the first level of the book, the long returns, the price level and the
+contract type already has access to most of the information the data contain; the
+stateless control of \cref{ch:stateless} is such a model.  For the stateful family the
+open question is whether a state per market adds anything to that summary, and the
+organisation of the feature space by market suggests that it may, most of all at the
+shortest horizon.  For the graph family the question is whether a neighbourhood adds
+anything, and the structure of the graph suggests that it will not.  Finally, every model
+should be assessed by regime and by price level, not only by category.

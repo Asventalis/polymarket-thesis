@@ -5,13 +5,19 @@ Every on-chain fill is a meeting between a wallet and a market, so the transacti
 of \cref{sec:data:sources}, read as a whole, is a bipartite graph (\cref{sec:bg:graphs}):
 wallets on one side, markets on the other, one edge for every pair that traded at least
 once, weighted by the number of fill legs between them.  This graph is the input of the
-models of \cref{ch:graph}; here I describe it as an object, before any model reads it.
+models of \cref{ch:graph}; here we describe it as an object, before any model reads it.
 The description uses no label and no model, so it is computed on the whole window of
 twenty-one days, the locked test days included, from the exact graph of every fill leg
 (\cref{app:reproduction}).  Three questions: how big, how concentrated and how connected
-the graph is; how it grows; and what it looks like.
+the graph is; how it grows; and what it looks like.  To look at it, the graph was also
+rendered as an animation over the whole window, one frame every ten minutes, in which every
+fill of the last minutes lights the edge between its wallet and its market on a fixed map of
+the markets and then fades; \cref{fig:graph:frame} is one of its frames, and
+\cref{sec:expl:graph:map} explains how the map under it is drawn.  The animation is a tool
+for inspection rather than a result: it is how the bursts of \cref{sec:expl:graph:bursts}
+were noticed.
 
-\begin{figure}[p]
+\begin{figure}[tp]
 \centering
 \includegraphics[width=\textwidth]{figures/graph/graph_frame_18mar.png}
 \caption{One frame of the animation of the transaction graph: Wednesday 18 March 2026,
@@ -25,12 +31,14 @@ bright blobs are the markets whose public is active in those minutes.}
 \label{fig:graph:frame}
 \end{figure}
 
+
 \subsubsection{How big, how concentrated, how connected?}
 \label{sec:expl:graph:size}
 
 Over the window, 219 million fill legs join 646 thousand wallets to 158 thousand markets
 through 32 million distinct wallet--market pairs (\cref{tab:graph:stats}).  As a matrix
-the graph is sparse, three pairs in ten thousand possible ones; as a social object it is
+the graph is sparse, with a density of three pairs in ten thousand possible ones
+(\cref{sec:bg:graphs:polymarket}); as a social object it is
 dense: every market was traded by at least two wallets, by twenty-nine in the median case,
 and the whole graph is \emph{one} connected piece, with no isolated pair and no small
 island.  \Cref{fig:graph:degrees} shows who trades how much.  One wallet in five traded a
@@ -52,7 +60,8 @@ the core.
 \toprule
 fill legs & 218{,}882{,}492 (78{,}931{,}041 taker fills) \\
 wallets / markets & 646{,}394 / 157{,}776 \\
-distinct wallet--market pairs & 32{,}273{,}710 (three in ten thousand possible pairs) \\
+distinct wallet--market pairs & 32{,}273{,}710 \\
+density (pairs that traded / possible pairs) & $3.2 \times 10^{-4}$ (three in ten thousand) \\
 markets traded by a wallet: median / maximum & 4 / 41{,}767 \\
 wallets that traded a market: median / maximum & 29 / 16{,}816 \\
 fills per pair: median / 99th percentile / maximum & 2 / 107 / 101{,}367 \\

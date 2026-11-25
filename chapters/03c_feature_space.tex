@@ -1,9 +1,9 @@
 \subsection{The structure of the feature space}
 \label{ch:structure}
 
-The sixty-one hand-made features of \cref{sec:prep:features} (listed in
+The sixty-one engineered features of \cref{sec:prep:features} (listed in
 \cref{app:features}) are what the stateless control of \cref{ch:stateless} reads.  Before
-any training, I asked what they contain: how many different things they measure; what
+any training, we asked what they contain: how many different things they measure; what
 organises the space they span, the label or something else; how much of the label a
 simple model can read in them, and which features carry the information; whether the
 markets form families by how they trade; and how all of this changes with the horizon.
@@ -28,7 +28,7 @@ with its training median, then replaced by its rank, and the ranks are spread li
 curve (a rank-gauss transform, fitted on one million training rows): the order of the
 values is kept, the tails are gone, and every feature ends up with the same distribution.
 Trees and rules, which only look at the order of the values, are unaffected.  Fifty-nine
-features enter the analysis: the hand-made features without the category of the market,
+features enter the analysis: the engineered features without the category of the market,
 one of eight classes derived from the tags that Polymarket attaches to each market
 (\cref{sec:data:collection}), which is kept as a label to colour by and never as an
 input, and without the time since the last book event, which is constant on the training
@@ -100,7 +100,7 @@ with similar features close together on the page; the same points are coloured f
 by the label, by the category of the market, by the price level and by the activity of
 the market.  The islands of the map are coherent in activity and largely in category; the
 label is spread inside each island.  \Cref{fig:structure:lift} measures this in the
-original fifty-nine-dimensional space, without any map.  For every sample I took its
+original fifty-nine-dimensional space, without any map.  For every sample we took its
 fifteen nearest neighbours, counted how many of them share its value of a given label, and
 divided by the share expected by chance: a lift of $1$ means that the neighbourhood says
 nothing, a lift of $2$ that the neighbours agree twice as often as chance.  The neighbours
@@ -223,7 +223,7 @@ says that the structure is smooth rather than clustered.
 The learners above read all the features together; \cref{fig:structure:mi} asks what each
 feature says on its own.  The measure is the mutual information between the feature and
 the label: how much knowing the feature reduces the uncertainty about what the price will
-do.  I express it as a share of the label's own uncertainty, so that 27\% means that the
+do.  We express it as a share of the label's own uncertainty, so that 27\% means that the
 feature alone removes about a quarter of the uncertainty about the label.  (The underlying
 unit is the nat, the information of one natural-logarithm unit; the share is easier to
 read and is all that is used here.)  The activity of the last hour leads: the volatility
@@ -249,7 +249,7 @@ feature group.}
 \label{sec:structure:markets}
 
 The markets are the natural unit of this data, and \cref{sec:expl:templates} grouped them
-by what they are about.  Here I group them by how they trade.  Each of the 11{,}294
+by what they are about.  Here we group them by how they trade.  Each of the 11{,}294
 markets with at least a hundred validation samples is described by thirteen numbers of its
 validation day (its activity, spread, depth, volatility, distance of the mid from one
 half, share of moving samples, duration, time to the end, dollars traded, cancellation
@@ -373,8 +373,9 @@ threshold itself scales with the horizon: the first split of the small tree is a
 seconds since the last move at one minute, 17 minutes at fifteen minutes, 3.1 hours at six
 hours and 5.5 hours at twelve.
 
-\paragraph{The information moves from the clock to the book.}  Panel (c) follows the most
-informative feature of each group across the horizons.  At one minute the best activity
+\paragraph{The information moves from the clock to the book.}  Panel (c) of
+\cref{fig:structure:horizons} follows the most informative feature of each group across
+the horizons.  At one minute the best activity
 feature removes 36\% of the label's uncertainty and the best quantity of the book's shape
 10\%; at twelve hours the order is reversed, 14\% against 42\%, with the microprice offset
 and the imbalance at the best quotes leading from one hour on and the sizes at the best

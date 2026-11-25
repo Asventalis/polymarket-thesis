@@ -229,6 +229,8 @@ for sig in signals:
                 select count(*) n_calls, coalesce(sum(filled::int), 0) n_trades,
                   avg(case when filled then pnl end) * 1000 mean_pnl_ticks,
                   avg(case when filled then pnl / capital end) * 100 mean_ret_pct,
+                  sum(case when filled then pnl end) / sum(case when filled then capital end) * 100 agg_ret_pct,
+                  stddev_samp(case when filled then pnl end) * 1000 std_pnl_ticks,
                   avg(case when filled then (pnl > 0)::int end) hit_rate,
                   avg(case when filled then move end) * 1000 mean_move_ticks,
                   avg(case when filled then spread_cost end) * 1000 mean_spread_ticks,
@@ -242,7 +244,7 @@ for sig in signals:
                 from p where {where}
                 """).fetchall()[0]
                 rows.append(dict(horizon=H, signal=sig, strategy=strat, fees=scen, subset=subset,
-                                 **dict(zip(["n_calls", "n_trades", "mean_pnl_ticks", "mean_ret_pct", "hit_rate",
+                                 **dict(zip(["n_calls", "n_trades", "mean_pnl_ticks", "mean_ret_pct", "agg_ret_pct", "std_pnl_ticks", "hit_rate",
                                              "mean_move_ticks", "mean_spread_ticks", "mean_fee_ticks", "total_pnl_usd",
                                              "precision_dir", "share_const", "median_spread_ticks",
                                              "move_when_right_ticks", "move_when_wrong_ticks"], r_))))
@@ -252,6 +254,9 @@ for sig in signals:
             agg(f"conf >= {q90}", "top10")
             agg("d > 0", "up")
             agg("d < 0", "down")
+            agg("spread <= 0.002", "tight2")
+            agg("spread <= 0.005", "tight5")
+            agg(f"conf >= {q90} and spread <= 0.005", "top10_tight5")
             agg("fee_base > 0", "fee_markets")
             agg("fee_base = 0", "free_markets")
             for cat in con.sql("select distinct category from c order by 1").fetchall():
@@ -270,15 +275,15 @@ md = [f"# Economic simulation, horizon {H}, test days 24-26 March", "",
 for sig in signals:
     for scen in ("fee", "nofee"):
         md += [f"## {sig}, {'fees as charged in March 2026' if scen == 'fee' else 'no fees'}", "",
-               "| strategy | subset | calls | trades | fill | P&L/share (ticks) | return % | hit | precision | const | move (ticks) | spread cost | fee | total $ | med. spread | move right | move wrong |",
-               "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+               "| strategy | subset | calls | trades | fill | P&L/share (ticks) | std (ticks) | return % (agg.) | hit | precision | const | move (ticks) | spread cost | fee | total $ | med. spread | move right | move wrong |",
+               "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
         sub = out[(out.signal == sig) & (out.fees == scen)]
         for _, r_ in sub.iterrows():
             if not r_.n_calls:
                 continue
             fill = r_.n_trades / r_.n_calls
             md.append(f"| {r_.strategy} | {r_.subset} | {int(r_.n_calls):,} | {int(r_.n_trades):,} | {fmt(fill)} | "
-                      f"{fmt(r_.mean_pnl_ticks)} | {fmt(r_.mean_ret_pct)} | {fmt(r_.hit_rate, 3)} | {fmt(r_.precision_dir, 3)} | "
+                      f"{fmt(r_.mean_pnl_ticks)} | {fmt(r_.std_pnl_ticks, 1)} | {fmt(r_.agg_ret_pct)} | {fmt(r_.hit_rate, 3)} | {fmt(r_.precision_dir, 3)} | "
                       f"{fmt(r_.share_const, 3)} | {fmt(r_.mean_move_ticks)} | {fmt(r_.mean_spread_ticks)} | {fmt(r_.mean_fee_ticks)} | "
                       f"{fmt(r_.total_pnl_usd, 0)} | {fmt(r_.median_spread_ticks, 1)} | {fmt(r_.move_when_right_ticks, 1)} | {fmt(r_.move_when_wrong_ticks, 1)} |")
         md.append("")

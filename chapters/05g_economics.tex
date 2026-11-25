@@ -1,0 +1,217 @@
+\section{What a direction call is worth}
+\label{sec:exp:econ}
+
+Balanced accuracy says how often a model is right; it says nothing about what being right is
+worth once the call is traded, because a prediction market charges a spread and, on some
+markets, a fee, and because a resting order is filled only when somebody trades against it.
+This section asks what a direction call of the models of this chapter is worth under those
+costs.  A simple model of a traded call comes first; a light simulation on the locked test
+days then measures its terms and the profit or loss of three ways of executing the calls,
+as a taker and as a maker.
+
+\subsection{A simple model of a traded call}
+\label{sec:econ:model}
+
+A \emph{call} is a sample $(m, t)$ at which a model predicts \textsc{up} or \textsc{down};
+the \textsc{const} predictions are not traded.  Trading one share of the Yes token on a call
+means buying it on \textsc{up} and selling it on \textsc{down} (which is the same as buying
+one share of No at one minus the price), and closing the position at $t + H$.  Three things
+can happen by then: the mid has moved in the predicted direction, with probability $h$ (the
+\emph{precision} of the calls) and by $\mu^{+}$ on average; it has not moved, with
+probability $z$; or it has moved the other way, with probability $w = 1 - h - z$ and by
+$\mu^{-}$ on average.  Before any cost the call is worth, per share,
+\begin{equation}
+  g \;=\; h\,\mu^{+} - w\,\mu^{-},
+  \label{eq:econ:edge}
+\end{equation}
+the \emph{gross edge}: the mean signed move of the mid over the horizon, taken in the
+direction of the call.  Balanced accuracy does not fix $g$: it averages the recall of the
+three classes, while $g$ depends on the precision of the calls that are actually made and on
+the size of the moves, which the label does not see.  Two models with the same balanced
+accuracy can have different gross edges, and the same model has a very different $g$ on a
+market that moves by one tick and on one that moves by fifty.
+
+The costs depend on how the call is executed.  A \emph{taker} crosses the book twice: it
+buys at the ask and later sells at the bid (or the reverse), so it pays the half spread at
+entry and the half spread at exit, $s$ in all when the spread does not change, plus a fee on
+each leg.  The fee of Polymarket on a leg of $C$ shares at price $p$ is
+\begin{equation}
+  f \;=\; C\,\rho\,p\,(1 - p),
+  \label{eq:econ:fee}
+\end{equation}
+where $\rho$ is the rate of the market; only takers pay it, makers never do.  In March 2026
+the rate was about $6.25\%$ on the short-lived crypto markets and $1\%$ on a few others, and
+zero on most markets of the dataset: $72\%$ of the taker legs of the period carry a fee,
+almost all of them on crypto markets outside the order-book archive, and among the markets
+of the benchmark only the crypto ones pay it on most of their fills.  At $p = 0.5$ the fee is
+at most $\rho / 4$ per share, that is $15.6$ ticks at the highest rate and $2.5$ ticks at
+$1\%$; at $p = 0.05$ or $0.95$ it is five times smaller.  The net value of a taker's call is
+therefore
+\begin{equation}
+  \mathbb{E}[\text{P\&L}_{\text{taker}}] \;=\; g - s - f_{\text{in}} - f_{\text{out}},
+  \label{eq:econ:taker}
+\end{equation}
+and since $g \le (1 - z)\,\mu^{+}$ even for a model that is never wrong, a taker can only
+profit where the spread is smaller than the expected move: $(1 - z)\,\mu^{+} > s + 2f$ is a
+necessary condition that no precision can repair.  With symmetric moves
+$\mu^{+} = \mu^{-} = \mu$ the break-even precision of a taker is
+\begin{equation}
+  h^{*} \;=\; \frac{1 - z}{2} + \frac{s + 2f}{2\mu},
+  \label{eq:econ:breakeven}
+\end{equation}
+which exceeds one as soon as the costs exceed the move.
+
+A \emph{maker} rests an order at the best quote, a bid for \textsc{up} and an ask for
+\textsc{down}: it pays no spread, earns half of it relative to the mid, and pays the fee only
+if it closes as a taker.  Its cost is of another kind.  The order is filled only when a
+counterparty crosses to its price, with some probability $q$ over the horizon, and the fills
+are not a random sample of the calls: a bid is hit when the price is coming down, so the
+gross edge conditional on a fill, $g_{\text{filled}}$, is smaller than $g$ and can be
+negative (\emph{adverse selection}).  The value of a maker's call is
+$q\,(g_{\text{filled}} + s/2 - f_{\text{out}})$ when the position is closed by crossing, and
+$q\,(g_{\text{filled}} + s)$ if the closing order also rests and is filled, an upper bound
+that assumes a second fill.  Which side is better is an empirical question, and the
+simulation answers it.
+
+\subsection{A light simulation on the test days}
+\label{sec:econ:simulation}
+
+The simulation trades every call of a model on the test days of 24--26 March, one share per
+call, under the following rules.  A sample is traded only if its book is well formed (a
+positive spread, both quotes inside the unit interval; $96\%$ of the samples).  The calls
+are those of the calibrated model, with the offsets chosen on the validation day exactly as
+in \cref{sec:horizons:test}: the stateless control at every horizon, the stateful model with
+the engineered features and its residual on the trees where their test predictions exist,
+and an \emph{oracle} that calls the realised label, the upper bound of any direction model
+under the same costs.  Three executions are compared.  \emph{Taker--taker} crosses the
+spread at $t$ and again at $t + H$, at the quotes of the last book seen before $t + H$
+around the true mid of the label.  \emph{Maker--taker} rests at the best quote at $t$; the
+order counts as filled if a later fill of the same market within $(t, t + H]$ printed at or
+through its price, and the position is closed by crossing at $t + H$; calls that are not
+filled are not traded.  \emph{Maker--maker} rests on both legs and assumes the closing fill:
+the upper bound of a pure maker.  Fees are those charged in March 2026 on each market, read
+from its own taker fills, with a no-fee variant for comparison.  Our own orders do not move
+the book, the queue position is ignored (a resting order is filled as soon as the price
+reaches it), there is no latency and no capital constraint: the taker numbers are realistic
+for one share, the maker numbers are optimistic, and the gap between the two is where a real
+strategy would sit.
+
+\Cref{tab:econ:terms} gives the terms of \cref{eq:econ:edge,eq:econ:taker} for the calls of
+the control at each horizon, and \cref{tab:econ:pnl} the profit or loss per share of the
+three executions; \cref{app:results:econ} has the same quantities for the stateful models,
+the oracle and the subsets.
+
+\begin{table}[t]
+\centering
+\caption{The terms of a traded call for the stateless control on the test days: calls
+(millions), precision $h$, share of calls with no move $z$ and with the opposite move $w$,
+mean absolute move when right ($\mu^{+}$) and when wrong ($\mu^{-}$), gross edge $g$, median
+spread at the calls, mean spread paid by a taker over the two legs, and mean fee of the two
+legs as charged in March 2026.  Ticks of $0.001$.}
+\label{tab:econ:terms}
+\small
+\begin{fittable}\begin{tabular}{lrcccccccccc}
+\toprule
+Horizon & Calls & $h$ & $z$ & $w$ & $\mu^{+}$ & $\mu^{-}$ & $g$ & Spread (median) & Spread paid & Fee \\
+\midrule
+1 min & 5.80 & 0.270 & 0.578 & 0.152 & 17.6 & 19.1 & $+1.9$ & 30 & 100.7 & 0.81 \\
+15 min & 8.63 & 0.398 & 0.372 & 0.230 & 32.7 & 37.2 & $+4.5$ & 27 & 95.7 & 0.64 \\
+1 h & 9.97 & 0.464 & 0.266 & 0.270 & 43.2 & 43.8 & $+8.2$ & 23 & 89.3 & 0.55 \\
+6 h & 9.73 & 0.539 & 0.135 & 0.326 & 33.3 & 31.2 & $+7.8$ & 20 & 81.2 & 0.38 \\
+12 h & 9.01 & 0.561 & 0.105 & 0.334 & 35.2 & 31.5 & $+9.2$ & 20 & 77.1 & 0.37 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Profit or loss per share, in ticks of $0.001$, of the calls of the stateless
+control on the test days under the three executions, fees as charged in March 2026 unless
+stated.  Taker--taker on all calls, without fees, and on the calls with a spread of at most
+two ticks; maker--taker on all calls and on the most confident decile, with the share of
+calls that are filled; maker--maker on all calls (upper bound); the oracle that calls the
+realised label, as a taker and as a maker--taker.}
+\label{tab:econ:pnl}
+\small
+\begin{fittable}\begin{tabular}{lccccccccccc}
+\toprule
+& \multicolumn{3}{c}{Taker--taker} & \multicolumn{4}{c}{Maker--taker} & Maker--maker & \multicolumn{3}{c}{Oracle} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-8}\cmidrule(lr){9-9}\cmidrule(lr){10-12}
+Horizon & all & no fee & spread $\le 2$ & filled & all & filled & top decile & all & taker & filled & maker--taker \\
+\midrule
+1 min & $-99.6$ & $-98.8$ & $-0.9$ & 7\% & $-4.2$ & 7\% & $+0.6$ & $+24.5$ & $-90.6$ & 10\% & $+27.4$ \\
+15 min & $-91.8$ & $-91.2$ & $+0.9$ & 20\% & $+0.4$ & 19\% & $+51.1$ & $+33.0$ & $-63.9$ & 24\% & $+71.5$ \\
+1 h & $-81.6$ & $-81.0$ & $+0.8$ & 29\% & $+11.1$ & 45\% & $+79.4$ & $+44.0$ & $-47.5$ & 31\% & $+82.1$ \\
+6 h & $-73.8$ & $-73.4$ & $-0.3$ & 46\% & $+10.4$ & 49\% & $+46.2$ & $+40.0$ & $-48.0$ & 41\% & $+40.0$ \\
+12 h & $-68.2$ & $-67.8$ & $+0.8$ & 52\% & $+13.9$ & 55\% & $+59.2$ & $+42.6$ & $-42.5$ & 48\% & $+39.1$ \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\paragraph{The terms.}  The precision of the control's calls rises with the horizon, from
+$0.27$ at one minute, where more than half of the calls end with no move, to $0.56$ at
+twelve hours, and the share of calls that end on the wrong side rises with it, from $0.15$
+to $0.33$; the moves when right and when wrong have about the same size, twenty to forty
+ticks on average, far above the one-tick median move, because the mean is made by the
+wide-spread markets that move in jumps.  The gross edge is two ticks per share at one minute,
+four and a half at fifteen minutes and eight to nine from one hour on.  Against it, the
+median spread at the calls is twenty to thirty ticks and the spread actually paid by a
+taker, dominated by the same wide markets, is eighty to one hundred; the fee is under one
+tick for the two legs on average, six to eight on the crypto markets that charge it.  The
+necessary condition of \cref{eq:econ:taker} fails on the typical market at every horizon, for
+every model and for the oracle too: even a model that is never wrong has a gross edge of
+eighteen to forty ticks, the oracle's $\mu^{+}(1 - z)$, which is a fifth of the spread it
+would pay.
+
+\paragraph{The taker.}  \Cref{tab:econ:pnl} says the same in money.  Executed as a taker, the
+calls of the control lose seventy to one hundred ticks per share at every horizon; removing
+the fee changes the loss by less than one tick; the oracle loses forty to ninety.  The loss
+shrinks with the horizon because the spread is the same while the moves are larger, but it
+never closes.  The one place where a taker breaks even is the books with a spread of at most
+two ticks, a tenth of the calls: there the edge of two to three ticks pays the spread and the
+fee almost exactly, between $-0.9$ and $+0.9$ ticks per share, and only the most confident
+decile of those calls is clearly positive, eight to thirty ticks per share on one percent of
+the samples (\cref{tab:app:econ}).  The spread, not the fee, is what eats the profit of a
+direction call: on this venue in March 2026 a taker pays the fee on a minority of markets
+and the spread on all of them, and the spread is a hundred times larger.
+
+\paragraph{The maker.}  Resting at the best quote changes the sign.  A maker--taker is
+filled on $7\%$ of the calls at one minute and on half of them at twelve hours, since a
+resting order has more time to be reached, and the filled calls earn $-4$ ticks per share at
+one minute, nothing at fifteen minutes and ten to fourteen ticks from one hour to twelve.
+The one-minute loss is adverse selection in its plain form: the calls that get filled are
+those whose price came to the order, and when they are wrong they are wrong by thirty-seven
+ticks against nineteen on all calls; from one hour on the selection works the other way,
+because the fills concentrate on the active markets where the control is more often right
+($0.52$ to $0.57$ precision on the filled calls against $0.46$ to $0.56$ on all).  On the
+most confident decile of its calls the control earns forty-six to seventy-nine ticks per
+filled share from one hour on, with a precision of $0.76$ to $0.77$, and the oracle earns
+forty to eighty: the model's maker gain on all calls is a tenth to a third of what perfect
+foresight would earn, and on its best decile it is close to it.  The maker--maker bound adds
+the exit half spread, thirty ticks, and shows what the second fill would be worth: more than
+the whole edge of any model.  Which side is better is therefore not in doubt: on the same
+calls a maker is eighty to one hundred ticks per share ahead of a taker at every horizon,
+and the costs that remain to it are the fill, which the simulation grants optimistically,
+and the adverse selection, which it measures.
+
+\paragraph{Risk, horizons and kinds of market.}  The per-share figures hide a wide
+dispersion: the standard deviation of the profit of a filled maker--taker trade is 50 to 145
+ticks against a mean of $-4$ to $+14$, so that a single trade is a coin toss with a slight
+tilt (hit rates of $0.45$ to $0.61$) and the mean is only visible over hundreds of thousands
+of trades; per unit of capital at risk, the aggregate return of the maker--taker on all
+calls is $1.5$ to $2\%$ per holding period from one hour on, and negative at one minute.
+The economics favour the long horizons, where the same spread is paid against a move that
+is five times larger and a resting order is filled twice as often.  By kind of market, the
+maker--taker at one hour is positive in every category, most on esports and sports
+($+28$ and $+16$ ticks per filled share, the in-play markets where the moves are large and
+the fills frequent) and least on economy and technology and on crypto ($+1$ and $+2$, where
+the fee of five ticks takes most of the edge); at fifteen minutes it is negative on sports,
+crypto and economy and positive on esports, weather and politics.  What the simulation does
+not include bounds its reading: our own orders would move the book and lengthen the queue,
+a real fill comes later than the first print at our price, the exit of the maker--maker
+bound is not guaranteed, and the fee schedule of the venue has since been extended to most
+categories at rates between $1\%$ and $5\%$, which at $p = 0.5$ is $2.5$ to $12.5$ ticks per
+leg, still below the typical spread but above the edge of any model on the tight books.
+The simulation fixes orders of magnitude, not a trading record: a direction call on this
+venue is worth a few ticks per share, it cannot be collected by crossing the spread, and
+a resting order collects part of it at the cost of a fill that is not guaranteed.

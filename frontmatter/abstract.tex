@@ -7,22 +7,21 @@ every order-book update and every trade is publicly observable.  This thesis tre
 venue as a data-analysis and data-mining object and asks whether, and how, the direction
 of its prices can be predicted over horizons from one minute to twelve hours.
 
-The thesis first explains how a prediction market and Polymarket work, and introduces the
-notions of time series, order books, graphs, learners and evaluation that it uses.  It then
-follows twenty-one days of order-book, on-chain and market data from collection, through
-preprocessing and audit, to a leakage-free three-class benchmark (down, unchanged, up), and
-explores them as a price process, a transaction graph and a feature space.  The
-methodology sets the objective and the criteria of comparison and presents five families
-of approaches: causal rules on the price, stateless learners on hand-made features, a
-continuous-time stateful model of the order-book stream, graph models on the
-wallet--market transactions, and sources of information outside the book.  The
-experiments compare these families on the same samples, with bootstrap intervals and a
-locked test period, family by family and then across horizons, kinds of market and seeds.
+The question is approached as a data-mining study rather than as the search for one
+model.  Twenty-one days of order-book, on-chain and market data are followed from
+collection to a leakage-free three-class benchmark (down, unchanged, up) and are explored
+before any model is trained, as a price process, a transaction graph and a feature space,
+so that every model is held to regularities measured in advance.  Five families of
+approaches are then compared on the same samples, with bootstrap intervals and a locked
+test period: causal rules on the price, stateless learners on engineered features, a
+continuous-time stateful model of the order-book stream, message passing on the
+wallet--market transactions, and sources of information outside the book.
 
 The main findings are that a market's own activity is its most predictable feature; that
-gradient-boosted trees on hand-made features are the strongest model from fifteen minutes
+gradient-boosted trees on engineered features are the strongest model from fifteen minutes
 to twelve hours; that the stateful model of the book stream adds a small but reliable gain
-at one minute, where the task is whether the price will move at all; and that the
-transaction graph and the sources outside the book add no reliable gain over what the book
-already shows.  The conclusions state the limits of the study, what a deployment would
+at one minute, where the task is whether the price will move at all, and, on top of the
+trees, at fifteen minutes; and that the
+message-passing model built on the transaction graph and the sources outside the book add
+no reliable gain over what the book already shows.  The conclusions state the limits of the study, what a deployment would
 need, and the future work.

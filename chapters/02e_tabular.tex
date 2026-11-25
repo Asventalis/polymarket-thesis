@@ -1,10 +1,11 @@
 \section{Gradient-boosted trees and neural tabular learners}
 \label{sec:bg:tabular}
 
-When the inputs are a table of hand-made features, one row per sample, the reference
+When the inputs are a table of engineered features, one row per sample, the reference
 learner is not a neural network but an ensemble of decision trees built by gradient
 boosting.  This section explains the decision tree, the boosting procedure that adds trees
-one at a time along the gradient of the loss, the LightGBM implementation used here, and
+one at a time along the gradient of the loss, the LightGBM implementation
+\cite{ke2017lightgbm} used in this thesis, and
 the two neural learners trained on the same table to tell the learner apart from the
 training regime.
 
@@ -80,7 +81,8 @@ improved for forty rounds.}
 \label{fig:bg:boosting}
 \end{figure}
 
-\paragraph{LightGBM.}  LightGBM \cite{ke2017lightgbm} is the implementation used.  Three
+\paragraph{LightGBM.}  LightGBM \cite{ke2017lightgbm} is the implementation used in this
+thesis.  Three
 of its choices matter here.  It bins every feature into at most 255 \emph{histogram} bins
 before training, so that the gain of every candidate split is computed from sums over
 bins rather than over rows, which makes a round on seven million rows take seconds.  It
@@ -101,8 +103,8 @@ care.
 \subsection{Neural tabular learners}
 \label{sec:bg:tabnets}
 
-That care consists of a few known ingredients \cite{holzmuller2024betterbydefault}.  The
-first is the \emph{piecewise-linear encoding} of every numeric feature
+A neural network trained on the same table reaches the trees only with a few known
+ingredients \cite{holzmuller2024betterbydefault}.  The first is the \emph{piecewise-linear encoding} of every numeric feature
 \cite{gorishniy2022embeddings}: the range of a feature is cut at $T$ quantiles of the
 training data, $b_0 < b_1 < \cdots < b_T$, and the feature value $x$ is replaced by $T$
 numbers,

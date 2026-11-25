@@ -1,14 +1,4 @@
-\section{Neural networks for sequences}
-\label{sec:bg:sequences}
-
-The stateful models of the thesis read a stream of book events and keep a state per
-market.  This section builds them up from their parts: the multilayer perceptron, the
-recurrent network and the gated recurrent unit that updates a state, the way such a
-network is trained through time, the attention mechanism and the transformer encoder that
-read a window of book states, the continuous-time treatment of a state between irregular
-events, and the pretrained time-series models that are used without training.
-
-\subsection{The multilayer perceptron}
+\section{The multilayer perceptron}
 \label{sec:bg:mlp}
 
 The multilayer perceptron (MLP) is the building block of every network here: a sequence
@@ -45,6 +35,16 @@ The predictor of the stateful model is an MLP of one hidden layer of 64 units on
 concatenation of its states; the tabular networks of \cref{sec:bg:tabular} are MLPs of
 three layers of 512 units.
 
+\section{Neural networks for sequences}
+\label{sec:bg:sequences}
+
+The stateful models of the thesis read a stream of book events and keep a state per
+market.  This section builds them up from their parts: the recurrent network and the gated
+recurrent unit that updates a state, the way such a network is trained through time, the
+attention mechanism and the transformer encoder that read a window of book states, the
+continuous-time treatment of a state between irregular events, and the pretrained
+time-series models that are used without training.
+
 \subsection{Recurrent networks and the gated recurrent unit}
 \label{sec:bg:rnn}
 
@@ -70,8 +70,7 @@ Exploding gradients are tamed by \emph{clipping}, rescaling the gradient vector 
 its norm exceeds a threshold (1.0 in the stateful model); vanishing ones are the reason for
 gated units.
 
-The \emph{gated recurrent unit} (GRU) \cite{cho2014gru}, a lighter cousin of the LSTM
-\cite{hochreiter1997lstm}, replaces \cref{eq:rnn} with an update in which the network
+The \emph{gated recurrent unit} (GRU) \cite{cho2014gru} replaces \cref{eq:rnn} with an update in which the network
 decides, at every step and for every component of the state, how much of the old state to
 keep and how much of a new candidate to write (\cref{fig:bg:gru}):
 \begin{align}
@@ -150,9 +149,12 @@ training ends.  \Cref{sec:stateful:regime} measures what this costs on the same 
 \label{sec:bg:attention}
 
 A recurrent network reads a window of $K$ book states in order and compresses them step by
-step; \emph{attention} reads all of them at once and lets every element look at every
-other.  Given $n$ vectors, the \emph{tokens} $\mathbf{X} \in \mathbb{R}^{n \times d}$
-(the rows), three learned linear maps produce for every token a query
+step; \emph{attention} reads all the elements of a window at once and lets every element
+look at every other.  The elements are called \emph{tokens}: a token is one unit of the
+input as the network sees it, a word of a sentence, a time step of a series or, here, one
+quantity of the book read over the window.  Given $n$ tokens, each a vector of $d$ numbers,
+stacked as the rows of $\mathbf{X} \in \mathbb{R}^{n \times d}$, three learned linear
+maps produce for every token a query
 $\mathbf{q}$, a key $\mathbf{k}$ and a value $\mathbf{v}$, and the output for token $i$ is a
 weighted average of the values of all tokens, the weights being a softmax of how well its
 query matches their keys:

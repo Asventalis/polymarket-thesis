@@ -1,0 +1,130 @@
+\section{Related work}
+\label{sec:bg:related}
+\label{sec:pm:related}
+
+This section collects the literature that the thesis builds on, in five groups: prediction
+markets and Polymarket, price prediction from limit order books, deep forecasting and
+time-series foundation models, learning on graphs and dynamic graphs, and tabular learning
+and evaluation.  For each group it says which choice of the thesis it motivates.
+
+\paragraph{Prediction markets and Polymarket.}  The economic literature reads prediction
+markets as aggregators of dispersed information.  The surveys of \textcite{wolfers2004prediction}
+and \textcite{snowberg2012prediction} and the research agenda of \textcite{arrow2008promise}
+document that their prices are well calibrated, competitive with polls and expert forecasts
+and quick to react to news; \textcite{manski2006interpreting} states under which assumptions
+a price can be read as a probability; \textcite{berg2008iem} report the long record of the
+Iowa Electronic Markets; and \textcite{hanson2003mcr,hanson2007lmsr} design the automated
+market makers that many venues use in place of an order book.  The favourite--longshot bias
+is the best-documented deviation from calibration \cite{page2013calibrated}, and it has been
+found again on Polymarket \cite{cardozo2026favorite}; \textcite{le2026calibration} show that
+calibration differs by domain of the question.  On Polymarket itself the recent work is
+empirical: \textcite{reichenbach2025exploring} measure accuracy, skill and bias,
+\textcite{tsang2026anatomy} dissect the trading of the 2024 presidential election,
+\textcite{akey2026whowins} show that trading profits concentrate in a very small set of
+wallets, \textcite{bsic2026polymarket} classify wallets by behaviour and estimate the price
+impact of their trades, \textcite{saguillo2025unravelling} and \textcite{gebele2026arbitrage}
+measure the arbitrage that related markets leave open, and \textcite{dubach2026anatomy}
+describes the microstructure of the books, including the 60\% agreement between the trade
+direction inferred from the book and the one recorded on-chain that led this thesis to read
+every direction from the chain (\cref{sec:pm:lob}).  Several datasets have appeared: the
+archive of the order-book feed used here \cite{gozo2026polymarket}, OpenMarket
+\cite{young2026openmarket}, which synchronises Polymarket with Binance and finds that a
+logistic model on 43 order-flow features does not beat the mid price itself as a predictor of
+the outcome of the fifteen-minute Bitcoin markets, the lifecycle datasets of
+\textcite{jia2026unlocking}, and the Polymarket-v1 database \cite{qin2026polymarketv1}.
+Machine learning on Polymarket has concentrated on forecasting the \emph{outcome} of a
+question with language models and news, as in PolyBench \cite{cheng2026polybench} and
+PolySwarm \cite{barot2026polyswarm}; betting exchanges, a close cousin, have been read with
+attention over the book \cite{goncalves2025betting}.  The thesis differs from all of these in
+predicting the \emph{price} while the market is open, from the book and the chain, and in
+reading the wallet--market graph as an input of a forecasting model, which to the best of
+our knowledge no prior work on Polymarket does.
+
+\paragraph{Price prediction from limit order books.}  The weak form of market efficiency
+\cite{fama1970efficient} says that past prices carry nothing about future ones; at short
+horizons this holds only approximately, as the rejection of the random walk by
+\textcite{lo1988stock} and the stylised facts of high-frequency returns
+\cite{cont2001empirical} show, with the negative autocorrelation of the bid--ask bounce as the
+main regularity.  \textcite{gould2013limit} survey the limit order book as an object and
+\textcite{cont2014price} define the order-flow imbalance that this thesis uses as a feature.
+Deep learning on books started with DeepLOB \cite{zhang2019deeplob} on the FI-2010 benchmark
+\cite{ntakaris2018benchmark} and continued with multi-horizon variants
+\cite{zhang2021multihorizon}, transformer architectures \cite{berti2025tlob}, foundation
+models of the message stream \cite{linna2025lobert} and generative models of the event stream
+\cite{zheng2026lobdif}; point-process models describe the same stream as a Hawkes process
+\cite{cestari2023hawkes,lalor2025neuralhawkes}.  Four findings of this literature shaped the
+thesis.  Predictability depends on the microstructure of each asset, tick size, spread and
+depth, more than on the architecture \cite{briola2024deep}, which is why the price level is
+read as the first conditioning variable here.  Most of the information of a book is in its first levels and the deeper levels add much
+less \cite{tran2022beyondbest}, and what a model is shown matters more than which model
+reads it \cite{kolm2023dofi,lucchese2024predictability}, which is why the thesis measures the
+inputs before the learners.  One model trained on many books beats one model per book
+\cite{sirignano2019universal}, which motivates a single model pooled over all markets.  And a
+well-tuned small network matches larger ones when the label is defined carefully
+\cite{berti2025tlob}, while recurrent models remain competitive on irregular series
+\cite{joshi2026gruwe}, which is why the stateful model is built around a gated recurrent
+unit.  Graphs built from high-frequency trade data \cite{karpman2022learning} and graph
+models of co-moving stocks \cite{luo2025magicnet} are the closest relatives of the
+market--market view of \cref{sec:models:twographs}.
+
+\paragraph{Deep forecasting and time-series foundation models.}  Two results of the general
+forecasting literature are used as cautions.  A one-layer linear model on the raw window
+matches or beats several large transformer forecasters on the standard benchmarks
+\cite{zeng2023transformers}, so every encoder is checked here against a trivial one on the
+same inputs; and reading each variable of a multivariate series as its own sequence with
+shared weights, the channel-independence pattern of PatchTST \cite{nie2023patchtst}, is more
+accurate than mixing the variables at every step, which is the design of the time-first
+encoder.  Other deep forecasters of the same generation \cite{challu2022nhits,lim2021tft}
+are not used.  Time-series foundation models, pretrained once and applied zero-shot, exist in
+several families: Chronos \cite{ansari2024chronos} and Chronos-2 \cite{ansari2025chronos2},
+the model evaluated here, TimesFM \cite{das2024timesfm}, MOMENT \cite{goswami2024moment} and
+TiRex \cite{auer2025tirex}.  Their record in finance is sobering: on returns their zero-shot
+forecasts are close to a random walk \cite{rahimikia2025revisiting,anon2026pretrained}, the
+value found so far comes from a learned correction on top of the frozen model
+\cite{dewage2026hybrid}, and classical machine learning remains the reference for realised
+volatility \cite{rahimikia2026volatility}.  \Cref{sec:external:tsfm} tests exactly this
+setting on prediction-market prices.
+
+\paragraph{Learning on graphs and dynamic graphs.}  Graph neural networks compute node
+representations by passing messages along the edges \cite{scarselli2009gnn,micheli2009nn4g,
+kipf2017gcn,hamilton2017graphsage,gilmer2017mpnn}; \textcite{bacciu2020gentle} give an
+introduction.  The two operators used here are the attention over the neighbours of
+\textcite{velickovic2018gat} and the gated update of \textcite{li2016ggnn}.  For graphs whose
+edges arrive in time, the surveys of \textcite{kazemi2020survey} and
+\textcite{gravina2024dynamic} distinguish snapshot models, which apply self-attention across
+the snapshots \cite{sankar2019dysat,jiang2026evolving}, from event-based models, which keep
+a memory per node and update it at every event: JODIE \cite{kumar2019jodie}, DyRep
+\cite{trivedi2019dyrep}, TGAT \cite{xu2020tgat} and Temporal Graph Networks
+\cite{rossi2020tgn}, the general recipe that the stateful model of \cref{ch:models} follows.
+The stability and the reach of message passing over long sequences of updates are addressed
+by anti-symmetric and dissipative updates \cite{gravina2023antisymmetric,ceni2025mpssm},
+by non-dissipative continuous-time updates \cite{gravina2024ctan}, by graph ordinary
+differential equations for irregular samples \cite{gravina2024tgode} and by long-range
+propagation through information waves \cite{trenta2025sonar}; one of these, the
+continuous-time anti-symmetric update, is tested in \cref{sec:stateful:variants}.  Two
+evaluation papers frame the negative result of \cref{ch:graph}: \textcite{feldman2026navis}
+show that a simple heuristic, the recent interaction history, beats most learned models on
+temporal graphs and should be contained by them, which is the origin of the direct path; and
+\textcite{martin2026audit} show that spatiotemporal benchmarks are often won by per-node
+baselines.  When the graph is not given it can be learned sparsely from the series
+\cite{cini2023sparse}, and relations between series can be used for calibrated intervals
+\cite{cini2025relational}; \textcite{akcora2022blockchain} survey blockchain transaction
+graphs as objects of analysis.
+
+\paragraph{Tabular learning and evaluation.}  Gradient boosting \cite{friedman2001gbm}, in
+its second-order form \cite{chen2016xgboost} and its histogram-based implementation LightGBM
+\cite{ke2017lightgbm}, is the reference learner for tables: the M5 forecasting competition
+was won almost entirely by it \cite{makridakis2022m5}, and recent benchmarks find trees at or
+near the top unless a network is trained with care \cite{jiang2026omnitabbench}.  That care
+is known: piecewise-linear encodings of the numeric features \cite{gorishniy2022embeddings},
+embeddings of the categorical ones \cite{guo2016entity}, strong defaults for the training
+loop \cite{holzmuller2024betterbydefault}, and the cheap ensembles of TabM
+\cite{gorishniy2025tabm}; \cref{sec:stateless:tabular} uses the last three to tell the
+learner apart from the training regime.  Averaging several independently trained networks
+is the most reliable improvement of a deep classifier \cite{lakshminarayanan2017ensembles}.
+For evaluation under class imbalance and dependent samples the thesis uses balanced accuracy
+\cite{brodersen2010balanced}, the logit adjustment of \textcite{menon2021logitadjustment}
+read as a calibration to be fitted rather than computed, the focal loss \cite{lin2017focal},
+the block bootstrap \cite{kunsch1989jackknife} and the lessons of
+\textcite{lopezdeprado2018advances} on purging, embargoes and event-based labels in
+financial machine learning.

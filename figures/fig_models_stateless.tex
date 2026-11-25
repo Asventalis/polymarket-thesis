@@ -4,7 +4,7 @@
   arr/.style={->, draw=vizInk, line width=0.8pt}, lbl/.style={font=\scriptsize\bfseries, color=vizInk}]
 % column (a): LightGBM
 \node[lbl] at (0, 0.9) {(a) LightGBM};
-\node[input] (in1) at (0, 0) {61 hand-made features of the sample:\\60 numbers and the category};
+\node[input] (in1) at (0, 0) {61 engineered features of the sample:\\60 numbers and the category};
 \node[op, below=of in1] (gbm) {gradient-boosted trees:\\$R$ rounds $\times$ 3 trees of $\le 63$ leaves\\($R = 536$ at 1 h, 324 at 1 min)};
 \node[state, below=of gbm] (sc1) {3 class scores $\to$ softmax\\$\to$ 3 probabilities};
 \draw[arr] (in1) -- (gbm); \draw[arr] (gbm) -- (sc1);

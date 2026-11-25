@@ -3,15 +3,17 @@
 
 This chapter gives the background that the rest of the thesis assumes: what a prediction
 market is and how Polymarket, the venue studied here, works (\cref{sec:pm:what,ch:pm}),
-what is known about it (\cref{sec:pm:related}), what an order book is and what is known
-about the predictability of its price (\cref{sec:bg:ts}), the notation used from here on
+what an order book is and what is known about the predictability of its price
+(\cref{sec:bg:ts}), the notation used from here on
 (\cref{sec:bg:notation}), and then the models themselves: how a classifier is trained, from
 the likelihood to the loss, the gradient and the optimiser (\cref{sec:bg:learning}); the
-neural networks for sequences, from the multilayer perceptron to recurrent units, attention
-and continuous-time states (\cref{sec:bg:sequences}); graph neural networks and dynamic
+multilayer perceptron (\cref{sec:bg:mlp}) and the neural networks for sequences, from
+recurrent units to attention and continuous-time states (\cref{sec:bg:sequences}); graph
+neural networks and dynamic
 graphs (\cref{sec:bg:graphs}); gradient-boosted trees and neural tabular learners
 (\cref{sec:bg:tabular}); and the evaluation of a classifier under class imbalance and
-dependent samples (\cref{sec:bg:eval}).
+dependent samples (\cref{sec:bg:eval}).  The chapter closes with the related work,
+collected in one place (\cref{sec:bg:related}).
 
 \section{Prediction markets}
 \label{sec:pm:what}
@@ -50,7 +52,8 @@ with a concentration of trading profits in a very small set of accounts
 
 Polymarket is the venue whose data the thesis studies.  This section describes its
 mechanics in the detail that the data require, from outcome tokens and the hybrid order
-book to settlement and resolution, and closes with what the literature has found about it.
+book to settlement and resolution; what the literature has found about it is reviewed with
+the rest of the related work in \cref{sec:bg:related}.
 
 \subsection{How Polymarket works}
 \label{sec:pm:mechanics}
@@ -100,7 +103,7 @@ the history of a wallet (its activity, its past accuracy, the other markets it t
 informative about the price of the markets it trades now.  Works on Polymarket have used
 wallet-level data to study who wins and who loses \cite{akey2026whowins}, insider trading and
 informed flow \cite{bsic2026polymarket}, and arbitrage between related markets
-\cite{saguillo2025unravelling}.  None of them, to my knowledge, had used the wallet--market
+\cite{saguillo2025unravelling}.  None of them, to the best of our knowledge, had used the wallet--market
 graph as the input of a forecasting model; the graph models of \cref{ch:graph} do.  The block is also the natural time step of the
 on-chain stream and the time step of every stateful model in the thesis
 (\cref{sec:data:blocks}); the graph itself is described in \cref{sec:expl:graph}.
@@ -125,9 +128,10 @@ do not touch the best quotes: on a typical day about four events in a hundred ch
 
 Two consequences of this structure recur in every result of the thesis.  A mid price is a
 bounded, discrete process observed through a thin book, so most of its changes are one-tick
-oscillations produced by an order arriving at or leaving the best quote, which are not
-information and which revert; and the dynamics depend on the price level, since a market at
-$0.98$ has two ticks of room on one side and a hundred on the other.
+oscillations produced by an order arriving at or leaving the best quote: they are the noise
+of the book, not news about the event, and they are typically undone by the next event; and
+the dynamics depend on the price level, since a market at $0.98$ has two ticks of room on
+one side and a hundred on the other.
 \textcite{dubach2026anatomy} measures this microstructure on a 52-day sample of Polymarket
 books and reports three findings that matter here.  The depth of a book depends on how long
 the market lives, on its price level and on its volume.  The resting orders are not
@@ -164,20 +168,6 @@ ruled.  Resolution is therefore an event that happens after the end date, someti
 after it; the thesis never uses the outcome or the resolution time as an input, and it
 predicts the price while the market is still open.
 
-\subsection{What is known about Polymarket}
-\label{sec:pm:related}
-
-Machine-learning work on Polymarket has so far concentrated on \emph{outcome}
-forecasting with language models and news \cite{cheng2026polybench,barot2026polyswarm},
-on dataset construction \cite{jia2026unlocking,young2026openmarket} and on the
-economics of the platform \cite{reichenbach2025exploring,tsang2026anatomy}.
-\textcite{young2026openmarket} is the closest in spirit: a logistic model on 43
-order-flow features does not beat the Polymarket mid price itself as a predictor of the
-outcome of the 15-minute Bitcoin markets.  The present thesis predicts the
-\emph{price}, not the outcome, over horizons at which the market is still open; the
-natural references are therefore the limit-order-book forecasting literature
-(\cref{sec:bg:lob}) and the literature on dynamic graphs (\cref{sec:bg:dyn}).
-
 \section{Order books, price series and the forecasting task}
 \label{sec:bg:ts}
 \label{sec:bg:ts:concepts}
@@ -191,16 +181,17 @@ what follows.  The first summarises the past at a chosen time by a fixed set of 
 the last price, its change over a few fixed lookbacks, the number of events in the last
 minutes, the shape of the book now, and hands the summary to a learner that has no memory
 of its own: the \emph{stateless} reading, in which time enters only through the features.
-The second keeps a \emph{state} per market, a vector updated at every event or every block
-from the new observations, and asks the state for the prediction: the \emph{stateful}
-reading, that of recurrent networks.  The two differ in what they can see (a state can in
+The second keeps a \emph{state} per market: a vector that is updated from the new
+observations at every event or every block, carries forward what the past of the market has
+shown, and is the input of the prediction.  This is the \emph{stateful} reading, that of
+recurrent networks.  The two differ in what they can see (a state can in
 principle keep the order in which the events happened, a summary cannot), in how they are
 trained (a table of summaries can be shuffled and revisited; a state must be trained in
 time order through the stream) and in how they handle irregular time (a summary can include
 the time since the last event; a state has to be told how much time has elapsed, through a
 decay or an explicit input).  The forecasting task itself takes two forms, the regression
 of the value at a future horizon $H$ or the classification of the \emph{direction} of its
-change; I use the second, with three classes (\textsc{down}, \textsc{const},
+change; we use the second, with three classes (\textsc{down}, \textsc{const},
 \textsc{up}) and horizons from one minute to twelve hours, and the null model against
 which every result is read is the random walk, under which the past of the price says
 nothing about its future.
@@ -222,7 +213,7 @@ accumulates, over a span of events, the signed changes of the size at the best q
 an order that adds size to the best bid or removes it from the best ask pushes the mid up,
 and the sum of such pushes over the recent past is strongly related to the next move of
 the mid.  These quantities are the columns of the book vector $\mathbf{b}_i$ of
-\cref{sec:data:tensors} and of the hand-made features of \cref{sec:prep:features}.
+\cref{sec:data:tensors} and of the engineered features of \cref{sec:prep:features}.
 
 \paragraph{Price predictability and limit order books.}
 \label{sec:bg:lob}
@@ -309,21 +300,25 @@ them.
   written $(\mathbf{x}_i, y_i)$, $i = 1, \ldots, N$.
   \item \textbf{Lookbacks.}  For a span $L$,
   $\Delta^{-}_{L}(m, t) = \operatorname{mid}_m(t) - \operatorname{mid}_m(t - L)$ is the
-  change of the mid over the past $L$; the rules of \cref{sec:models:baselines} read
-  nothing else.
+  change of the mid over the past $L$; the rules of \cref{sec:models:baselines} use only
+  these changes.
   \item \textbf{Models and parameters.}  A learned model is a function $f(\cdot;
   \boldsymbol{\theta})$ of its inputs with parameters $\boldsymbol{\theta}$ (all the
   weights and biases, collected in one vector).  A stateless model reads a vector of
-  hand-made features $\mathbf{x}_{m,t} \in \mathbb{R}^{61}$, each a function of the data
+  engineered features $\mathbf{x}_{m,t} \in \mathbb{R}^{61}$, each a function of the data
   strictly before $t$ (\cref{sec:prep:features}), and returns three class probabilities
   $\hat{\mathbf{p}}_{m,t} = f(\mathbf{x}_{m,t}; \boldsymbol{\theta}) \in \Delta^{3}$, where
   $\Delta^{3}$ is the set of probability vectors over the three classes.
   \item \textbf{Stateful models.}  A stateful model keeps a vector
-  $\mathbf{h}_m(t) \in \mathbb{R}^{d}$ per market, with $d = 128$.  Between two events of
+  $\mathbf{h}_m(t) \in \mathbb{R}^{d}$ per market, with $d = 128$, a size fixed in
+  \cref{sec:models:ctdgnn} as a compromise between the capacity of the state and the memory
+  that 820 thousand such vectors occupy on one GPU.  Between two events of
   $m$ the state decays, $\mathbf{h}_m(t) = e^{-r (t - t')}\, \mathbf{h}_m(t')$ for
   $t' < t$, with a learned rate $r$; at a block in which $m$ is active the state is
-  updated from the window $\mathbf{W}_{m,t} \in \mathbb{R}^{K \times 52}$ of its last $K$
-  book states, $\mathbf{h}_m(t) \leftarrow U\bigl(\mathbf{h}_m(t^{-}),
+  updated from the window $\mathbf{W}_{m,t} \in \mathbb{R}^{K \times C}$ of its last $K$
+  book states, each row holding the $52$ book columns, three momentum columns and the
+  constant columns of \cref{sec:models:ctdgnn} ($C$ is 70 to 143 depending on the
+  configuration), $\mathbf{h}_m(t) \leftarrow U\bigl(\mathbf{h}_m(t^{-}),
   \phi(\mathbf{W}_{m,t})\bigr)$, where $\phi$ is the window encoder and $U$ a gated
   recurrent update; the prediction is
   $\hat{\mathbf{p}}_{m,t} = g(\mathbf{h}_m(t), \mathbf{x}_{m,t})$
@@ -335,7 +330,8 @@ them.
   market $m$ at time $t$ with attributes $\mathbf{a}_e \in \mathbb{R}^{7}$ (side, role,
   size, price, fee, token orientation; \cref{sec:models:mp}).  $E_t$ is the set of edges
   of block $t$ and $N_t(v)$ the edges of $E_t$ incident to node $v$.  Wallets have states
-  $\mathbf{h}_w(t) \in \mathbb{R}^{d}$ like markets.
+  $\mathbf{h}_w(t) \in \mathbb{R}^{d}$ like markets.  \Cref{sec:bg:graphs:polymarket}
+  draws this object and gives its two readings, static and temporal.
   \item \textbf{Decision and score.}  Every model outputs three logits
   $\mathbf{z}_{m,t} \in \mathbb{R}^{3}$; the probabilities are
   $\hat{\mathbf{p}} = \operatorname{softmax}(\mathbf{z} + \boldsymbol{\delta})$ with an
@@ -348,7 +344,8 @@ them.
   chosen once on the validation day to maximise balanced accuracy and then frozen, move
   the decision boundary to where the score wants it
   (\cref{sec:bg:learning:imbalance,sec:models:protocol}).  Every model receives its own
-  offset, so that models are compared calibrated against calibrated.  The score is balanced accuracy,
+  offset, so that every comparison is made between models whose decision rules have been
+  placed the same way.  The score is balanced accuracy,
   $\mathrm{BA} = \tfrac{1}{3} \sum_{c} \mathrm{recall}_c$, where $\mathrm{recall}_c$ is the
   share of the samples of class $c$ that are predicted as $c$ (\cref{sec:bg:eval}).
 \end{itemize}
@@ -358,3 +355,4 @@ them.
 \input{chapters/02d_graphs}
 \input{chapters/02e_tabular}
 \input{chapters/02f_evaluation}
+\input{chapters/02g_related}

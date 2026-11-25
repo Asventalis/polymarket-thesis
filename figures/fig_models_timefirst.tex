@@ -1,0 +1,27 @@
+\begin{tikzpicture}[>=Latex, x=1cm, y=1cm, node distance=4mm,
+  box/.style={draw=vizInk, rounded corners=2pt, align=center, font=\footnotesize, inner sep=4pt, minimum height=9mm, text width=58mm, fill=white},
+  state/.style={box, fill=vizA!12}, input/.style={box, dashed}, op/.style={box, fill=vizB!12}, outbox/.style={box, fill=vizC!15},
+  arr/.style={->, draw=vizInk, line width=0.8pt}, lbl/.style={font=\scriptsize, color=vizInk, align=center}]
+% left column: the window, channel by channel
+\node[input] (win) at (0, 0) {order-book window $\mathbf{W}_{m,t}$:\\$K = 64$ snapshots $\times$ 55 channels\\(zero rows at the start if the market is young)};
+\node[op, below=of win] (norm) {for each channel $c$, over the real snapshots:\\subtract the last value, divide by the standard deviation ($+10^{-3}$), clip to $\pm 20$};
+\node[op, below=of norm] (tmap) {shared time map, linear $\mathbb{R}^{64} \to \mathbb{R}^{32}$,\\the same for all 55 channels};
+\node[op, below=of tmap] (tok) {token of channel $c$: time map output\\$+$ channel embedding $E_c \in \mathbb{R}^{32}$\\$+$ linear map of [last value, $\log(1 + \text{std})$, fill]};
+\node[state, below=of tok] (tokens) {55 tokens of 32 numbers};
+\node[op, below=of tokens] (attn) {one transformer encoder layer over the 55 tokens:\\4 heads, pre-norm, feed-forward 128, dropout 0.1};
+\node[op, below=of attn] (flat) {concatenate the 55 tokens ($55 \times 32 = 1760$),\\linear $1760 \to 128$};
+% right column: the constant columns
+\node[input] (ctx) at (8.2, -6.3) {constant columns of the last row:\\15 lookback $+$ 69 engineered ($+$ 4 tree) numbers};
+\node[op, below=of ctx] (cmap) {linear $84 \to 128$ ($88$ with the trees)};
+% output
+\node[state] (sum) at (4.1, -10.9) {window encoding $\phi(\mathbf{W}_{m,t}) \in \mathbb{R}^{128}$ (sum of the two)};
+\node[outbox, below=of sum] (out) {$\to$ linear $128 \to 128$ $\to$ GRU cell of the market state (\cref{eq:state-update})};
+\draw[arr] (win) -- (norm); \draw[arr] (norm) -- (tmap); \draw[arr] (tmap) -- (tok); \draw[arr] (tok) -- (tokens);
+\draw[arr] (tokens) -- (attn); \draw[arr] (attn) -- (flat);
+\draw[arr] (ctx) -- (cmap);
+\draw[arr] (flat.south) |- (sum.west);
+\draw[arr] (cmap.south) |- (sum.east);
+\draw[arr] (sum) -- (out);
+\node[lbl, anchor=west, text width=40mm] at (3.3, -1.2) {``time first'': each channel is read as its own series};
+\node[lbl, anchor=west, text width=40mm] at (3.3, -7.6) {``then space'': the channels look at one another};
+\end{tikzpicture}

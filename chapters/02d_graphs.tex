@@ -3,30 +3,69 @@
 \label{sec:bg:graphs:concepts}
 
 The transactions of the market, read as a whole, form a graph between wallets and markets,
-and one of the families of the thesis reads it with message passing.  This section fixes
-the vocabulary of graphs, gives the general form of a graph neural network and of the two
-operators used here, attention over the neighbours and a gated update, and describes how
-the same machinery is applied to a graph whose edges arrive one at a time.
+and one of the families of the thesis reads it with message passing.  This section
+formalises that graph, in its static and in its temporal reading, gives the general form of
+a graph neural network and of the two operators used here, attention over the neighbours
+and a gated update, and describes how the same machinery is applied to a graph whose edges
+arrive one at a time.
 
-\subsection{Graphs, bipartite graphs, dynamic graphs}
+\subsection{Polymarket as a temporal bipartite graph}
+\label{sec:bg:graphs:polymarket}
 
-A \emph{graph} $G = (V, E)$ is a set of nodes $V$ and a set of edges $E \subseteq V \times
-V$; its \emph{adjacency matrix} $\mathbf{A} \in \{0, 1\}^{|V| \times |V|}$ has $A_{uv} = 1$
-when $(u, v) \in E$, and the \emph{neighbourhood} $N(v) = \{u : (u, v) \in E\}$ of a node
-is the set of nodes joined to it.  The \emph{degree} of a node is the size of its
-neighbourhood; a \emph{connected component} is a maximal set of nodes between which a
-path exists; the \emph{$k$-core} is the largest sub-graph in which every node has at least
-$k$ neighbours inside it, which isolates the dense centre of a graph with a long tail of
-sparse nodes.  The transactions of a prediction market define a \emph{bipartite} graph:
-$V = \mathcal{W} \cup \mathcal{M}$, wallets on one side and markets on the other, with an
-edge between a wallet and a market for every trade of the first on the second and no edge
-joining two wallets or two markets; its adjacency is a rectangular \emph{biadjacency}
-matrix $\mathbf{B} \in \mathbb{R}^{|\mathcal{W}| \times |\mathcal{M}|}$, whose entries can
-carry the number of fills between the pair.  A graph whose edges arrive one at a time,
-each with a timestamp, is a \emph{dynamic} graph \cite{kazemi2020survey,gravina2024dynamic};
-it can be read as a sequence of \emph{snapshots}, the graph of each hour, say, or as a
-\emph{stream of events}, and the second reading is the one that matches the block-by-block
-arrival of the fills.
+The vocabulary is the one of \cref{sec:bg:notation}: a graph $G = (V, E)$ with nodes $V$
+and edges $E \subseteq V \times V$, and the neighbourhood $N(v) = \{u : (u, v) \in E\}$ of
+a node.  Three derived notions are used in \cref{sec:expl:graph}: the \emph{degree} of a
+node is the size of its neighbourhood; a \emph{connected component} is a maximal set of
+nodes between which a path exists; the \emph{$k$-core} is the largest sub-graph in which
+every node has at least $k$ neighbours inside it, which isolates the dense centre of a
+graph with a long tail of sparse nodes.  The transactions of Polymarket define one
+particular graph, drawn in \cref{fig:bg:graphobj}, which has two readings.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/fig_bg_graph_object}}
+\caption{The transaction graph of Polymarket and its two readings.  Wallets (circles) and
+markets (squares) are the two sides of a bipartite graph; every fill is an edge with a
+timestamp and seven attributes.  Read over a window, the graph has one edge per pair that
+traded, with the number of fills as its multiplicity.  Read as a stream, the edges arrive
+block by block, and a model at block $t$ sees the fills $E_t$ of that block together with
+the states of the nodes, which carry everything that happened before.}
+\label{fig:bg:graphobj}
+\end{figure}
+
+\paragraph{The static reading.}  The nodes are $V = \mathcal{W} \cup \mathcal{M}$, wallets
+and markets, and the graph is \emph{bipartite}: every edge joins a wallet to a market,
+never two wallets or two markets.  Over a window of time $[t_0, t_1)$ the graph
+$G_{[t_0, t_1)}$ has an edge $(w, m)$ for every pair that traded at least once in the
+window; its adjacency is the rectangular \emph{biadjacency} matrix
+$\mathbf{B} \in \mathbb{N}^{|\mathcal{W}| \times |\mathcal{M}|}$ whose entry $B_{wm}$ counts
+the fills between the pair, the \emph{multiplicity} of the edge.  The \emph{density} of the
+graph is $|E| / (|\mathcal{W}|\,|\mathcal{M}|)$, the share of the possible pairs that
+traded.  This is the graph of the whole window that \cref{sec:expl:graph} describes.
+
+\paragraph{The temporal reading.}  A fill is not a pair but an event.  The transaction
+stream is a sequence of timestamped, attributed edges
+\begin{equation}
+  \mathcal{E} = \bigl\{ e_i = (w_i, m_i, t_i, \mathbf{a}_{e_i}) \bigr\}_{i = 1, 2, \ldots},
+  \qquad t_1 \le t_2 \le \cdots,
+  \label{eq:temporal-graph}
+\end{equation}
+with $\mathbf{a}_{e} \in \mathbb{R}^{7}$ the attributes of the fill (side, role, size, price,
+fee, token orientation; \cref{sec:models:mp}).  This is a \emph{continuous-time dynamic
+graph} \cite{kazemi2020survey,gravina2024dynamic}: the node set is fixed (every wallet and
+market that appears in the window), the edges arrive one at a time and never disappear,
+and the graph at time $t$ is the set of edges with $t_i < t$.  Such a stream can be read in
+two ways.  As a sequence of \emph{snapshots}, $G_{[t_0, t_0 + \tau)}, G_{[t_0 + \tau, t_0 +
+2\tau)}, \ldots$ for a fixed $\tau$, which is how the hourly graphs of
+\cref{sec:expl:graph:time} are built; or as the \emph{stream of events} itself, which is
+the reading that matches the block-by-block arrival of the fills and the one the models
+use.  At the resolution of the block, $E_t \subseteq \mathcal{E}$ is the set of fills of
+block $t$ and $N_t(v)$ the edges of $E_t$ incident to node $v$: a message-passing step at
+block $t$ reads $E_t$ and nothing else of the graph, and the past of the graph is carried
+by the node states $\mathbf{h}_w(t)$ and $\mathbf{h}_m(t)$, which decay between events
+(\cref{sec:bg:ctime}).  The degree of a node is then a function of time: a wallet that has
+traded $k$ times by time $t$ has degree at most $k$, and a market's neighbourhood grows
+with every new wallet that trades it.
 
 \subsection{Message passing}
 \label{sec:bg:gnn}
@@ -97,8 +136,9 @@ update, is tested in \cref{sec:stateful:variants}.
 \subsection{Dynamic graphs: memories and messages in time}
 \label{sec:bg:dyn}
 
-A transaction stream is a \emph{continuous-time dynamic graph}: a sequence of timed events,
-each adding an edge between a wallet and a market.  The event-based models of this family
+A transaction stream is the continuous-time dynamic graph of
+\cref{sec:bg:graphs:polymarket}: a sequence of timed events, each adding an edge between a
+wallet and a market.  The event-based models of this family
 keep a \emph{memory} vector per node and update it at every event.  Temporal Graph
 Networks \cite{rossi2020tgn} give the general recipe, of which the earlier event-based
 models \cite{kumar2019jodie,trivedi2019dyrep,xu2020tgat} are special cases: when an edge

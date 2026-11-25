@@ -6,7 +6,7 @@
 the Polymarket metadata API.  Rebuilding every derived dataset from them is possible but
 long, so the models read the derived datasets directly: the market table
 (175{,}292 rows), the hourly transaction partitions with the market and the token
-orientation of every fill (11~GB), the order-book tensors (27~GB), the hand-made features
+orientation of every fill (11~GB), the order-book tensors (27~GB), the engineered features
 (7.7~GB), the cross-fitted tree log-probabilities (6.6~GB), the foundation-model forecasts
 (0.7~GB), the news and sibling features and the identifier mappings, about 55~GB in all,
 together with the trained checkpoints and the reports from which every table is taken.
@@ -15,7 +15,11 @@ without touching the raw streams.  The code is
 a Python package (\path{polymarket_gnn}) managed with \path{uv}, with the data pipeline in
 DuckDB and NumPy and the models in PyTorch; the raw data
 under \path{data/raw/} are never modified and every derived dataset lives under
-\path{data/derived/}.
+\path{data/derived/}.  The code, with the scripts of every step below, is available at
+\url{https://github.com/Asventalis/polymarket-thesis} in the \path{code/} directory; the
+raw and derived data, the checkpoints and the reports with the raw numbers are not
+included, because of their size and of the licence of the order-book archive, and the paths
+below are those of the working copy.
 
 \paragraph{Steps.}  The steps that produce the numbers of the thesis are, in order:
 
@@ -40,7 +44,7 @@ under \path{data/raw/} are never modified and every derived dataset lives under
   environment variables of \cref{app:runs} (\path{EPOCHS}, \path{TREE_DIR},
   \path{TREE_OFFSET}, \path{ENC}, \path{W}, \path{SEED}); each run writes its
   validation predictions.
-  \item \textbf{Hand features and the control.}  \path{hand_features.py} builds the 61
+  \item \textbf{Engineered features and the control.}  \path{hand_features.py} builds the 61
   features for every tensor row; \path{scripts/data_audit/feature_audit.py} \path{H} \path{<label>
 } \path{} \path{<label>} \path{10} \path{<out-dir>} builds the control on the samples of the run \path{<label>}, group
   by group, with the univariate diagnostics and the importances;
@@ -69,6 +73,11 @@ under \path{data/raw/} are never modified and every derived dataset lives under
   \path{scripts/data_audit/leadlag.py} (sibling lead--lag);
   \path{news_features.py}, \path{sibling_features.py} and
   \path{scripts/data_audit/news_audit.py} (external features in the control).
+  \item \textbf{Economic simulation.}  \path{scripts/data_audit/econ_sim.py} \path{--horizon}
+  \path{H} \path{--ctrl-offsets=<down,up>} \path{--deep} \path{<name>=<predictions>:<down,up>} reads
+  the control's feature table and probabilities on the test days, the test predictions of
+  the deep models, and the fee rates from the taker fills, and writes the tables of
+  \cref{sec:exp:econ,app:results:econ} (\path{econ_<H>.md}, \path{econ_<H>.csv}).
   \item \textbf{Reports.}  Every table of the thesis is in
   \path{reports/experiments/<study>/}, with the run labels in the file names; the
   development log (\path{DEVELOPMENT_LOG.md}) records every run with its date, device

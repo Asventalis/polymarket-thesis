@@ -1,0 +1,510 @@
+\chapter{Detailed Results and Ablations}
+\label{app:results}
+
+This appendix holds the results that \cref{ch:experiments} summarises: the intermediate
+configurations of the stateful model, the variants that were tested and set aside, the second
+seeds, and the test numbers by day.  Every table reads as in \cref{sec:data:protocol}:
+balanced accuracy on the validation day unless stated otherwise, differences in points with
+95\% hour-block bootstrap intervals in brackets.
+
+\section{The stateful model before the direct path}
+\label{app:results:first}
+
+Before the direct path and the hierarchical memory were added, the stateful model
+(\cref{sec:models:ctdgnn}) read the window and the transactions with three lookbacks.
+\Cref{tab:exp:retrain} gives its numbers against Mean Reversion: with or without the
+graph they beat the blind baselines and momentum but lose to the rule by three to eight
+points, and three seeds put the seed-to-seed standard deviation at $0.001$--$0.002$.  The
+graph contributes nothing at one hour, a tenth of a point at six hours with mixed sign
+across seeds, and three tenths at twelve hours with the same sign on all seeds.
+
+\begin{table}[t]
+\centering
+\caption{Models before the direct path (seed 0; the lookback rows are the mean of three seeds).}
+\label{tab:exp:retrain}
+\begin{fittable}\begin{tabular}{lccc}
+\toprule
+Model & 1h & 6h & 12h \\
+\midrule
+Mean Reversion-$H$                    & 0.527 & 0.501 & 0.507 \\
+CT-DGNN, graph                        & 0.496 & 0.471 & 0.430 \\
+CT-DGNN, LOB-only                     & 0.492 & 0.466 & 0.430 \\
++ lookback 1/6/12h, graph (3 seeds)   & 0.5035 & 0.4769 & 0.4389 \\
++ lookback 1/6/12h, LOB-only (3 seeds) & 0.5037 & 0.4759 & 0.4358 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\section{Loss and imbalance variants}
+\label{app:results:loss}
+\label{sec:stateful:variants}
+
+With the LOB-only lookback model as reference, \cref{tab:exp:variants} compares the fixed
+class weights with automatic (inverse-frequency) weights, with undersampling of the
+\textsc{const} class during training, and with regression of the signed change followed by
+a threshold calibrated on the last training day.  At one and six hours the fixed weights are
+best; at twelve hours, where \textsc{const} is a third of the samples instead of a half,
+undersampling gains five points.  Regression is far worse at every horizon: the Huber loss
+is dominated by the few large moves and the threshold calibrated on training data does not
+transfer.  The continuous-time anti-symmetric update \cite{gravina2024ctan} in place of the
+GRU cell gives no gain and is much worse without the decay; the wallet behaviour features
+give $\pm 0.3$ points with no consistent sign.
+
+\begin{table}[t]
+\centering
+\caption{Loss and imbalance variants, LOB-only model with lookback 1/6/12h, seed 0.}
+\label{tab:exp:variants}
+\begin{fittable}\begin{tabular}{lccc}
+\toprule
+Variant & 1h & 6h & 12h \\
+\midrule
+Focal, weights 2/1/2 (reference) & 0.504 & 0.476 & 0.437 \\
+Focal, automatic weights          & 0.487 & 0.475 & 0.479 \\
+Undersampling of \textsc{const}   & 0.486 & 0.467 & 0.488 \\
+Regression + calibrated threshold & 0.410 & 0.428 & 0.410 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\section{Variants of the final LOB-only model, and its seeds}
+\label{app:results:variants}
+
+\Cref{tab:app:variants} collects the variants of the best LOB-only configuration of
+\cref{sec:stateful:chain} that did not help, and its seeds.  Removing the decay or
+replacing it with a fixed multi-scale decay is worse than the learned decay; initialising
+the direct path at Mean Reversion instead of at zero loses two points, and is the clearest
+case in which a two-day short test predicted the wrong sign ($+0.7$ and $+2.0$ in the short
+test); log-odds price features have no effect.  Three seeds reproduce the one-hour number to
+the third decimal; at twelve hours they spread by $0.009$ and straddle the rule on the full
+stream while all three are above it on the deduplicated subset.
+
+\begin{table}[t]
+\centering
+\caption{Variants of the best LOB-only configuration at one hour and twelve hours (all
+samples), and its seeds.  The reference is the configuration of the last row of
+\cref{tab:exp:chain}.}
+\label{tab:app:variants}
+\small
+\begin{fittable}\begin{tabular}{lcc}
+\toprule
+Variant & 1 h & 12 h \\
+\midrule
+Reference (learned decay, direct path at zero), seed 0 & 0.5547 & 0.4914 \\
+No decay & 0.475 & --- \\
+Fixed multi-scale decay (1 min, 1 h, 1 day, $\infty$) & 0.509 & 0.427 \\
+Direct path initialised at Mean Reversion & $-2.1$ [$-2.7$, $-1.6$] vs reference & --- \\
+Log-odds price features added & no change & --- \\
+\midrule
+Seeds 0 / 1 / 2, all samples & 0.5547 / 0.5546 / 0.5549 & 0.4914 / 0.4843 / 0.4695 \\
+Seeds 0 / 1 / 2, deduplicated samples & 0.538--0.544 & all above Mean Reversion \\
+Mean Reversion & 0.5311 & 0.5071 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Best configuration at 6h (seed 0).}
+\label{tab:exp:6h}
+\begin{fittable}\begin{tabular}{lccc}
+\toprule
+Subset & Mean Reversion & LOB-only & graph \\
+\midrule
+all (9.3 M)           & 0.5069 & 0.5214 ($+1.45$ [$+0.89$, $+2.06$]) & 0.5279 ($+2.10$ [$+1.69$, $+2.51$]) \\
+deduplicated (1.2 M)  & 0.5002 & 0.5333 ($+3.31$)                      & 0.5278 ($+2.76$) \\
+extreme prices        & 0.4879 & 0.5136                                & 0.5154 \\
+central prices        & 0.5199 & 0.5260                                & 0.5355 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\section{The window encoders: second seed and six hours}
+\label{app:results:encoders}
+
+\Cref{tab:exp:encoders:more} confirms the comparison of the window encoders of
+\cref{sec:stateful:encoders} on a second seed at one hour and at six hours: seed 1
+reproduces seed 0 to within a tenth of a point on every subset, and at six hours the
+time-first encoder is above the reference on every subset, the deduplicated samples and
+the extreme prices included.
+
+\begin{table}[t]
+\centering
+\caption{Time-first encoder against the reference GRU: seed 1 at 1h and seed 0 at 6h
+(balanced accuracy; differences in points with 95\% hour-block bootstrap intervals).}
+\label{tab:exp:encoders:more}
+\small
+\begin{fittable}\begin{tabular}{llrcccc}
+\toprule
+Horizon & Subset & $n$ & MR & GRU $K{=}10$ & Time-first $K{=}64$ & $\Delta$ [95\% CI] \\
+\midrule
+1h, seed 1 & All samples    & 9{,}864{,}125 & 0.5311 & 0.5546 & 0.5635 & $+0.89$ [$+0.54$, $+1.22$] \\
+           & Deduplicated   & 1{,}255{,}651 & 0.5180 & 0.5437 & 0.5450 & $+0.13$ [$-0.19$, $+0.46$] \\
+           & Extreme prices & 3{,}787{,}202 & 0.5230 & 0.5409 & 0.5403 & $-0.06$ [$-0.48$, $+0.34$] \\
+           & Central prices & 6{,}076{,}923 & 0.5348 & 0.5588 & 0.5725 & $+1.37$ [$+1.04$, $+1.70$] \\
+\midrule
+6h, seed 0 & All samples    & 9{,}321{,}125 & 0.5069 & 0.5214 & \textbf{0.5396} & $+1.83$ [$+1.41$, $+2.21$] \\
+           & Deduplicated   & 1{,}234{,}892 & 0.5002 & 0.5333 & 0.5370 & $+0.38$ [$+0.13$, $+0.64$] \\
+           & Extreme prices & 3{,}744{,}385 & 0.4879 & 0.5136 & 0.5285 & $+1.49$ [$+0.94$, $+2.05$] \\
+           & Central prices & 5{,}576{,}740 & 0.5199 & 0.5260 & 0.5468 & $+2.08$ [$+1.81$, $+2.36$] \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\section{Follow-up runs of the model with the engineered features}
+\label{app:results:followup}
+
+Two follow-up runs, each paired against the run with the engineered features of
+\cref{sec:stateful:hand}, exclude the two obvious explanations of the gap that remains to
+the trees (\cref{tab:app:followup}).  Training with the control's objective, a
+class-balanced cross-entropy in place of the focal loss, and a predictor head four times
+wider and one layer deeper both lose, and both lose exactly where the features had gained
+most, the deduplicated and the extreme samples; both predict fewer moves than the focal-loss
+run, a class mix within a point of the labels', and on the sparse subsets that is what
+balanced accuracy punishes.  With two logit offsets fitted crosswise on the validation
+hours the three runs become indistinguishable: the loss and the head moved the decision
+bias of the model, not the function it learned.  The prior correction of
+\textcite{menon2021logitadjustment}, consistent for the balanced error when the
+probabilities are calibrated, is destructive on this focal-loss model ($0.527$): the focal
+weights already shift the probabilities towards the rare classes and the correction counts
+the shift twice.
+
+\begin{table}[t]
+\centering
+\caption{Follow-up runs of the one-hour model with the engineered features (seed 0):
+balanced accuracy and paired differences from that run, all samples and deduplicated
+samples; last column, the three runs after two cross-fitted logit offsets.}
+\label{tab:app:followup}
+\small
+\begin{fittable}\begin{tabular}{lcccc}
+\toprule
+Run & All & $\Delta$ & Dedup. & All, with offsets \\
+\midrule
+With the engineered features (reference) & 0.5842 & & 0.5708 & 0.5837 \\
+Class-balanced cross-entropy instead of the focal loss & & $-0.47$ [$-0.74$, $-0.22$] & $-1.95$ [$-2.13$, $-1.78$] & 0.5848 \\
+Predictor head of 256 units and two layers & & $-0.37$ [$-0.70$, $-0.08$] & $-1.90$ [$-2.12$, $-1.69$] & 0.5849 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\section{Weight averaging}
+\label{app:results:ema}
+
+An exponential moving average of the weights along the training pass (decay $0.998$ and
+$0.999$ per optimiser step, horizons of about $500$ and $1{,}000$ steps out of $3{,}000$),
+swapped in before validation, does not help on its own (\cref{tab:app:ema}): both runs are
+below the run with the features on all samples, with a decision bias towards \textsc{down}
+that two cross-fitted offsets only partly remove, and both tie the trees on the deduplicated
+samples.  What the averaged weights change is their complementarity: combined with LightGBM
+by a geometric mean of the probabilities (weight cross-fitted on the validation hours) they
+give three times the gain of the run with the features on the deduplicated samples.  The
+sequential state is worth most where the trees are weakest, on the sparse markets, and the
+smoother weights carry that part better than the last ones.
+
+\begin{table}[t]
+\centering
+\caption{Weight averaging at one hour (seed 0): balanced accuracy on all samples, after two
+cross-fitted offsets, on the deduplicated samples, and the gain of the combination with
+LightGBM on the deduplicated samples (points, 95\% hour-block bootstrap intervals).}
+\label{tab:app:ema}
+\small
+\begin{fittable}\begin{tabular}{lcccc}
+\toprule
+Run & All & All, with offsets & Dedup. & LightGBM $\oplus$ run, dedup. \\
+\midrule
+With the engineered features, one pass & 0.5842 & 0.5837 & 0.5708 & $+0.23$ \\
+Weight average, decay 0.998 & 0.5819 & 0.5876 & 0.5805 & $+0.68$ [$+0.57$, $+0.81$] \\
+Weight average, decay 0.999 & 0.5795 & 0.5859 & 0.5805 & $+0.72$ [$+0.62$, $+0.84$] \\
+Two passes & 0.5907 & & 0.5782 & $+0.26$ [$+0.16$, $+0.37$] (all samples) \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\section{The short horizons, calibrated}
+\label{app:results:short}
+
+\Cref{tab:exp:short} is the calibrated comparison of \cref{sec:horizons:short} with the
+offsets used by every model: at one minute both learners sit at the edge of the $\pm 0.6$
+grid used at one hour and the grid was widened to $\pm 2$, where the offsets are worth $+5.4$
+points to LightGBM and $+5.8$ to the network; at fifteen minutes they are worth $+0.5$ and
+at one hour $+0.3$.  Before calibration the ordering is the same but the gaps are not: the
+raw stateful model is $+0.23$ (not significant) at one minute and $-0.76$ [$-1.08$, $-0.45$]
+at fifteen, where the raw residual model is $+0.04$ and the calibrated one $+0.70$, and the
+prior correction of \textcite{menon2021logitadjustment} is worse than
+nothing at fifteen minutes ($0.6084 \to 0.5587$).
+
+\begin{table}[t]
+\centering
+\caption{Short horizons against one hour: the no-state control, the tabular network on the
+control's table and the stateful model, every one with its own two cross-fitted logit
+offsets (DOWN, UP), on the runs' validation samples of 13 March.  Balanced accuracy after
+calibration; $\Delta$ in points against the calibrated LightGBM with 95\% hour-block
+bootstrap intervals.  Labels DOWN / CONST / UP: $5.7 / 89.1 / 5.2\%$ at 1~min,
+$16.4 / 69.0 / 14.6\%$ at 15~min.}
+\label{tab:exp:short}
+\small
+\begin{fittable}\begin{tabular}{llcccc}
+\toprule
+Horizon & Model & All & $\Delta$ [95\% CI] & Dedup. & $\Delta$ [95\% CI] \\
+\midrule
+1 min  & LightGBM G5 (offsets 1.6, 1.6)  & 0.6623 & --- & 0.6143 & --- \\
+       & TabM, 3 seeds                   & 0.6656 & $+0.33$ [$+0.26$, $+0.39$] & 0.6133 & $-0.10$ [$-0.31$, $+0.10$] \\
+       & Stateful, 2 passes              & 0.6685 & $+0.62$ [$+0.46$, $+0.82$] & 0.6317 & $+1.74$ [$+1.31$, $+2.22$] \\
+       & Stateful, 2 passes, residual    & \textbf{0.6760} & $\mathbf{+1.37}$ [$+1.16$, $+1.58$] & \textbf{0.6346} & $\mathbf{+2.04}$ [$+1.76$, $+2.30$] \\
+\midrule
+15 min & LightGBM G5 (offsets 0.4, 0.4)  & 0.6213 & --- & 0.6197 & --- \\
+       & TabM, 3 seeds                   & 0.6235 & $+0.22$ [$+0.07$, $+0.36$] & 0.6248 & $+0.51$ [$+0.35$, $+0.68$] \\
+       & Stateful, 2 passes              & 0.6206 & $-0.07$ [$-0.34$, $+0.19$] & 0.6158 & $-0.39$ [$-0.63$, $-0.13$] \\
+       & Stateful, 2 passes, residual    & \textbf{0.6283} & $\mathbf{+0.70}$ [$+0.50$, $+0.88$] & \textbf{0.6265} & $\mathbf{+0.67}$ [$+0.34$, $+0.99$] \\
+\midrule
+1 h    & LightGBM G5 (offsets 0.2, 0.3)  & 0.6044 & --- & 0.5943 & --- \\
+       & TabM, 3 seeds                   & 0.6033 & $-0.11$ [$-0.29$, $+0.06$] & 0.5922 & $-0.21$ [$-0.45$, $+0.00$] \\
+       & Stateful, 2 passes              & 0.5902 & $-1.42$ [$-1.83$, $-1.00$] & 0.5797 & $-1.46$ [$-1.76$, $-1.14$] \\
+       & Stateful, 2 passes, residual    & \textbf{0.6048} & $+0.04$ [$-0.18$, $+0.24$] & 0.5933 & $-0.10$ [$-0.26$, $+0.05$] \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\section{The test days in detail}
+\label{app:results:test}
+
+\Cref{tab:test:days} gives the main models of \cref{sec:horizons:test} by test day and
+\cref{tab:test:zeroshot} the zero-shot forecaster on the test samples.  \Cref{tab:app:offsets}
+says what the offsets chosen on the validation day were worth on the test days: a few tenths
+of a point in either direction for the learners whose class mix was already right, and
+several points for the models whose class mix was wrong, the twelve-hour stateful model
+most of all.
+
+\begin{table}[t]
+\centering
+\caption{The main models by test day (balanced accuracy on all samples, calibrated as in
+\cref{tab:test:main}).}
+\label{tab:test:days}
+\small
+\begin{fittable}\begin{tabular}{llccc}
+\toprule
+Horizon & Model & 24 March & 25 March & 26 March \\
+\midrule
+1 min  & Mean Reversion & 0.5596 & 0.5675 & 0.5647 \\
+       & Stateless      & 0.6449 & 0.6479 & 0.6643 \\
+       & TabM           & 0.6477 & 0.6503 & 0.6678 \\
+       & Stateful, seed 0 & 0.6522 & 0.6547 & 0.6743 \\
+       & Stateful, seed 1 & 0.6485 & 0.6505 & 0.6720 \\
+       & Residual, seed 0 & 0.6536 & 0.6562 & 0.6754 \\
+       & Residual, seed 1 & 0.6545 & 0.6563 & 0.6765 \\
+\midrule
+15 min & Mean Reversion & 0.5469 & 0.5483 & 0.5437 \\
+       & Stateless      & 0.6048 & 0.6083 & 0.6171 \\
+       & TabM           & 0.6065 & 0.6092 & 0.6195 \\
+       & Stateful       & 0.6036 & 0.6036 & 0.6186 \\
+\midrule
+1 h    & Mean Reversion & 0.5297 & 0.5237 & 0.5251 \\
+       & Stateless      & 0.5971 & 0.5895 & 0.5945 \\
+       & TabM           & 0.5958 & 0.5900 & 0.5917 \\
+       & Stateful       & 0.5797 & 0.5808 & 0.5797 \\
+       & Residual       & 0.5948 & 0.5891 & 0.5945 \\
+\midrule
+6 h    & Mean Reversion & 0.5088 & 0.4989 & 0.5108 \\
+       & Stateless      & 0.5923 & 0.5785 & 0.5754 \\
+       & Stateful       & 0.5558 & 0.5403 & 0.5387 \\
+\midrule
+12 h   & Mean Reversion & 0.4730 & 0.4699 & 0.4842 \\
+       & Stateless      & 0.5990 & 0.5691 & 0.5863 \\
+       & Stateful, seed 0 & 0.5506 & 0.5199 & 0.5301 \\
+       & Stateful, seed 1 & 0.5449 & 0.5152 & 0.5390 \\
+       & Stateful, seed 2 & 0.5415 & 0.5140 & 0.5402 \\
+       & Graph          & 0.5481 & 0.5157 & 0.5417 \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Zero-shot Chronos-2 on 60{,}000 random test samples per horizon, as in
+\cref{tab:exp:tsfm} (raw decisions, no offsets): balanced accuracy of Mean Reversion-$H$, of
+the sign of the forecast median and of the median with a half-tick dead zone, the
+difference of the latter from the rule with its 95\% hour-block interval, the share of the
+rule's directional calls on which the forecaster agrees with it, and the share of the
+disagreements, on samples whose price then moved, in which the forecaster was right.}
+\label{tab:test:zeroshot}
+\small
+\begin{fittable}\begin{tabular}{lcccccc}
+\toprule
+Horizon & MR & Median & Dead zone & $\Delta$ dead zone $-$ MR & agrees with MR & right when they disagree \\
+\midrule
+1 min  & 0.5646 & 0.4145 & 0.5364 & $-2.82$ [$-3.70$, $-1.92$] & 60\% & 48\% \\
+15 min & 0.5485 & 0.4280 & 0.5249 & $-2.36$ [$-3.08$, $-1.64$] & 62\% & 52\% \\
+1 h    & 0.5267 & 0.4205 & 0.5133 & $-1.35$ [$-2.01$, $-0.73$] & 66\% & 51\% \\
+6 h    & 0.5072 & 0.3957 & 0.5028 & $-0.44$ [$-1.05$, $+0.11$] & 63\% & 51\% \\
+12 h   & 0.4710 & 0.3969 & 0.5077 & $+3.67$ [$+2.75$, $+4.46$] & 67\% & 53\% \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{What the two logit offsets chosen on 13 March were worth, in balanced-accuracy
+points, on the validation day and on the test days (raw argmax $\to$ calibrated).}
+\label{tab:app:offsets}
+\small
+\begin{fittable}\begin{tabular}{llcc}
+\toprule
+Horizon & Model & Validation & Test \\
+\midrule
+1 min  & LightGBM & $+5.4$ & $+2.0$ ($0.6300 \to 0.6496$) \\
+       & TabM & $+5.5$ & $+1.8$ \\
+       & Stateful, two passes & $+5.8$ & $+2.5$ ($0.6319 \to 0.6572$) \\
+       & Residual, seed 0 / seed 1 & $+5.9$ & $+2.1$ ($0.6380 \to 0.6586$) / $+2.4$ \\
+15 min & LightGBM & $+0.5$ & $-0.4$ ($0.6131 \to 0.6088$) \\
+       & Stateful, two passes & & $+0.2$ \\
+1 h    & LightGBM & $+0.3$ & $-0.3$ ($0.5972 \to 0.5944$) \\
+       & Stateful, two passes & & $+0.2$ \\
+6 h    & LightGBM & & $+0.2$ \\
+       & GRU reference / time-first & & $+1.6$ / $+0.1$ \\
+12 h   & LightGBM & & $+0.4$ \\
+       & GRU reference, seed 0 (offsets $-0.8$, $-0.8$) & & $+4.8$ ($0.4874 \to 0.5353$) \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\section{The cost of the gap between validation and test}
+\label{app:results:lag}
+
+The periods of the study are not contiguous (\cref{sec:data:splits}).  To measure what the
+gap costs, the stateless control was refitted with the same features, hyper-parameters and
+protocol on two other periods and evaluated on the same test samples as the control of
+\cref{sec:horizons:test}: on every day from 6 to 20 March, with early stopping on 21 March
+(no unused day before the warm-up), and on the week adjacent to the test alone, 14--20 March,
+with the same early-stopping day.  \Cref{tab:app:lag} gives the three fits at every horizon,
+as raw decisions, with the paired differences from the fit of the thesis and their 95\%
+hour-block bootstrap intervals over the test hours.  Fitting on every day gains between half
+a point and one point of balanced accuracy on the test days at every horizon, with intervals
+that exclude zero everywhere.  Fitting on the adjacent week alone gains a few tenths on all
+samples, not distinguishable from zero at one hour and at twelve hours, and between half a
+point and almost a point on the deduplicated samples, close to what every day gives there.
+On the full stream, dominated by the busy markets, what the extra days bring is therefore
+mostly more data; on the sparse markets the week adjacent to the test recovers most of the
+gain on its own, so there recency matters as much as quantity.  Either way the gap costs the
+control about half a point to one point, small against the distances between the families.
+
+\begin{table}[t]
+\centering
+\caption{The stateless control fitted on three periods and evaluated on the test samples of
+24--26 March (balanced accuracy, raw decisions, all samples and deduplicated samples): the
+fit of the thesis (7--11 March, early stopping on 12 March), the fit on every day up to the
+warm-up (6--20 March, early stopping on 21 March) and the fit on the week adjacent to the
+test (14--20 March, early stopping on 21 March).  $\Delta$ in points from the fit of the
+thesis, with 95\% hour-block bootstrap intervals over the test hours.}
+\label{tab:app:lag}
+\small
+\begin{fittable}\begin{tabular}{llcccccc}
+\toprule
+Horizon & Subset & MR & Fit 7--11 (thesis) & Fit 6--20 & $\Delta$ & Fit 14--20 & $\Delta$ \\
+\midrule
+15 min & All   & 0.5471 & 0.6131 & \textbf{0.6184} & $+0.53$ [$+0.42$, $+0.63$] & 0.6150 & $+0.19$ [$+0.01$, $+0.36$] \\
+       & Dedup & 0.5301 & 0.5978 & \textbf{0.6068} & $+0.90$ [$+0.83$, $+0.96$] & 0.6067 & $+0.89$ [$+0.82$, $+0.97$] \\
+1 h    & All   & 0.5268 & 0.5972 & \textbf{0.6028} & $+0.56$ [$+0.41$, $+0.71$] & 0.5991 & $+0.19$ [$-0.07$, $+0.46$] \\
+       & Dedup & 0.5125 & 0.5791 & \textbf{0.5856} & $+0.65$ [$+0.56$, $+0.74$] & 0.5848 & $+0.57$ [$+0.45$, $+0.69$] \\
+6 h    & All   & 0.5049 & 0.5836 & \textbf{0.5926} & $+0.91$ [$+0.74$, $+1.09$] & 0.5873 & $+0.37$ [$+0.14$, $+0.63$] \\
+       & Dedup & 0.5025 & 0.5767 & \textbf{0.5850} & $+0.83$ [$+0.71$, $+0.95$] & 0.5823 & $+0.56$ [$+0.40$, $+0.73$] \\
+12 h   & All   & 0.4724 & 0.5814 & \textbf{0.5874} & $+0.60$ [$+0.37$, $+0.81$] & 0.5820 & $+0.06$ [$-0.19$, $+0.30$] \\
+       & Dedup & 0.4766 & 0.5773 & \textbf{0.5846} & $+0.73$ [$+0.56$, $+0.89$] & 0.5815 & $+0.42$ [$+0.22$, $+0.60$] \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\section{The economic simulation in detail}
+\label{app:results:econ}
+
+\Cref{tab:app:econ} extends \cref{tab:econ:pnl} to the stateful models whose test predictions
+exist at each horizon, to the oracle that calls the realised label, and to the subsets: all
+calls, the deduplicated ones (at most one per market per ten minutes), the most confident
+decile of each model's calls and the calls on books with a spread of at most two ticks.  Fees
+as charged in March 2026 on each market; one share per call; profit or loss per share in
+ticks of $0.001$; the standard deviation is that of the profit of one filled maker--taker
+trade, and ``hit'' is the share of trades that end with a positive profit.  The oracle has
+no confidence, so its ``top decile'' is the whole set.
+
+\begin{table}[p]
+\centering
+\caption{The economic simulation on the test days by model and subset: calls (millions),
+taker--taker profit per share and hit rate, maker--taker share of filled calls, profit per
+filled share, its standard deviation, hit rate and precision of the filled calls, and the
+maker--maker upper bound.  Ticks of $0.001$.}
+\label{tab:app:econ}
+\footnotesize
+\begin{fittable}\begin{tabular}{lllrcccccccc}
+\toprule
+& & & & \multicolumn{2}{c}{Taker--taker} & \multicolumn{5}{c}{Maker--taker} & Maker--maker \\
+\cmidrule(lr){5-6}\cmidrule(lr){7-11}\cmidrule(lr){12-12}
+Horizon & Model & Subset & Calls (M) & P\&L & hit & filled & P\&L & std & hit & precision & P\&L \\
+\midrule
+1 min & Stateless control & all & 5.80 & $-99.6$ & 0.03 & 7\% & $-4.2$ & 53 & 0.45 & 0.40 & $+24.5$ \\
+ & Stateless control & dedup. & 0.23 & $-106.3$ & 0.01 & 2\% & $-3.3$ & 48 & 0.46 & 0.35 & $+27.6$ \\
+ & Stateless control & top decile & 0.58 & $-185.1$ & 0.04 & 7\% & $+0.6$ & 67 & 0.56 & 0.54 & $+29.6$ \\
+ & Stateless control & spread $\le 2$ & 0.27 & $-0.9$ & 0.03 & 8\% & $-1.6$ & 30 & 0.54 & 0.34 & $+0.8$ \\
+ & Stateful, engineered features & all & 5.75 & $-101.0$ & 0.03 & 8\% & $-5.0$ & 56 & 0.46 & 0.40 & $+24.9$ \\
+ & Stateful, engineered features & dedup. & 0.24 & $-107.6$ & 0.01 & 2\% & $-4.4$ & 52 & 0.47 & 0.35 & $+28.0$ \\
+ & Stateful, engineered features & top decile & 0.58 & $-190.2$ & 0.03 & 5\% & $+3.3$ & 65 & 0.55 & 0.54 & $+40.7$ \\
+ & Stateful, engineered features & spread $\le 2$ & 0.27 & $-1.7$ & 0.03 & 8\% & $-5.2$ & 40 & 0.55 & 0.34 & $-2.6$ \\
+ & Residual of the trees & all & 5.99 & $-100.2$ & 0.03 & 6\% & $-3.6$ & 53 & 0.46 & 0.40 & $+24.9$ \\
+ & Residual of the trees & dedup. & 0.26 & $-108.6$ & 0.01 & 2\% & $-2.5$ & 47 & 0.47 & 0.35 & $+26.4$ \\
+ & Residual of the trees & top decile & 0.60 & $-191.1$ & 0.03 & 4\% & $+3.4$ & 70 & 0.58 & 0.55 & $+38.5$ \\
+ & Residual of the trees & spread $\le 2$ & 0.29 & $-0.8$ & 0.03 & 8\% & $-0.9$ & 29 & 0.56 & 0.34 & $+1.4$ \\
+ & Oracle (realised label) & all & 2.62 & $-90.6$ & 0.13 & 10\% & $+27.4$ & 44 & 0.88 & 1.00 & $+59.0$ \\
+ & Oracle (realised label) & dedup. & 0.08 & $-106.8$ & 0.04 & 4\% & $+16.9$ & 47 & 0.84 & 1.00 & $+59.0$ \\
+ & Oracle (realised label) & spread $\le 2$ & 0.08 & $+2.8$ & 0.16 & 14\% & $+3.3$ & 22 & 0.83 & 1.00 & $+6.2$ \\
+\midrule
+15 min & Stateless control & all & 8.63 & $-91.8$ & 0.07 & 20\% & $+0.4$ & 125 & 0.50 & 0.46 & $+33.0$ \\
+ & Stateless control & dedup. & 0.67 & $-127.9$ & 0.02 & 8\% & $+1.3$ & 71 & 0.53 & 0.43 & $+30.5$ \\
+ & Stateless control & top decile & 0.86 & $-132.9$ & 0.12 & 19\% & $+51.1$ & 164 & 0.67 & 0.66 & $+80.0$ \\
+ & Stateless control & spread $\le 2$ & 0.61 & $+0.9$ & 0.09 & 31\% & $+3.2$ & 34 & 0.58 & 0.44 & $+5.6$ \\
+ & Stateful, engineered features & all & 8.41 & $-93.0$ & 0.07 & 20\% & $-3.2$ & 125 & 0.49 & 0.45 & $+29.9$ \\
+ & Stateful, engineered features & dedup. & 0.67 & $-140.4$ & 0.02 & 8\% & $+0.4$ & 73 & 0.52 & 0.43 & $+32.3$ \\
+ & Stateful, engineered features & top decile & 0.84 & $-153.2$ & 0.07 & 15\% & $+31.8$ & 124 & 0.65 & 0.63 & $+74.0$ \\
+ & Stateful, engineered features & spread $\le 2$ & 0.58 & $+0.7$ & 0.09 & 30\% & $+2.8$ & 36 & 0.56 & 0.44 & $+5.3$ \\
+ & Oracle (realised label) & all & 6.06 & $-63.9$ & 0.18 & 24\% & $+71.5$ & 107 & 0.91 & 1.00 & $+106.3$ \\
+ & Oracle (realised label) & dedup. & 0.45 & $-111.2$ & 0.05 & 11\% & $+24.5$ & 76 & 0.85 & 1.00 & $+56.6$ \\
+ & Oracle (realised label) & spread $\le 2$ & 0.39 & $+4.2$ & 0.24 & 36\% & $+7.3$ & 40 & 0.86 & 1.00 & $+9.9$ \\
+\midrule
+1 h & Stateless control & all & 9.97 & $-81.6$ & 0.11 & 29\% & $+11.1$ & 145 & 0.56 & 0.52 & $+44.0$ \\
+ & Stateless control & dedup. & 0.89 & $-126.2$ & 0.04 & 17\% & $+4.1$ & 80 & 0.55 & 0.47 & $+35.6$ \\
+ & Stateless control & top decile & 1.00 & $-84.6$ & 0.33 & 45\% & $+79.4$ & 198 & 0.77 & 0.77 & $+116.1$ \\
+ & Stateless control & spread $\le 2$ & 0.79 & $+0.8$ & 0.17 & 46\% & $+2.5$ & 30 & 0.57 & 0.48 & $+4.9$ \\
+ & Stateful, engineered features & all & 9.70 & $-83.1$ & 0.10 & 30\% & $+9.9$ & 146 & 0.53 & 0.49 & $+43.7$ \\
+ & Stateful, engineered features & dedup. & 0.83 & $-131.8$ & 0.04 & 16\% & $+4.0$ & 82 & 0.53 & 0.46 & $+38.2$ \\
+ & Stateful, engineered features & top decile & 0.97 & $-101.5$ & 0.23 & 38\% & $+68.3$ & 187 & 0.68 & 0.67 & $+107.9$ \\
+ & Stateful, engineered features & spread $\le 2$ & 0.72 & $+0.9$ & 0.16 & 44\% & $+2.6$ & 32 & 0.54 & 0.47 & $+5.1$ \\
+ & Residual of the trees & all & 10.14 & $-80.7$ & 0.11 & 30\% & $+10.0$ & 143 & 0.56 & 0.52 & $+42.9$ \\
+ & Residual of the trees & dedup. & 0.89 & $-120.8$ & 0.04 & 17\% & $+4.0$ & 79 & 0.55 & 0.47 & $+35.3$ \\
+ & Residual of the trees & top decile & 1.01 & $-78.9$ & 0.32 & 48\% & $+69.8$ & 193 & 0.77 & 0.77 & $+106.7$ \\
+ & Residual of the trees & spread $\le 2$ & 0.85 & $+0.8$ & 0.16 & 45\% & $+2.5$ & 29 & 0.58 & 0.48 & $+4.8$ \\
+ & Oracle (realised label) & all & 8.27 & $-47.5$ & 0.22 & 31\% & $+82.1$ & 127 & 0.91 & 1.00 & $+115.5$ \\
+ & Oracle (realised label) & dedup. & 0.74 & $-98.2$ & 0.09 & 18\% & $+28.0$ & 79 & 0.87 & 1.00 & $+59.0$ \\
+ & Oracle (realised label) & spread $\le 2$ & 0.66 & $+4.0$ & 0.34 & 45\% & $+6.6$ & 35 & 0.87 & 1.00 & $+9.2$ \\
+\midrule
+6 h & Stateless control & all & 9.73 & $-73.8$ & 0.14 & 46\% & $+10.4$ & 87 & 0.59 & 0.55 & $+40.0$ \\
+ & Stateless control & dedup. & 1.04 & $-103.3$ & 0.10 & 36\% & $+11.4$ & 82 & 0.59 & 0.54 & $+42.5$ \\
+ & Stateless control & top decile & 0.97 & $-127.2$ & 0.20 & 49\% & $+46.2$ & 136 & 0.77 & 0.76 & $+86.8$ \\
+ & Stateless control & spread $\le 2$ & 0.91 & $-0.3$ & 0.29 & 66\% & $+0.4$ & 21 & 0.57 & 0.52 & $+3.1$ \\
+ & Stateful, LOB only (time-first) & all & 9.34 & $-71.8$ & 0.13 & 43\% & $+7.2$ & 86 & 0.54 & 0.49 & $+33.5$ \\
+ & Stateful, LOB only (time-first) & dedup. & 0.95 & $-97.2$ & 0.09 & 33\% & $+7.5$ & 76 & 0.54 & 0.48 & $+35.1$ \\
+ & Stateful, LOB only (time-first) & top decile & 0.93 & $-83.2$ & 0.17 & 45\% & $+18.3$ & 100 & 0.65 & 0.63 & $+51.0$ \\
+ & Stateful, LOB only (time-first) & spread $\le 2$ & 0.92 & $-0.8$ & 0.25 & 66\% & $+0.2$ & 20 & 0.53 & 0.46 & $+2.8$ \\
+ & Oracle (realised label) & all & 9.64 & $-48.0$ & 0.24 & 41\% & $+40.0$ & 82 & 0.91 & 1.00 & $+65.8$ \\
+ & Oracle (realised label) & dedup. & 1.12 & $-75.8$ & 0.18 & 32\% & $+32.7$ & 78 & 0.90 & 1.00 & $+59.5$ \\
+ & Oracle (realised label) & spread $\le 2$ & 1.00 & $+4.9$ & 0.49 & 59\% & $+6.5$ & 29 & 0.89 & 1.00 & $+9.2$ \\
+\midrule
+12 h & Stateless control & all & 9.01 & $-68.2$ & 0.16 & 52\% & $+13.9$ & 82 & 0.61 & 0.57 & $+42.6$ \\
+ & Stateless control & dedup. & 1.02 & $-92.5$ & 0.13 & 44\% & $+16.6$ & 89 & 0.61 & 0.56 & $+46.5$ \\
+ & Stateless control & top decile & 0.90 & $-111.0$ & 0.23 & 55\% & $+59.2$ & 137 & 0.79 & 0.77 & $+96.6$ \\
+ & Stateless control & spread $\le 2$ & 0.86 & $+0.8$ & 0.34 & 73\% & $+1.8$ & 31 & 0.58 & 0.54 & $+4.6$ \\
+ & Stateful, LOB only (GRU reference) & all & 8.69 & $-72.3$ & 0.15 & 49\% & $+10.7$ & 79 & 0.55 & 0.50 & $+38.2$ \\
+ & Stateful, LOB only (GRU reference) & dedup. & 0.94 & $-98.8$ & 0.11 & 40\% & $+12.1$ & 80 & 0.55 & 0.50 & $+41.1$ \\
+ & Stateful, LOB only (GRU reference) & top decile & 0.87 & $-85.9$ & 0.18 & 50\% & $+27.2$ & 92 & 0.65 & 0.62 & $+59.2$ \\
+ & Stateful, LOB only (GRU reference) & spread $\le 2$ & 0.81 & $+0.1$ & 0.28 & 70\% & $+0.8$ & 29 & 0.51 & 0.46 & $+3.8$ \\
+ & Oracle (realised label) & all & 9.26 & $-42.5$ & 0.28 & 48\% & $+39.1$ & 74 & 0.92 & 1.00 & $+63.9$ \\
+ & Oracle (realised label) & dedup. & 1.14 & $-67.6$ & 0.22 & 39\% & $+36.3$ & 82 & 0.91 & 1.00 & $+61.4$ \\
+ & Oracle (realised label) & spread $\le 2$ & 1.03 & $+7.4$ & 0.55 & 66\% & $+8.7$ & 36 & 0.89 & 1.00 & $+11.5$ \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}

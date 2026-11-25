@@ -30,8 +30,8 @@ Component & Meaning \\
 \path{sg} & zero-initialised direct path from the lookbacks to the logits, plus the global state \\
 \path{lb5} & five lookbacks (0.25, 1, 3, 6, 12 h) instead of three (1, 6, 12 h) \\
 \path{tf64} / \path{gru10} / \path{gru32} & window encoder and window length: time-first over 64 snapshots, or the GRU over 10 or 32 \\
-\path{hand} & the 61 hand-made features of \cref{app:features} in the window rows and the direct path \\
-\path{xp} & the hand features also read by the predictor (\path{--extra-to-predictor}) \\
+\path{hand} & the 61 engineered features of \cref{app:features} in the window rows and the direct path \\
+\path{xp} & the engineered features also read by the predictor (\path{--extra-to-predictor}) \\
 \path{tree} & the cross-fitted LightGBM log-probabilities as inputs (\path{--tree-dir}) \\
 \path{tro} & the log-probabilities added to the output logits (\path{--tree-offset}): the residual model \\
 \path{ep<N>} & $N$ passes over the training days (states reset, optimiser kept) \\
@@ -46,14 +46,18 @@ Component & Meaning \\
 \section*{Training configuration of the stateful model}
 
 State dimension 128; per-block, minute and hour states per market, one per-block state per
-wallet; learned shared decay rate (converges to about $0.04\,\mathrm{s}^{-1}$); window of
+wallet; learned shared decay rate, parametrised as $|r|$ and initialised at $0.001\,\mathrm{s}^{-1}$
+(converges to about $0.04\,\mathrm{s}^{-1}$); window of
 $K$ book states, 52 tensor features plus 3 within-window momentum columns plus the lookback
-and hand columns; time-first encoder with a shared $\mathbb{R}^{K} \to \mathbb{R}^{32}$ time
-map and one self-attention layer over the channels; predictor MLP of two layers of 64 units
-with dropout; focal loss $\gamma = 2$ with class weights 2/1/2; AdamW, learning rate
-$10^{-4}$; truncated backpropagation through five consecutive blocks; one or two passes over
-6--12 March in time order; validation on 13 March.  Runs take 9 to 17 hours on one GPU of
-the shared server depending on the horizon and the load.
+and engineered columns; time-first encoder with a shared $\mathbb{R}^{K} \to \mathbb{R}^{32}$ time
+map and one self-attention layer over the channels; predictor MLP with one hidden layer of
+64 units (SiLU, dropout 0.1) and a linear output; focal loss $\gamma = 2$ with class weights
+2/1/2 in the weighted form of \cref{sec:bg:learning:imbalance}; AdamW, learning rate
+$10^{-4}$, weight decay 0.01; truncated backpropagation through five consecutive blocks, the
+gradients of twenty such segments accumulated before each optimiser step (one step per
+hundred blocks, about three thousand per pass), gradient norm clipped at 1; one or two
+passes over 6--12 March in time order; validation on 13 March; float32, one GPU.  Runs take
+9 to 17 hours on one GPU of the shared server depending on the horizon and the load.
 
 \section*{Configuration of the stateless control}
 

@@ -3,91 +3,138 @@
 
 This chapter reports the experiments.  \Cref{sec:data:protocol} gives the setup under
 which every number is produced: the periods, the metric, the subsets, the intervals, the
-calibration rule and the compute.  The families are then assessed in the order of
-\cref{ch:models}, mostly at one hour, the horizon at which the design was done: causal
-rules and stateless learners (\cref{ch:stateless}), the stateful model from its first
-version to its last (\cref{ch:stateful}), the graph models (\cref{ch:graph}) and the
-sources outside the book (\cref{ch:external}).  \Cref{ch:horizons} reads the same
-families across the five horizons, by kind of market and for robustness;
-\cref{sec:horizons:test} reserves the locked test set for the final numbers; and
-\cref{sec:horizons:questions} discusses the results against the four questions of
-\cref{sec:intro:questions}.
+calibration rule and the compute.  \Cref{sec:main:results} then gives the main results
+first: the best model of every family at every horizon, on the validation day and on the
+locked test days, and every model of the study at one hour, in two tables that compare the
+families side by side.  The families are then assessed one at a time, in the order of
+\cref{ch:models} and mostly at one hour, the horizon at which the design was done, each with
+the few results that explain its place in the main tables: rules and stateless learners
+(\cref{ch:stateless}), the stateful model (\cref{ch:stateful}), the graph models
+(\cref{ch:graph}) and the sources outside the book (\cref{ch:external}).
+\Cref{ch:horizons} reads the same families across the five horizons, by kind of market and
+for robustness, and \cref{sec:horizons:test} reports the locked test set.
+\Cref{sec:exp:econ} asks what a direction call is worth once it is traded, with a simple model
+of the costs and a light simulation of the calls as a taker and as a maker.  The ablations and
+the detailed results that the chapter does not need are in \cref{app:results}; the
+discussion of the results against the four questions of the thesis is in
+\cref{ch:conclusions}.
 
 \section{Experimental setup}
 \label{sec:data:protocol}
 \label{sec:models:protocol}
 
-Models are trained on 6--12 March and validated on 13 March, with 24--26 March locked
-for the final numbers (\cref{sec:data:splits,sec:horizons:test}); hyper-parameters and
-design choices were selected on the validation day.  All numbers in the thesis are balanced
-accuracies \cite{brodersen2010balanced} on the validation day, unless stated otherwise.  Every
-result is reported on all validation samples and on three subsets: the \emph{deduplicated}
-samples (at most one per market per fifteen minutes, 1.2--1.3 million), the \emph{extreme}
-ones (mid outside $[0.05, 0.95]$) and the \emph{central} ones.  Differences between models are
-computed on exactly the same samples and carry a 95\% hour-block bootstrap interval in brackets
-(\cref{sec:bg:eval}); ``MR'' is Mean Reversion-$H$.  Three rules make the comparisons fair.
+Models are trained on 6--12 March and validated on 13 March, with 24--26 March locked for
+the final numbers (\cref{sec:data:splits,sec:horizons:test}); hyper-parameters and design
+choices were selected on the validation day.  All numbers in the thesis are balanced
+accuracies \cite{brodersen2010balanced} on the validation day, unless stated otherwise.
+Every result is reported on all validation samples and on three subsets: the
+\emph{deduplicated} samples (at most one per market per ten minutes, 1.2--1.3 million), the
+\emph{extreme} ones (mid outside $[0.05, 0.95]$) and the \emph{central} ones.  Differences
+between models are computed on exactly the same samples and carry a 95\% hour-block
+bootstrap interval in brackets (\cref{sec:bg:eval}); ``MR'' is Mean Reversion-$H$.  Three
+rules make the comparisons fair.
 \begin{itemize}[nosep]
   \item \textbf{The same samples.}  The stateless learners are trained and evaluated on the
   samples of the stateful runs: at one hour the control was built from the run's predictions;
-  at one and fifteen minutes it had to be rebuilt on the run's samples, because a control that
-  samples tensor rows at the row time is a different population (27 of 598{,}872 rows in
-  common at one minute; \cref{sec:horizons:short}).
+  at one and fifteen minutes it had to be rebuilt on the run's samples, because a control
+  that samples tensor rows at the row time is a different population
+  (\cref{sec:horizons:short}).
   \item \textbf{The same calibration.}  The decision rule of a classifier trained with a
   balanced loss is not balanced-accuracy-optimal on a different class mix.  Every model is
   therefore given two logit offsets (on \textsc{down} and \textsc{up}) chosen on the even
-  validation hours and applied to the odd ones and vice versa, on a grid of $\pm 0.6$ in steps
-  of $0.1$ at one hour and $\pm 2$ in steps of $0.2$ at the short horizons, and models are
-  compared calibrated against calibrated.  The offsets are worth $+0.3$ points to the trees at
-  one hour and $+5.4$ at one minute; a comparison without them measures thresholds, not models.
+  validation hours and applied to the odd ones and vice versa, on a grid of $\pm 0.6$ in
+  steps of $0.1$ at one hour and $\pm 2$ at the short horizons, and models are compared
+  after this calibration.  The offsets are worth three tenths of a point to the trees at one
+  hour and more than five at one minute; a comparison without them measures thresholds, not
+  models.
   \item \textbf{Full-length runs.}  Where a short experiment was needed to screen many
   variants, it was trained on 11--12 March; every claim rests on full-length runs, and the
-  cases in which a short test predicted the wrong sign are reported (\cref{sec:horizons:short-tests}).
+  cases in which a short test predicted the wrong sign are reported
+  (\cref{sec:horizons:robustness}).
 \end{itemize}
 
 \paragraph{Compute and the order of the experiments.}  Every stateful run trains on one
-GPU of a shared server, one run per GPU, for nine to seventeen hours depending on the
-horizon and the load (\cref{app:runs}); the stateless learners train in minutes on a CPU.
+GPU of a shared server, one run per GPU, for nine to seventeen hours per pass depending on
+the horizon and the load (\cref{app:runs}); the stateless learners train in minutes on a CPU.
 Because of that cost the design was done at one hour, variants were screened with two-day
-short tests and confirmed with full-length runs, the other horizons were run with the
-final configurations only, and seeds were repeated where a gain was small.  Every run is
-identified by a label that encodes its configuration and writes its validation
-predictions to disk, so that any two runs can be compared on exactly the same samples
-(\cref{app:runs}).
+short tests and confirmed with full-length runs, the other horizons were run with the final
+configurations, and seeds were repeated where a gain was small.  Every run is identified by
+a label that encodes its configuration and writes its validation predictions to disk, so
+that any two runs can be compared on exactly the same samples (\cref{app:runs}).
+
+\section{Main results}
+\label{sec:main:results}
+\label{sec:main:synthesis}
+\label{sec:horizons:synthesis}
+
+\Cref{tab:horizons:synthesis} puts the best model of each family at each horizon on one
+page, on the validation day; \cref{tab:test:main} in \cref{sec:horizons:test} repeats it on
+the locked test days, and \cref{fig:horizons:synthesis} draws the gain of the stateful
+family over the stateless control at each horizon.  Three regimes appear, and the rest of
+the chapter explains them.  At one minute the task is activity, calibration is worth five
+points to every model, and the sequence of book events carries information about the next
+minute of a quiet market that the summary features lose: the stateful model beats the
+calibrated trees alone and, by more, as their residual, with intervals that exclude zero on
+every subset, and its gain over the tabular network on the same features is concentrated on
+the sparse markets.  At fifteen minutes and one hour the summary is nearly complete: the
+trees, the tabular network and the stateful model given the same inputs and the trees as a
+base are within a point of one another, the online, time-ordered regime costs the stateful
+model one to two points unless it is given the trees as a base, the residual of the trees
+is still seven tenths above them at fifteen minutes and ties them at one hour, and the graph
+and the external sources add nothing.  At six and
+twelve hours the task is the direction of a slow reversal read together with the price
+level and the market's lifecycle, the stateless control is six points above the rule, and
+the stateful models of this study are below it, at twelve hours even when they read the
+engineered features and sit on the trees as a base.  The same architecture cannot be the right one at both ends, and the reading the
+data give is that a model of this market should be a stateless learner on the activity
+clock, the first level, the long returns, the price level and the contract type, with a
+sequential state added only where the horizon is shorter than the summary.
+
+\begin{table}[t]
+\centering
+\caption{The best model of each family at each horizon on the validation day, all samples
+and deduplicated samples (balanced accuracy).  At 1 min, 15 min and 1 h every model carries
+its own two cross-fitted logit offsets; at 6 h and 12 h the raw decisions (the control was
+not calibrated there).  ``Stateless'' is LightGBM on the sixty-one features; ``tabular
+network'' is TabM on the same table, mean of three seeds; ``stateful'' is the best run
+without trees (two passes with the engineered features at 1 min, 15 min, 1 h and 12 h; the
+time-first encoder at 6 h); ``residual'' is the two-pass stateful model on the cross-fitted
+trees.  $\Delta$ in points against the stateless control, with 95\% hour-block bootstrap
+intervals where the comparison is calibrated; ``---'' marks a configuration that was not
+run at that horizon.}
+\label{tab:horizons:synthesis}
+\small
+\begin{fittable}\begin{tabular}{llccccccc}
+\toprule
+Horizon & Subset & MR & Stateless & Tabular network & Stateful & $\Delta$ & Residual & $\Delta$ \\
+\midrule
+1 min  & All   & 0.5363 & 0.6623 & 0.6656 & 0.6685 & $+0.62$ [$+0.46$, $+0.82$] & \textbf{0.6760} & $+1.37$ [$+1.16$, $+1.58$] \\
+       & Dedup & 0.5012 & 0.6143 & 0.6133 & 0.6317 & $+1.74$ [$+1.31$, $+2.22$] & \textbf{0.6346} & $+2.04$ [$+1.76$, $+2.30$] \\
+15 min & All   & 0.5373 & 0.6213 & 0.6235 & 0.6206 & $-0.07$ [$-0.34$, $+0.19$] & \textbf{0.6283} & $+0.70$ [$+0.50$, $+0.88$] \\
+       & Dedup & 0.5253 & 0.6197 & 0.6248 & 0.6158 & $-0.39$ [$-0.63$, $-0.13$] & \textbf{0.6265} & $+0.67$ [$+0.34$, $+0.99$] \\
+1 h    & All   & 0.5311 & 0.6044 & 0.6033 & 0.5902 & $-1.42$ [$-1.83$, $-1.00$] & \textbf{0.6048} & $+0.04$ [$-0.18$, $+0.24$] \\
+       & Dedup & 0.5180 & \textbf{0.5943} & 0.5922 & 0.5797 & $-1.46$ [$-1.76$, $-1.14$] & 0.5933 & $-0.10$ [$-0.26$, $+0.05$] \\
+6 h    & All   & 0.5069 & \textbf{0.5716} & --- & 0.5396 & $-3.20$ & --- & \\
+       & Dedup & 0.5002 & \textbf{0.5665} & --- & 0.5370 & $-2.95$ & --- & \\
+12 h   & All   & 0.5071 & \textbf{0.5715} & --- & 0.5060 & $-6.55$ & 0.5374 & $-3.41$ \\
+       & Dedup & 0.4995 & \textbf{0.5680} & --- & 0.5298 & $-3.82$ & 0.5548 & $-1.32$ \\
+\bottomrule
+\end{tabular}\end{fittable}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\input{figures/fig_synthesis}
+\caption{The gain of the stateful family over the stateless control at each horizon
+(all samples; calibrated against calibrated at 1 min, 15 min and 1 h with 95\% hour-block
+bootstrap intervals; raw argmax at 6 h and 12 h).  The sign reverses with the horizon.}
+\label{fig:horizons:synthesis}
+\end{figure}
 
 \input{chapters/05a_stateless}
 \input{chapters/05b_stateful}
 \input{chapters/05c_graph}
 \input{chapters/05d_external}
 \input{chapters/05e_horizons}
-
 \input{chapters/05f_test}
-
-\section{Discussion: the four questions}
-\label{sec:horizons:questions}
-
-The results of this chapter, read together, answer the four questions of
-\cref{sec:intro:questions} as follows.
-
-\begin{description}[nosep]
-  \item[\ref{q:process}, the process.]  Confirmed as stated in \cref{sec:expl:agenda}:
-  the price is a bounded, discrete process whose most regular feature is its own activity
-  clock, conditioned by the price level and the contract type; its trading is one connected
-  graph organised by category, contract type and date, with a dense core and a long tail of
-  one-fill wallets; its features are seventeen quantities organised by market and activity.
-  \item[\ref{q:information}, the information.]  The market's own history, activity and
-  first level carry nearly all of it; the long returns read with the price level and the
-  lifecycle carry the long-horizon direction (\cref{sec:stateless:control}).  The wallets,
-  the siblings, the news flow and the zero-shot forecasts add nothing reliable at one hour
-  (\cref{ch:graph,ch:external}); the forecasts add a few tenths in the central price range
-  on the full stream only.
-  \item[\ref{q:models}, the models.]  Calibrated trees, a tabular network and the stateful
-  model given the same inputs and the trees as a base tie at one hour and fifteen minutes;
-  the online, time-ordered regime of the stateful model costs one to two points on its own;
-  the graph never adds a reliable gain; at one minute the sequential state is worth $+0.6$
-  alone and $+1.4$ as the residual of the trees, with intervals that exclude zero on every
-  subset (\cref{sec:horizons:synthesis}).
-  \item[\ref{q:horizon}, the horizon.]  It changes the task, from activity at one minute
-  to a slow reversal at twelve hours, and the right family with it; the live-game regime and
-  the crypto interval contracts are the hard cases at every horizon, because their price is
-  driven by a reference the data do not contain (\cref{sec:horizons:where}).
-\end{description}
+\input{chapters/05g_economics}

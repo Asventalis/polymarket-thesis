@@ -72,9 +72,9 @@ This is the \emph{cross-entropy} loss: it is zero when the model gives probabili
 the true class and grows without bound as that probability goes to zero, so a confident
 mistake is punished far more than a hesitant one.  The $1/N$ makes the loss an average
 per sample.  Minimising the cross-entropy is the same as maximising the likelihood, and it
-has a second reading: it is the average number of nats of surprise that the labels cause
-the model, which is why a model with a lower cross-entropy is said to ``fit'' the data
-better.  The cross-entropy is also what makes the outputs of the model \emph{probabilities}
+has a second reading: it is the average surprise that the labels cause the model (the
+surprise of an outcome of probability $p$ being $-\log p$), which is why a model with a
+lower cross-entropy is said to ``fit'' the data better.  The cross-entropy is also what makes the outputs of the model \emph{probabilities}
 in the useful sense: among all functions, the one that minimises it on infinitely many
 samples is the true conditional distribution $p(y \mid \mathbf{x})$, a property called
 \emph{properness} that the squared error, say, does not have for classification.
@@ -147,8 +147,10 @@ composition of operations (\emph{automatic differentiation}), so no derivative i
 by hand.  The computation of each model is given with the model, in
 \cref{sec:bg:sequences,sec:bg:graphs,sec:bg:tabular} and in \cref{ch:models}.
 
-\paragraph{Activation functions and normalisation.}  The activation $\sigma$ of a
-layer (\cref{sec:bg:mlp}) is, in the networks of the thesis, the SiLU, $\operatorname{SiLU}(a) = a /
+\subsection{Activation functions and normalisation}
+\label{sec:bg:activations}
+
+The activation $\sigma$ of a layer (\cref{sec:bg:mlp}) is, in the networks of the thesis, the SiLU, $\operatorname{SiLU}(a) = a /
 (1 + e^{-a})$ \cite{elfwing2018silu,hendrycks2016gelu}, a smooth version of the rectifier
 $\max(0, a)$ that passes positive inputs almost unchanged and suppresses negative ones;
 the logistic sigmoid $\sigma(a) = 1 / (1 + e^{-a})$, which maps any number into $(0, 1)$,
@@ -184,7 +186,12 @@ classifies with probability $0.9$ contributes one hundredth of what it would und
 cross-entropy, so training concentrates on the samples it gets wrong, which under
 imbalance are mostly those of the rare classes.  Its gradient with respect to the logits is
 the cross-entropy gradient \cref{eq:xent-grad} scaled by the same factor and corrected by
-a term that vanishes as $\hat{p}_y \to 1$, so backpropagation proceeds unchanged.
+a term that vanishes as $\hat{p}_y \to 1$, so backpropagation proceeds unchanged.  In the
+stateful model the class weight is applied before the modulating factor, so that the loss
+minimised is $-\alpha_{y} (1 - \hat{p}_{y}^{\alpha_{y}})^{\gamma} \log \hat{p}_{y}$: for
+$\alpha_y = 1$ this is \cref{eq:focal}, and for $\alpha_y = 2$ the factor
+$(1 - \hat{p}_y^{2})^{2}$ switches off a little later than $(1 - \hat{p}_y)^{2}$, which
+pushes the two rare classes slightly harder.
 
 The third correction acts on the \emph{decision}, not on the training.  A classifier is
 scored by which class it predicts, $\hat{y} = \arg\max_c \hat{p}_c$, and the class that is
@@ -227,6 +234,6 @@ sets a random fraction of the hidden units to zero at every training step, so th
 can rely on a specific other unit being present, and uses all of them, scaled, at
 prediction time; the tabular networks use a rate of $0.15$, the predictor of the stateful
 model $0.1$.  And the \emph{deduplicated} evaluation of \cref{sec:data:labels}, which
-keeps one sample per market per fifteen minutes, guards against a subtler form of the
+keeps one sample per market per ten minutes, guards against a subtler form of the
 same problem: ten million samples that are near-copies of one another make a model look
 far better on the busy markets than it is on independent ones.
