@@ -306,7 +306,9 @@ Horizon & Model & 24 March & 25 March & 26 March \\
 \midrule
 6 h    & Mean Reversion & 0.5088 & 0.4989 & 0.5108 \\
        & Stateless      & 0.5923 & 0.5785 & 0.5754 \\
-       & Stateful       & 0.5558 & 0.5403 & 0.5387 \\
+       & Time-first, no engineered features & 0.5558 & 0.5403 & 0.5387 \\
+       & Stateful, engineered features & 0.5711 & 0.5566 & 0.5629 \\
+       & Residual       & 0.5854 & 0.5716 & 0.5757 \\
 \midrule
 12 h   & Mean Reversion & 0.4730 & 0.4699 & 0.4842 \\
        & Stateless      & 0.5990 & 0.5691 & 0.5863 \\
@@ -362,7 +364,9 @@ Horizon & Model & Validation & Test \\
        & Residual & $+1.2$ & $-0.4$ ($0.6163 \to 0.6125$) \\
 1 h    & LightGBM & $+0.3$ & $-0.3$ ($0.5972 \to 0.5944$) \\
        & Stateful, two passes & & $+0.2$ \\
-6 h    & LightGBM & & $+0.2$ \\
+6 h    & LightGBM & $+0.0$ & $+0.2$ ($0.5836 \to 0.5851$) \\
+       & Stateful, two passes (offsets $-0.3$, $-0.3$) & $+0.6$ & $+1.0$ ($0.5541 \to 0.5641$) \\
+       & Residual (offsets $-0.3$, $-0.3$) & $+0.6$ & $+1.3$ ($0.5663 \to 0.5791$) \\
        & GRU reference / time-first & & $+1.6$ / $+0.1$ \\
 12 h   & LightGBM & $+0.0$ & $+0.4$ \\
        & Stateful, two passes (offsets $-1.1$, $-1.1$) & $+5.9$ & $+8.6$ ($0.4681 \to 0.5539$) \\

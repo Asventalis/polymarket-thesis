@@ -56,13 +56,15 @@ and deduplicated samples (balanced accuracy), every model with its two logit off
 once on the validation day and applied unchanged.  ``Stateless'' is LightGBM refitted as in
 validation and evaluated on the test samples of the stateful run; ``stateful'' is the best
 run without trees evaluated on the test days (two passes with the engineered features at
-1 min, 15 min, 1 h and 12 h; the time-first encoder at 6 h); ``residual'' is the two-pass
-stateful model on the cross-fitted trees.  $\Delta$ in points against the stateless control,
+every horizon); ``residual'' is the two-pass stateful model on the cross-fitted trees.  $\Delta$ in points against the stateless control,
 95\% hour-block bootstrap intervals over the test hours.  TabM, not shown, is $+0.27$
 [$+0.21$, $+0.34$] at 1 min, $+0.15$ [$+0.02$, $+0.27$] at 15 min and $-0.08$ [$-0.25$,
 $+0.09$] at 1 h; a second seed of the one-minute stateful model is $+0.39$ [$+0.24$, $+0.57$]
 on all samples and $+1.52$ [$+1.22$, $+1.83$] on the deduplicated ones, and a second seed
-of the one-minute residual model $+0.96$ [$+0.85$, $+1.08$] and $+1.82$ [$+1.61$, $+2.02$].}
+of the one-minute residual model $+0.96$ [$+0.85$, $+1.08$] and $+1.82$ [$+1.61$, $+2.02$].
+The time-first encoder without the engineered features, the best LOB-only model at 6 h, is
+0.5468 on all samples ($-3.83$ [$-4.11$, $-3.53$]) and 0.5323 on the deduplicated ones
+($-4.22$ [$-4.43$, $-4.00$]).}
 \label{tab:test:main}
 \small
 \begin{fittable}\begin{tabular}{llcccccc}
@@ -75,8 +77,8 @@ Horizon & Subset & MR & Stateless & Stateful & $\Delta$ & Residual & $\Delta$ \\
        & Dedup & 0.5301 & 0.6167 & 0.6090 & $-0.77$ [$-0.93$, $-0.60$] & \textbf{0.6234} & $+0.67$ [$+0.57$, $+0.77$] \\
 1 h    & All   & 0.5268 & \textbf{0.5944} & 0.5806 & $-1.38$ [$-1.69$, $-1.07$] & 0.5933 & $-0.11$ [$-0.26$, $+0.03$] \\
        & Dedup & 0.5125 & 0.5887 & 0.5704 & $-1.83$ [$-1.96$, $-1.70$] & \textbf{0.5895} & $+0.08$ [$-0.02$, $+0.17$] \\
-6 h    & All   & 0.5049 & \textbf{0.5851} & 0.5468 & $-3.83$ [$-4.11$, $-3.53$] & --- & \\
-       & Dedup & 0.5025 & \textbf{0.5745} & 0.5323 & $-4.22$ [$-4.43$, $-4.00$] & --- & \\
+6 h    & All   & 0.5049 & \textbf{0.5851} & 0.5641 & $-2.09$ [$-2.42$, $-1.76$] & 0.5791 & $-0.59$ [$-0.81$, $-0.38$] \\
+       & Dedup & 0.5025 & \textbf{0.5745} & 0.5529 & $-2.17$ [$-2.37$, $-1.95$] & 0.5716 & $-0.30$ [$-0.41$, $-0.18$] \\
 12 h   & All   & 0.4724 & \textbf{0.5853} & 0.5539 & $-3.14$ [$-3.53$, $-2.73$] & 0.5780 & $-0.73$ [$-0.95$, $-0.50$] \\
        & Dedup & 0.4766 & \textbf{0.5749} & 0.5496 & $-2.53$ [$-2.85$, $-2.17$] & 0.5690 & $-0.59$ [$-0.75$, $-0.41$] \\
 \bottomrule
@@ -86,8 +88,8 @@ Horizon & Subset & MR & Stateless & Stateful & $\Delta$ & Residual & $\Delta$ \\
 Three things carry over from the validation day to the test days, and one does not.
 
 \emph{The ordering of the families, and the whole one-hour chain.}  From fifteen minutes on the
-calibrated control is the best model or within its interval of the best, every learned
-model stands where it stood on 13 March, and the sparse day moves no sign.  At one hour the
+calibrated control is the best model or within its interval of the best, the families keep
+the order they had on 13 March, and the sparse day moves no sign.  At one hour the
 twelve runs of the study keep the order of \cref{ch:stateful,ch:graph,ch:external} to the
 last step, and every gap is within a few tenths of its validation value: the two-pass
 residual model and the tabular network tie the control, the two-pass model without trees is
@@ -110,10 +112,13 @@ models beat the strongest learner on the summary features, not only the trees.  
 twelve hours the LOB-only stateful models of the study are four to five points below the
 control, their seeds within a point of one another in an order that changes on the sparse
 day; at six hours the gap is half a point wider on the full stream and a point wider on the
-deduplicated samples than in validation.  At twelve hours the two-pass model with the
-engineered features is three points below the control and its residual on the trees within
-a point of it, below with an interval that excludes zero on both views: the base closes most
-of the gap on the test days as it did on the validation day.  The graph models stand where \cref{ch:graph} put them: below the LOB-only
+deduplicated samples than in validation.  At both horizons the two-pass model with the
+engineered features is two to three points below the control, and its residual on the trees
+is within a point of it, below with an interval that excludes zero on both views: by six
+tenths of a point on all samples and three tenths on the deduplicated ones at six hours, by
+seven and six tenths at twelve.  The base closes most of the gap on the test days as it did
+on the validation day; at six hours the residual that was above the control on the
+deduplicated samples of 13 March is below it on the test days.  The graph models stand where \cref{ch:graph} put them: below the LOB-only
 reference at one hour, below the time-first model at six hours, and between the seeds of
 the reference at twelve.
 
@@ -179,6 +184,6 @@ any single raw number does, and the one-minute numbers most of all.
 The test days therefore confirm the three regimes of \cref{sec:main:synthesis} on data that
 no choice of the thesis had seen: at one minute the sequence beats the summary, at fifteen
 minutes the stateful model on the trees is above the stateless learner, at one hour the
-stateless learner, the tabular network and the stateful model on the trees tie, at six
-hours the stateless learner is alone, and at twelve hours its residual is within a point of
-it.
+stateless learner, the tabular network and the stateful model on the trees tie, and at six
+and twelve hours the stateless learner is alone, with the stateful model on the trees within
+a point of it.
