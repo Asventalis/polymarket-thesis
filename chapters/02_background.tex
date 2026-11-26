@@ -81,7 +81,8 @@ a match is then settled on-chain by the exchange contract, which transfers the t
 the collateral and emits a fill event with the maker, the taker, the token, the side, the
 quantity, the price and the fee.  The book is thus observable as a stream of price-level
 updates at the resolution of the operator's clock, and the trades are observable, with a
-delay of one block, as on-chain records attributed to wallet addresses.  The two streams
+delay of one block (the unit of time of the Polygon chain, about two seconds), as on-chain
+records attributed to wallet addresses.  The two streams
 are not the same thing: most book events are orders placed or cancelled away from the best
 quotes and never trade; a fill is a book event that found a counterparty.  In a
 multi-outcome event, the candidates of an election or the strikes of a ``Bitcoin above $x$''
@@ -102,8 +103,8 @@ the history of a wallet (its activity, its past accuracy, the other markets it t
 informative about the price of the markets it trades now.  Works on Polymarket have used
 wallet-level data to study who wins and who loses \cite{akey2026whowins}, insider trading and
 informed flow \cite{bsic2026polymarket}, and arbitrage between related markets
-\cite{saguillo2025unravelling}.  None of them, to the best of our knowledge, has used the wallet--market
-graph as the input of a forecasting model; the graph models of \cref{ch:graph} do.  The block is also the natural time step of the
+\cite{saguillo2025unravelling}.  The graph models of \cref{ch:graph} use the wallet--market graph as the
+input of a forecasting model, which \cref{sec:pm:related} places against this prior work.  The block is also the natural time step of the
 on-chain stream and the time step of every stateful model in the thesis
 (\cref{sec:data:blocks}); the graph itself is described in \cref{sec:expl:graph}.
 
@@ -329,7 +330,7 @@ them.
   \emph{calibration} of the decision rule.  The training data are dominated by
   \textsc{const} and the models are trained with class weights or undersampling, so their
   raw probabilities are tilted and the most probable class is not the one that maximises
-  balanced accuracy; two constants added to the \textsc{down} and \textsc{up} logits,
+  balanced accuracy (the mean recall over the three classes, \cref{sec:bg:eval}); two constants added to the \textsc{down} and \textsc{up} logits,
   fitted on half of the validation hours and applied to the other half and vice versa (and,
   for the test days, chosen once on the whole validation day and applied unchanged), move
   the decision boundary to where the score wants it

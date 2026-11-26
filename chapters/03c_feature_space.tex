@@ -156,7 +156,8 @@ Linear discriminant analysis looks for the straight directions of the space alon
 the three classes are furthest apart; logistic regression scores each sample by a weighted
 sum of its features; a decision tree asks a sequence of yes/no questions on single
 features, three questions deep or six; nearest neighbours classifies a sample by the vote
-of the two hundred training samples most similar to it.  All of them are fitted on one
+of the two hundred training samples most similar to it (\cref{fig:structure:knn} gives its
+accuracy against the number of neighbours at every horizon).  All of them are fitted on one
 million training rows, and the bars give the balanced accuracy on the validation day, on
 all samples and on the deduplicated ones, where at most one sample per market and ten
 minutes is kept (\cref{sec:models:protocol}).  Three things stand out.

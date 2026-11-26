@@ -108,13 +108,14 @@ trees instead of to a linear rule, is already three points above the rule.  The 
 adds two points, the activity clock one more, the trades two thirds of a point and the
 static fields a fifth; the full model is ahead of the rule in every one of the 24
 validation hours and in every market category.  The gain importance of the trees says what
-they read: the time since the last mid change takes a third of it, the number of mid changes
+they read (\cref{tab:app:univariate} gives the univariate diagnostics of the strongest features): the time since the last mid change takes a third of it, the number of mid changes
 in the last hour and the realised volatility another quarter together, while the level-1
 imbalance and the category get one per cent each and every order-flow accumulator of the
 tensor less than that.  Taken one at a time on the samples that moved, the sign of ``mid
 minus its one-hour mean'' is the best single predictor of the direction, followed by the
 level-1 imbalance and the microprice; for separating \textsc{const} from a move, the time
-since the last mid change alone has an AUC of 0.85.
+since the last mid change alone ranks a moving sample above a still one 85 times in a
+hundred (an AUC of 0.85).
 
 \begin{figure}[t]
 \centering

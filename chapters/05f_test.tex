@@ -56,7 +56,7 @@ and deduplicated samples (balanced accuracy), every model with its two logit off
 once on the validation day and applied unchanged.  ``Stateless'' is LightGBM refitted as in
 validation and evaluated on the test samples of the stateful run; ``stateful'' is the best
 run without trees evaluated on the test days (two passes with the engineered features at
-1 min, 15 min and 1 h; the time-first encoder at 6 h; the reference model, seed 0, at 12 h); ``residual'' is the two-pass
+1 min, 15 min, 1 h and 12 h; the time-first encoder at 6 h); ``residual'' is the two-pass
 stateful model on the cross-fitted trees.  $\Delta$ in points against the stateless control,
 95\% hour-block bootstrap intervals over the test hours.  TabM, not shown, is $+0.27$
 [$+0.21$, $+0.34$] at 1 min, $+0.15$ [$+0.02$, $+0.27$] at 15 min and $-0.08$ [$-0.25$,
@@ -71,14 +71,14 @@ Horizon & Subset & MR & Stateless & Stateful & $\Delta$ & Residual & $\Delta$ \\
 \midrule
 1 min  & All   & 0.5637 & 0.6496 & 0.6572 & $+0.76$ [$+0.60$, $+0.93$] & \textbf{0.6586} & $+0.90$ [$+0.78$, $+1.03$] \\
        & Dedup & 0.5342 & 0.6336 & 0.6443 & $+1.07$ [$+0.80$, $+1.34$] & \textbf{0.6539} & $+2.03$ [$+1.79$, $+2.26$] \\
-15 min & All   & 0.5471 & \textbf{0.6088} & 0.6064 & $-0.25$ [$-0.44$, $-0.05$] & --- & \\
-       & Dedup & 0.5301 & \textbf{0.6167} & 0.6090 & $-0.77$ [$-0.93$, $-0.60$] & --- & \\
+15 min & All   & 0.5471 & 0.6088 & 0.6064 & $-0.25$ [$-0.44$, $-0.05$] & \textbf{0.6125} & $+0.36$ [$+0.24$, $+0.50$] \\
+       & Dedup & 0.5301 & 0.6167 & 0.6090 & $-0.77$ [$-0.93$, $-0.60$] & \textbf{0.6234} & $+0.67$ [$+0.57$, $+0.77$] \\
 1 h    & All   & 0.5268 & \textbf{0.5944} & 0.5806 & $-1.38$ [$-1.69$, $-1.07$] & 0.5933 & $-0.11$ [$-0.26$, $+0.03$] \\
        & Dedup & 0.5125 & 0.5887 & 0.5704 & $-1.83$ [$-1.96$, $-1.70$] & \textbf{0.5895} & $+0.08$ [$-0.02$, $+0.17$] \\
 6 h    & All   & 0.5049 & \textbf{0.5851} & 0.5468 & $-3.83$ [$-4.11$, $-3.53$] & --- & \\
        & Dedup & 0.5025 & \textbf{0.5745} & 0.5323 & $-4.22$ [$-4.43$, $-4.00$] & --- & \\
-12 h   & All   & 0.4724 & \textbf{0.5853} & 0.5353 & $-5.00$ [$-5.34$, $-4.64$] & --- & \\
-       & Dedup & 0.4766 & \textbf{0.5749} & 0.5258 & $-4.91$ [$-5.19$, $-4.60$] & --- & \\
+12 h   & All   & 0.4724 & \textbf{0.5853} & 0.5539 & $-3.14$ [$-3.53$, $-2.73$] & 0.5780 & $-0.73$ [$-0.95$, $-0.50$] \\
+       & Dedup & 0.4766 & \textbf{0.5749} & 0.5496 & $-2.53$ [$-2.85$, $-2.17$] & 0.5690 & $-0.59$ [$-0.75$, $-0.41$] \\
 \bottomrule
 \end{tabular}\end{fittable}
 \end{table}
@@ -97,7 +97,8 @@ hundredths on the other), the transaction graph is
 below the reference, and the three seeds of the reference are within a quarter of a point of
 one another.  At fifteen minutes the tabular network is slightly above the control and the
 two-pass stateful model slightly below it, on the deduplicated samples by more, as in
-validation.  At one minute the gain of the sequential state is confirmed: the two-pass
+validation, and the residual model is above the control by a third of a point on all samples
+and two thirds on the deduplicated ones, with intervals that exclude zero, as in validation.  At one minute the gain of the sequential state is confirmed: the two-pass
 stateful model is above the calibrated control on every subset and on each of the three
 days, a second seed of the same model keeps the sign and the exclusion of zero on every
 subset and every day while moving the size by four tenths of a point, which is the measure
@@ -106,11 +107,13 @@ point on all samples and by two points on the deduplicated ones, with a second s
 two tenths of the first.  The tabular network, the best stateless model at one minute, sits
 between the control and the stateful models on every day: at one minute the stateful
 models beat the strongest learner on the summary features, not only the trees.  At six and
-twelve hours the stateful models of the study are four to five points below the control,
-their seeds within a point of one another in an order that changes on the sparse day; at
-six hours the gap is half a point wider on the full stream and a point wider on the
-deduplicated samples than in validation, while at twelve hours the reference model's gap is
-narrower than its raw validation gap.  The graph models stand where \cref{ch:graph} put them: below the LOB-only
+twelve hours the LOB-only stateful models of the study are four to five points below the
+control, their seeds within a point of one another in an order that changes on the sparse
+day; at six hours the gap is half a point wider on the full stream and a point wider on the
+deduplicated samples than in validation.  At twelve hours the two-pass model with the
+engineered features is three points below the control and its residual on the trees within
+a point of it, below with an interval that excludes zero on both views: the base closes most
+of the gap on the test days as it did on the validation day.  The graph models stand where \cref{ch:graph} put them: below the LOB-only
 reference at one hour, below the time-first model at six hours, and between the seeds of
 the reference at twelve.
 
@@ -166,7 +169,7 @@ chosen on 13 March, worth a few tenths of a point to the control there, cost it 
 on the test days at fifteen minutes and one hour and are worth a few tenths at six and twelve
 hours; at one minute, where they were worth more than five points in validation, they are
 worth two.  For the stateful models the same frozen offsets help at every horizon, and most
-where the model is worst calibrated: almost five points at twelve hours, two and a half at
+where the model is worst calibrated: five to nine points at twelve hours, two and a half at
 one minute.  A decision threshold fitted on one day is thus worth a few tenths of a point on
 another day, in either direction, for a learner whose class mix is already right, and
 several points for a model whose class mix is wrong; the comparisons of
@@ -175,5 +178,7 @@ any single raw number does, and the one-minute numbers most of all.
 
 The test days therefore confirm the three regimes of \cref{sec:main:synthesis} on data that
 no choice of the thesis had seen: at one minute the sequence beats the summary, at fifteen
-minutes and one hour the stateless learner, the tabular network and the stateful model on
-the trees tie, and at six and twelve hours the stateless learner is alone.
+minutes the stateful model on the trees is above the stateless learner, at one hour the
+stateless learner, the tabular network and the stateful model on the trees tie, at six
+hours the stateless learner is alone, and at twelve hours its residual is within a point of
+it.

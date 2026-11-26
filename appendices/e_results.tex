@@ -296,6 +296,7 @@ Horizon & Model & 24 March & 25 March & 26 March \\
        & Stateless      & 0.6048 & 0.6083 & 0.6171 \\
        & TabM           & 0.6065 & 0.6092 & 0.6195 \\
        & Stateful       & 0.6036 & 0.6036 & 0.6186 \\
+       & Residual       & 0.6074 & 0.6117 & 0.6249 \\
 \midrule
 1 h    & Mean Reversion & 0.5297 & 0.5237 & 0.5251 \\
        & Stateless      & 0.5971 & 0.5895 & 0.5945 \\
@@ -313,6 +314,8 @@ Horizon & Model & 24 March & 25 March & 26 March \\
        & Stateful, seed 1 & 0.5449 & 0.5152 & 0.5390 \\
        & Stateful, seed 2 & 0.5415 & 0.5140 & 0.5402 \\
        & Graph          & 0.5481 & 0.5157 & 0.5417 \\
+       & Stateful, engineered features & 0.5646 & 0.5396 & 0.5656 \\
+       & Residual       & 0.5910 & 0.5618 & 0.5807 \\
 \bottomrule
 \end{tabular}\end{fittable}
 \end{table}
@@ -355,12 +358,15 @@ Horizon & Model & Validation & Test \\
        & Stateful, two passes & $+5.8$ & $+2.5$ ($0.6319 \to 0.6572$) \\
        & Residual, seed 0 / seed 1 & $+5.9$ & $+2.1$ ($0.6380 \to 0.6586$) / $+2.4$ \\
 15 min & LightGBM & $+0.5$ & $-0.4$ ($0.6131 \to 0.6088$) \\
-       & Stateful, two passes & & $+0.2$ \\
+       & Stateful, two passes & $+1.2$ & $+0.2$ \\
+       & Residual & $+1.2$ & $-0.4$ ($0.6163 \to 0.6125$) \\
 1 h    & LightGBM & $+0.3$ & $-0.3$ ($0.5972 \to 0.5944$) \\
        & Stateful, two passes & & $+0.2$ \\
 6 h    & LightGBM & & $+0.2$ \\
        & GRU reference / time-first & & $+1.6$ / $+0.1$ \\
-12 h   & LightGBM & & $+0.4$ \\
+12 h   & LightGBM & $+0.0$ & $+0.4$ \\
+       & Stateful, two passes (offsets $-1.1$, $-1.1$) & $+5.9$ & $+8.6$ ($0.4681 \to 0.5539$) \\
+       & Residual (offsets $-1.1$, $-1.1$) & $+4.3$ & $+6.5$ ($0.5128 \to 0.5780$) \\
        & GRU reference, seed 0 (offsets $-0.8$, $-0.8$) & & $+4.8$ ($0.4874 \to 0.5353$) \\
 \bottomrule
 \end{tabular}\end{fittable}

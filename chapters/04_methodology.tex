@@ -92,7 +92,7 @@ the paired difference between two models on the same samples, with an interval.
 A model is said to read information that another does not
 when its balanced accuracy on the validation day exceeds the other's \emph{on the same
 samples}, after the same post-hoc calibration, by a margin whose 95\% hour-block bootstrap
-interval excludes zero, both on the full stream and on a deduplicated subset of independent
+interval (\cref{sec:bg:eval}) excludes zero, both on the full stream and on a deduplicated subset of independent
 samples (\cref{sec:data:protocol}).  The reference competitor is first the best causal
 rule found on the data, ``predict that the price will move back against its recent
 change'', and then, once it exists, the best stateless learner on engineered features.  The

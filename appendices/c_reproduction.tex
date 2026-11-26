@@ -63,17 +63,19 @@ below are those of the working copy.
   \item \textbf{Cross-fitted trees and the residual model.}  \path{tree_features.py}
   writes the day-cross-fitted log-probabilities; the residual run is step 5 with
   \path{TREE_DIR} and \path{TREE_OFFSET=1}.
-  \item \textbf{Tabular networks.}  \path{scripts/data_audit/tabular_net.py --horizon H --variants mlp,tabm --seeds 0,1,2}.
-  \item \textbf{Comparisons.}  \path{hand_vs_lgb_report.py <label> --horizon H --prior a,b,c --crossfit}
-  (raw, prior-corrected and one-sided offsets, by subset and category);
-  \path{scripts/data_audit/offset_fair.py --horizon H --deep <labels> --tab <probas> --grid-max 2.0 --grid-step 0.2}
-  (the same calibration for every model);
+  \item \textbf{Tabular networks.}  \path{scripts/data_audit/tabular_net.py}, with the options
+  \path{--horizon H}, \path{--variants mlp,tabm} and \path{--seeds 0,1,2}.
+  \item \textbf{Comparisons.}  \path{hand_vs_lgb_report.py}, with the run label and the options
+  \path{--horizon H}, \path{--prior a,b,c} and \path{--crossfit} (raw, prior-corrected and
+  one-sided offsets, by subset and category); \path{scripts/data_audit/offset_fair.py}, with
+  \path{--horizon H}, \path{--deep <labels>}, \path{--tab <probas>}, \path{--grid-max 2.0} and
+  \path{--grid-step 0.2} (the same calibration for every model);
   \path{analyze_predictions.py} (per-market breakdown);
   \path{scripts/data_audit/leadlag.py} (sibling lead--lag);
   \path{news_features.py}, \path{sibling_features.py} and
   \path{scripts/data_audit/news_audit.py} (external features in the control).
-  \item \textbf{Economic simulation.}  \path{scripts/data_audit/econ_sim.py} \path{--horizon}
-  \path{H} \path{--ctrl-offsets=<down,up>} \path{--deep} \path{<name>=<predictions>:<down,up>} reads
+  \item \textbf{Economic simulation.}  \path{scripts/data_audit/econ_sim.py} \path{--horizon H}
+  \path{--ctrl-offsets=<down,up>} \path{--deep <name>=<predictions>:<down,up>} reads
   the control's feature table and probabilities on the test days, the test predictions of
   the deep models, and the fee rates from the taker fills, and writes the tables of
   \cref{sec:exp:econ,app:results:econ} (\path{econ_<H>.md}, \path{econ_<H>.csv}).
