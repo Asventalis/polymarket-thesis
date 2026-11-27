@@ -170,15 +170,15 @@ shrinks with the horizon because the spread is the same while the moves are larg
 never closes.  The one place where a taker breaks even is the books with a spread of at most
 two ticks, a tenth of the calls: there the edge of two to three ticks pays the spread and the
 fee almost exactly, between $-0.9$ and $+0.9$ ticks per share, and only the most confident
-decile of those calls is clearly positive, from under one tick at one minute to twenty or
-thirty ticks per share at fifteen minutes and one hour, on one percent of the samples.  The spread, not the fee, is what eats the profit of a
-direction call: on this venue in March 2026 a taker pays the fee on a minority of markets
+decile of those calls, one percent of the samples, is clearly positive, up to twenty or
+thirty ticks per share at fifteen minutes and one hour.  The spread, not the fee, is what
+eats the profit of a direction call: on this venue in March 2026 a taker pays the fee on a minority of markets
 and the spread on all of them, and the spread is a hundred times larger.
 
 \paragraph{The maker.}  Resting at the best quote changes the sign.  A maker--taker is
-filled on $7\%$ of the calls at one minute and on half of them at twelve hours, since a
-resting order has more time to be reached, and the filled calls earn $-4$ ticks per share at
-one minute, nothing at fifteen minutes and ten to fourteen ticks from one hour to twelve.
+filled on $7\%$ of the calls at one minute and on half of them at twelve hours, and the
+filled calls earn $-4$ ticks per share at one minute, nothing at fifteen minutes and ten to
+fourteen ticks from one hour to twelve.
 The one-minute loss is adverse selection in its plain form: the calls that get filled are
 those whose price came to the order, and when they are wrong they are wrong by thirty-seven
 ticks against nineteen on all calls; from one hour on the selection works the other way,
@@ -190,9 +190,9 @@ forty to eighty: the model's maker gain on all calls is a tenth to a third of wh
 foresight would earn, and on its best decile it is close to it.  The maker--maker bound adds
 the exit half spread, thirty ticks, and shows what the second fill would be worth: more than
 the whole edge of any model.  Which side is better is therefore not in doubt: per filled
-share a maker is eighty to one hundred ticks ahead of a taker on all calls at every horizon,
-and the costs that remain to it are the fill, which the simulation grants optimistically,
-and the adverse selection, which it measures.
+share a maker is eighty to one hundred ticks ahead of a taker at every horizon, and what
+remains against it are the fill, granted optimistically here, and the adverse selection,
+which the simulation measures.
 
 \paragraph{Risk, horizons and kinds of market.}  The per-share figures hide a wide
 dispersion: the standard deviation of the profit of a filled maker--taker trade is 50 to 145
@@ -200,9 +200,7 @@ ticks against a mean of $-4$ to $+14$, so that a single trade is a coin toss wit
 tilt (hit rates of $0.45$ to $0.61$) and the mean is only visible over hundreds of thousands
 of trades; per unit of capital at risk, the aggregate return of the maker--taker on all
 calls is $1.5$ to $2\%$ per holding period from one hour on, and negative at one minute.
-The economics favour the long horizons, where the same spread is paid against an edge that
-is five times larger and a resting order is filled seven times as often as at one minute.  By kind of market, the
-maker--taker at one hour is positive in every category, most on esports and sports
+By kind of market, the maker--taker at one hour is positive in every category, most on esports and sports
 ($+28$ and $+16$ ticks per filled share, the in-play markets where the moves are large and
 the fills frequent) and least on economy and technology and on crypto ($+1$ and $+2$, where
 the fee of five ticks takes most of the edge); at fifteen minutes it is negative on sports,
@@ -212,6 +210,6 @@ a real fill comes later than the first print at our price, the exit of the maker
 bound is not guaranteed, and the fee schedule of the venue has since been extended to most
 categories at rates between $1\%$ and $5\%$, which at $p = 0.5$ is $2.5$ to $12.5$ ticks per
 leg, still below the typical spread but above the edge of any model on the tight books.
-The simulation fixes orders of magnitude, not a trading record: a direction call on this
-venue is worth a few ticks per share, it cannot be collected by crossing the spread, and
-a resting order collects part of it at the cost of a fill that is not guaranteed.
+The simulation fixes orders of magnitude, not a trading record: a direction call here is
+worth a few ticks per share, cannot be collected by crossing the spread, and is partly
+collected by a resting order at the cost of an uncertain fill.

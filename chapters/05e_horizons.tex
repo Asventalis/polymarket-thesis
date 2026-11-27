@@ -22,9 +22,10 @@ of every block at the block time: at one hour the two coincide, since the contro
 from the run's predictions, at one minute only 27 of the 598{,}872 tensor rows coincide with
 a run sample.  And calibration matters more than anywhere else: the two cross-fitted logit
 offsets of \cref{sec:models:protocol} are worth five points to every model at one minute,
-half a point at fifteen minutes and three tenths at one hour, so that any one-minute number
-without them compares decision thresholds, not models
-(\cref{app:results:short}).
+half a point at fifteen minutes and three tenths at one hour, and nothing to the control
+at six and twelve hours against five points to the stateful model at twelve
+(\cref{sec:horizons:long}), so that any one-minute number without them compares decision
+thresholds, not models (\cref{app:results:short}).
 
 The result, in the first rows of \cref{tab:horizons:synthesis}, reverses with the horizon.
 At one minute the stateful model without trees is above the calibrated trees on all samples
@@ -89,21 +90,28 @@ horizons because of what it reads or because of what it is, is answered in
 \cref{tab:horizons:synthesis} by the stateful model given the engineered features.  At
 six hours the features are worth a point to it on all samples and almost two on the
 deduplicated ones over the time-first model without them, and at twelve hours one and a
-half points and a point and a quarter; they bring the model four to five points above the
-rule at six hours, level with the rule on the full stream at twelve and three points above
-it on independent samples, but leave it two points below the trees at six hours and six and
-a half at twelve on all samples, one and four below on the deduplicated ones.  The features
-therefore explain a part of the gap at the long horizons and not the whole of it: on a task
-that is the direction of a slow reversal read together with the price level and the
-lifecycle, a learner that sees every row once in time order and reads the level through a
-linear path does not reach what six hundred rounds of boosting read from the same table.
-Given the trees as a base as well, the residual construction comes within half a point of
-the trees at six hours, below them on all samples and above them on the deduplicated ones,
-and at twelve hours stays three and a half points below them on all samples and one and a
-third below on the deduplicated ones, three points above the same model without the base.  The base thus closes the gap at six hours as it did
-at one hour, and at twelve hours halves it on the full stream and closes two thirds of it
-on independent samples.  The tabular network was trained at the three short horizons only,
-which is what the dashes of \cref{tab:horizons:synthesis} mark.
+half points and a point and a quarter; read raw, they bring the model four to five points
+above the rule at six hours, level with the rule on the full stream at twelve and three
+points above it on independent samples.  Raw, however, the twelve-hour model calls
+\textsc{const} far too often, and the cross-fitted offsets are worth five to six points to
+it there and nothing to the control: calibrated like the control, the model with the
+features is a point and a half below the trees at six hours
+and seven tenths below at twelve on all samples, two and two thirds and three quarters below
+on the deduplicated ones, with intervals that exclude zero.  The features therefore explain
+most of the gap at the long horizons once the class mix is corrected, and what remains is
+the cost of the regime: on a task that is the direction of a slow reversal read together
+with the price level and the lifecycle, a learner that sees every row once in time order
+and reads the level through a linear path does not reach what six hundred rounds of
+boosting read from the same table.  Given the trees as a base as well, the residual
+construction ties the trees at six hours on all samples and is a point below them on the
+deduplicated ones, and at twelve hours it is above them, by nine tenths of a point on all
+samples and one and three tenths on the deduplicated ones, with intervals that exclude
+zero: on the validation day, with the same calibration, the stateful model on the trees is
+the best model of the study at twelve hours.  The test days do not confirm that margin
+(\cref{sec:horizons:test}): there the residual is seven tenths below the control at twelve
+hours and six tenths at six, with intervals that exclude zero.  The tabular network was
+trained at the three short horizons only, which is what the dashes of
+\cref{tab:horizons:synthesis} mark.
 
 \subsection{Where the models win, by kind of market}
 \label{sec:horizons:where}

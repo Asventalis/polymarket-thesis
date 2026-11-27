@@ -87,9 +87,11 @@ external sources add nothing.  At six and
 twelve hours the task is the direction of a slow reversal read together with the price
 level and the market's lifecycle, the stateless control is six and a half points above the
 rule, and
-the stateful models of this study are below it even when they read the engineered
-features; on the trees as a base they come within half a point of the trees at six hours
-and stay three and a half points below at twelve.  The same architecture cannot be the right one at both ends, and the data suggest that a
+the stateful model of this study is below it even when it reads the engineered features,
+by a point and a half at six hours and by less than a point at twelve once every model is
+calibrated the same way; on the trees as a base it ties the trees at six hours and is above
+them at twelve on the validation day, a margin that the test days reverse into a deficit of
+less than a point (\cref{sec:horizons:test}).  The same architecture cannot be the right one at both ends, and the data suggest that a
 model of this market should be a stateless learner on the activity
 clock, the first level, the long returns, the price level and the contract type, with a
 sequential state added only where the horizon is shorter than the summary.
@@ -97,14 +99,13 @@ sequential state added only where the horizon is shorter than the summary.
 \begin{table}[t]
 \centering
 \caption{The reference model of each family at each horizon on the validation day, all samples
-and deduplicated samples (balanced accuracy).  At 1 min, 15 min and 1 h every model carries
-its own two cross-fitted logit offsets; at 6 h and 12 h the raw decisions (the control was
-not calibrated there).  ``Stateless'' is LightGBM on the sixty-one features; ``tabular
+and deduplicated samples (balanced accuracy).  Every model carries its own two cross-fitted
+logit offsets (\cref{sec:models:protocol}).  ``Stateless'' is LightGBM on the sixty-one features; ``tabular
 network'' is TabM on the same table, mean of three seeds; ``stateful'' is the best run
 without trees (two passes with the engineered features at every horizon); ``residual'' is
 the two-pass stateful model on the cross-fitted
 trees (\cref{sec:stateful:encoders,sec:stateful:regime,sec:stateful:residual}).  $\Delta$ in points against the stateless control, with 95\% hour-block bootstrap
-intervals where the comparison is calibrated; ``---'' marks a configuration that was not
+intervals; ``---'' marks a configuration that was not
 run at that horizon.}
 \label{tab:horizons:synthesis}
 \small
@@ -118,10 +119,10 @@ Horizon & Subset & MR & Stateless & Tabular network & Stateful & $\Delta$ & Resi
        & Dedup & 0.5253 & 0.6197 & 0.6248 & 0.6158 & $-0.39$ [$-0.63$, $-0.13$] & \textbf{0.6265} & $+0.67$ [$+0.34$, $+0.99$] \\
 1 h    & All   & 0.5311 & 0.6044 & 0.6033 & 0.5902 & $-1.42$ [$-1.83$, $-1.00$] & \textbf{0.6048} & $+0.04$ [$-0.18$, $+0.24$] \\
        & Dedup & 0.5180 & \textbf{0.5943} & 0.5922 & 0.5797 & $-1.46$ [$-1.76$, $-1.14$] & 0.5933 & $-0.10$ [$-0.26$, $+0.05$] \\
-6 h    & All   & 0.5069 & \textbf{0.5716} & --- & 0.5514 & $-2.02$ & 0.5664 & $-0.52$ \\
-       & Dedup & 0.5002 & 0.5665 & --- & 0.5552 & $-1.13$ & \textbf{0.5712} & $+0.47$ \\
-12 h   & All   & 0.5071 & \textbf{0.5715} & --- & 0.5060 & $-6.55$ & 0.5374 & $-3.41$ \\
-       & Dedup & 0.4995 & \textbf{0.5680} & --- & 0.5298 & $-3.82$ & 0.5548 & $-1.32$ \\
+6 h    & All   & 0.5069 & 0.5716 & --- & 0.5569 & $-1.47$ [$-1.76$, $-1.17$] & \textbf{0.5724} & $+0.08$ [$-0.20$, $+0.39$] \\
+       & Dedup & 0.5002 & \textbf{0.5665} & --- & 0.5398 & $-2.67$ [$-3.00$, $-2.32$] & 0.5565 & $-1.00$ [$-1.23$, $-0.79$] \\
+12 h   & All   & 0.5071 & 0.5716 & --- & 0.5647 & $-0.69$ [$-1.18$, $-0.14$] & \textbf{0.5802} & $+0.87$ [$+0.24$, $+1.55$] \\
+       & Dedup & 0.4995 & 0.5649 & --- & 0.5574 & $-0.75$ [$-1.26$, $-0.15$] & \textbf{0.5777} & $+1.29$ [$+0.84$, $+1.75$] \\
 \bottomrule
 \end{tabular}\end{fittable}
 \end{table}
@@ -130,8 +131,8 @@ Horizon & Subset & MR & Stateless & Tabular network & Stateful & $\Delta$ & Resi
 \centering
 \input{figures/fig_synthesis}
 \caption{The gain of the stateful family over the stateless control at each horizon
-(all samples; calibrated against calibrated at 1 min, 15 min and 1 h with 95\% hour-block
-bootstrap intervals; raw argmax at 6 h and 12 h).  The sign reverses with the horizon.}
+(all samples; calibrated against calibrated at every horizon, with 95\% hour-block
+bootstrap intervals).  The sign reverses with the horizon.}
 \label{fig:horizons:synthesis}
 \end{figure}
 

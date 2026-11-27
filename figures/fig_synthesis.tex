@@ -1,12 +1,12 @@
 \begin{tikzpicture}
 \begin{axis}[thesis, ylabel={$\Delta$ vs the stateless control, points}, symbolic x coords={1 min, 15 min, 1 h, 6 h, 12 h}, xtick=data,
-  enlarge x limits=0.14, ymin=-9.8, ymax=3, legend pos=south west, ytick={-8,-6,-4,-2,0,2},
+  enlarge x limits=0.14, ymin=-3.2, ymax=2.6, legend pos=south west, ytick={-3,-2,-1,0,1,2},
   point meta=explicit symbolic]
 \addplot[vizGrid, line width=0.8pt, sharp plot, forget plot] coordinates {(1 min,0) (12 h,0)};
 \addplot[only marks, mark=*, mark size=2.4pt, vizA, nodes near coords, every node near coord/.append style={font=\scriptsize, color=black, anchor=north west, xshift=3pt, yshift=-1pt}, error bars/.cd, y dir=both, y explicit, error bar style={vizA, line width=0.9pt}, error mark options={vizA, rotate=90, mark size=2pt}]
-  coordinates {(1 min,0.62) += (0,0.20) -= (0,0.16) [$+0.62$] (15 min,-0.07) += (0,0.26) -= (0,0.27) [$-0.07$] (1 h,-1.42) += (0,0.42) -= (0,0.41) [$-1.42$] (6 h,-2.02) [$-2.0$] (12 h,-6.55) [$-6.6$]};
+  coordinates {(1 min,0.62) += (0,0.20) -= (0,0.16) [$+0.62$] (15 min,-0.07) += (0,0.26) -= (0,0.27) [$-0.07$] (1 h,-1.42) += (0,0.42) -= (0,0.41) [$-1.42$] (6 h,-1.47) += (0,0.30) -= (0,0.29) [$-1.47$] (12 h,-0.69) += (0,0.55) -= (0,0.49) [$-0.69$]};
 \addplot[only marks, mark=square*, mark size=2.2pt, vizB, nodes near coords, every node near coord/.append style={font=\scriptsize, color=black, anchor=south west, xshift=3pt, yshift=1pt}, error bars/.cd, y dir=both, y explicit, error bar style={vizB, line width=0.9pt}, error mark options={vizB, rotate=90, mark size=2pt}]
-  coordinates {(1 min,1.37) += (0,0.21) -= (0,0.21) [$+1.37$] (15 min,0.70) += (0,0.18) -= (0,0.20) [$+0.70$] (1 h,0.04) += (0,0.20) -= (0,0.22) [$+0.04$] (6 h,-0.52) [$-0.5$] (12 h,-3.41) [$-3.4$]};
+  coordinates {(1 min,1.37) += (0,0.21) -= (0,0.21) [$+1.37$] (15 min,0.70) += (0,0.18) -= (0,0.20) [$+0.70$] (1 h,0.04) += (0,0.20) -= (0,0.22) [$+0.04$] (6 h,0.08) += (0,0.31) -= (0,0.28) [$+0.08$] (12 h,0.87) += (0,0.68) -= (0,0.63) [$+0.87$]};
 \legend{stateful model, residual of the trees}
 \end{axis}
 \end{tikzpicture}

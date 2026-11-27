@@ -42,9 +42,9 @@ reference.
 features that encode the properties above is the reference model at every horizon from
 fifteen minutes to twelve hours, six to eight points above the best rule; a properly trained
 tabular network ties it, and nothing beats it except what is built on top of it.  A continuous-time stateful model of the order-book stream reaches
-it only when it is given the same inputs and the trees as a base, and beats it, by a small
-margin with an interval that excludes zero on every subset, only at the two shortest
-horizons: alone and as the residual of the trees at one minute, where the sequence of book
+it only when it is given the same inputs and the trees as a base, and beats it on both the
+validation and the test days, by a small margin with an interval that excludes zero on
+every subset, only at the two shortest horizons: alone and as the residual of the trees at one minute, where the sequence of book
 events says something about the next minute of a quiet market that no summary of the last
 hour contains, and as the residual of the trees at fifteen minutes.  The online, time-ordered training regime of the
 stateful model costs it one to two points on its own against the same learner trained as a
@@ -62,9 +62,9 @@ state still adds a little on top of the trees; at one hour the summary is comple
 stateless learner is the right model; at six and
 twelve hours the task is the direction of a slow reversal read with the price level and the
 lifecycle of the market, the stateless learner is six and a half points above the rule, and the
-stateful models of this study are below it even when they read the engineered features;
-on the trees as a base they come within half a point of the trees at six hours and stay
-three and a half points below at twelve.
+stateful model of this study is below it even when it reads the engineered features; on the
+trees as a base it ties the trees at six hours and is above them at twelve on the validation
+day only, less than a point below on the test days.
 The live-game regime and the crypto interval contracts are the hard cases at every horizon.
 
 \section{The results in brief}
@@ -94,12 +94,11 @@ rebuilt on the runs' own samples and every model calibrated the same way, the st
 is above the trees alone and by more as their residual; at fifteen minutes it ties them
 alone on the full stream, is below them on the sparse markets, and is seven tenths above
 them as their residual; at six hours the same
-construction comes within half a point of them and at twelve hours it stays three and a
-half points below.  The
+construction ties them and at twelve hours it is nine tenths of a point above them.  The
 locked test days of 24--26 March reproduce every one of these orderings that was re-run on
-them, with the one-minute margins confirmed over two seeds, the residual within a point of
-the control at six and at twelve hours, and the six-hour gap of the models without the
-engineered features half a point to a point wider (\cref{sec:horizons:test}).  Traded one share at a time on the same days, the calls of
+them except the last: the one-minute margins hold over two seeds, the six-hour gap of the
+models without the engineered features is half a point to a point wider, and the
+twelve-hour residual falls seven tenths below the control (\cref{sec:horizons:test}).  Traded one share at a time on the same days, the calls of
 the control lose about seventy to one hundred ticks per share as a taker at every horizon, the
 spread and not the fee being the cost, break even only on the books with a spread of two
 ticks or less, and earn ten to fourteen ticks per filled share as a maker from one hour on,
@@ -111,7 +110,8 @@ on a third to a half of the calls (\cref{sec:exp:econ}).
 The study has the limits of its data and of its budget, and the main ones are the
 following.  The models are trained on one week and validated on one day, and the three
 locked test days are three days of the same month: they reproduce every ordering of the
-validation day, but the six-hour gap widened by half a point to a point on them, and nothing
+validation day but one, the twelve-hour residual, the six-hour gap widened by half a point
+to a point on them, and nothing
 here says how the families would rank in an election week or in a quiet August.  The
 periods are not contiguous (\cref{sec:data:splits}): ten days separate the validation day
 from the test period, so every model meets the test days twelve days after its last training
