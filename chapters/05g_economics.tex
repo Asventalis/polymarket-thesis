@@ -80,9 +80,9 @@ The simulation trades every call of a model on the test days of 24--26 March, on
 call, under the following rules.  A sample is traded only if its book is well formed (a
 positive spread, both quotes inside the unit interval; $96\%$ of the samples).  The calls
 are those of the calibrated model, with the offsets chosen on the validation day exactly as
-in \cref{sec:horizons:test}: the stateless control at every horizon, the stateful model with
-the engineered features and its residual on the trees where their test predictions exist,
-and an \emph{oracle} that calls the realised label, the upper bound of any direction model
+in \cref{sec:horizons:test}: the stateless control, the stateful model with the engineered
+features and its residual on the trees at every horizon, the LOB-only stateful model at six
+and twelve hours, and an \emph{oracle} that calls the realised label, the upper bound of any direction model
 under the same costs.  Three executions are compared.  \emph{Taker--taker} crosses the
 spread at $t$ and again at $t + H$, at the quotes of the last book seen before $t + H$
 around the true mid of the label.  \emph{Maker--taker} rests at the best quote at $t$; the
